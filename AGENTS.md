@@ -42,11 +42,24 @@ de `docs/referencias/` orientan el diseño, pero sus botones/textos no añaden r
 documentos, identifica el punto y conserva las restricciones de seguridad e
 integridad. Las instrucciones explícitas del usuario prevalecen sobre las propuestas.
 
-Estado inicial analizado el 6 de octubre de 2026: documentación, sin aplicación,
+Estado histórico inicial, antes de iniciar el MVP el 6 de octubre de 2026: documentación, sin aplicación,
 dependencias incorporadas ni pruebas del programa ejecutadas. Verifica el estado
 real al comenzar cada tarea. Analizar requisitos o actualizar instrucciones no
 implica iniciar por sí solo la implementación. Las referencias de `docs/` fueron
 copiadas del espejo de ChatGPT; sus originales sincronizados permanecen intactos.
+
+## Estado de implementación
+
+Existe un MVP de desarrollo en `Sources/` con targets separados de dominio,
+aplicación, infraestructura, presentación y composición. `Tests/` verifica Git
+real, concurrencia, PTY, catálogo con fixtures, persistencia y Keychain optativo.
+Usar `scripts/test.sh` y `scripts/build-app.sh`; los artefactos de `dist/` son
+locales e ignorados. Consultar [estado y evidencia](docs/11-estado-mvp.md) antes
+de afirmar cobertura o preparar un release. Se adoptaron SwiftUI/AppKit, SQLite,
+Git CLI y un terminal PTY propio con soporte VT básico; SwiftTerm no se incorporó.
+El bundle verificado es arm64 con firma ad hoc de desarrollo. Bitbucket real,
+helper Keychain en distribución, VoiceOver, otros sistemas/CPU y notarización
+siguen pendientes. No tratar el MVP de desarrollo como release H6 aprobado.
 
 ## Alcance confirmado y propuestas
 

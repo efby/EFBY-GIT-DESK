@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-06",
+  "application": "EfbyGitDesk 0.1.0",
+  "macOS": "26.6.2",
+  "architecture": "arm64",
+  "swift": "6.4",
+  "git": "2.51.0",
+  "tests": {
+    "passed": 38,
+    "suites": 10,
+    "skipped": 0,
+    "seconds": 5.551,
+    "keychainDisposableFixture": true
+  },
+  "benchmark": {
+    "coldOSCacheControlled": false,
+    "commits": 100000,
+    "configuration": "debug",
+    "historyPage": 100,
+    "seconds": [
+      0.321494292,
+      0.32120425,
+      0.323378833,
+      0.318183167,
+      0.312138292,
+      0.313612667
+    ],
+    "uiInteractionMeasured": false
+  },
+  "liveBitbucketVerified": false,
+  "macOS14RuntimeVerified": false,
+  "intelRuntimeVerified": false,
+  "developerIDNotarizationVerified": false,
+  "regressionAfterCloneIsolation": {
+    "passed": 36,
+    "skippedOptional": 2,
+    "seconds": 5.47
+  },
+  "build": {
+    "configuration": "release",
+    "architecture": "arm64",
+    "signature": "ad-hoc",
+    "signatureVerified": true,
+    "binarySHA256": "2c94a6f15c9971c10aa81fa28024b7e61729732417140db7f104844b73208e9a",
+    "credentialHelperSHA256": "54fecf9f4817fb27ba9701c5959bc4ee7fd23212b7017268f6d13d93332f3f26",
+    "zipSHA256": "800d3641b20511a72d5d112a4cb2fce54d88952ad96d151798dcf6850907ee66"
+  }
+}

@@ -44,3 +44,7 @@ La documentación se revisó para coherencia de alcance, contratos y referencias
 No existe todavía una aplicación, ni se ejecutaron pruebas del programa o conexiones con una cuenta Bitbucket real. Las métricas y criterios QA son objetivos de aceptación. La siguiente actividad de implementación es **H0: viabilidad nativa**, que valida terminal, Git heredado, Keychain y distribución desde Finder antes de desarrollar el resto.
 
 Los archivos Markdown son la fuente editable. El dossier unificado y el ZIP son copias generadas para lectura y traslado; se regeneran al cambiar los documentos.
+
+## Implementación de desarrollo
+
+[11 — Estado del MVP, decisiones y evidencia](11-estado-mvp.md). La especificación y su criterio de release no equivalen a pruebas ya aprobadas.

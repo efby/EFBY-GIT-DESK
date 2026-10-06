@@ -27,10 +27,10 @@ Contrato inicial del catálogo, base `https://api.bitbucket.org/2.0`:
 | Operación | Endpoint GET | Scope API token |
 |---|---|---|
 | Workspaces accesibles al usuario | `/user/workspaces` | `read:workspace:bitbucket` |
-| Repositorios y permiso efectivo del usuario en un workspace | `/user/workspaces/{workspace}/permissions/repositories` | `read:repository:bitbucket` |
+| Repositorios visibles en un workspace | `/repositories/{workspace}` | `read:repository:bitbucket` |
 | Metadatos y enlaces de un repositorio | `/repositories/{workspace}/{repo_slug}` | `read:repository:bitbucket` |
 
-El listado de permisos no incluye repositorios públicos sin acceso específicamente concedido; permitir agregar su URL manualmente. Estas rutas provienen de la referencia actual, no de una prueba con credenciales reales. No depender de antiguos listados globales retirados en 2026. [Workspaces REST](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-workspaces/), [Repositorios REST](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-repositories/), [Retirada de APIs anteriores](https://community.developer.atlassian.com/t/bitbucket-cloud-announcing-end-of-life-for-cross-workspace-apis-timeline-next-steps-and-instructions-for-connect-apps/99972).
+El MVP utiliza el listado paginado de repositorios del workspace, sin inferir permiso de push de su presencia en el catálogo; también permite agregar una URL manualmente. Estas rutas se contrastaron con la referencia oficial durante la implementación, pero todavía no con credenciales reales. No depender de antiguos listados globales retirados en 2026. [Workspaces REST](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-workspaces/), [Repositorios REST](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-repositories/), [Retirada de APIs anteriores](https://community.developer.atlassian.com/t/bitbucket-cloud-announcing-end-of-life-for-cross-workspace-apis-timeline-next-steps-and-instructions-for-connect-apps/99972).
 
 Para clone/fetch: `read:repository:bitbucket`. Para push: añadir `write:repository:bitbucket`; write no implica read. Añadir lectura de workspace solo para descubrimiento. No pedir administración, borrado, pipelines ni pull requests para este alcance. [Scopes API token](https://support.atlassian.com/bitbucket-cloud/docs/api-token-permissions/).
 
