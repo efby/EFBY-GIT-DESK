@@ -90,6 +90,10 @@ siguen pendientes. No tratar el MVP de desarrollo como release H6 aprobado.
   oficiales al implementarlas y antes de release. No presentar el contrato documental
   de octubre de 2026 como una conexión real ya probada.
 
+## Identidad visual
+
+Los iconos deben reutilizar el logotipo y diseño de EFBY_POSTMAN, con la etiqueta inferior **#GitDesk**. Mantener el vector de marca en `Resources/Brand/` y el generador reproducible `scripts/generate-icon.sh`; incorporar `AppIcon.icns` al bundle macOS.
+
 ## Arquitectura y responsabilidades de código
 
 - Separar dominio, aplicación, infraestructura, presentación y composición mediante
