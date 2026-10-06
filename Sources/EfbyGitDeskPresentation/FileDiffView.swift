@@ -2,9 +2,8 @@ import SwiftUI
 import EfbyGitDeskDomain
 
 struct FileDiffView: View {
+    @Bindable var model: DeskModel
     let file: FileChange
-    let text: String
-    let close: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -12,11 +11,36 @@ struct FileDiffView: View {
                 Label(file.name, systemImage: "doc.text")
                     .font(.caption.monospaced()).lineLimit(2).textSelection(.enabled)
                 Spacer()
-                Button("Cerrar diferencias", systemImage: "xmark", action: close)
+                Button("Cerrar diferencias", systemImage: "xmark", action: model.closeDiff)
                     .labelStyle(.iconOnly).help("Cerrar diferencias y volver a la lista de archivos")
             }.padding(12)
             Divider()
-            TextPreview(text: text).frame(maxWidth: .infinity, maxHeight: .infinity)
+            if model.diffLoading {
+                ProgressView("Comparando documentos…").frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let comparison = model.comparison {
+                HStack(spacing: 0) {
+                    DiffDocumentHeader(title: "Documento 1 · Inferior / Base", revision: comparison.beforeLabel,
+                                       path: file.oldPath.flatMap { String(data: $0, encoding: .utf8) } ?? file.name,
+                                       text: comparison.before)
+                    Divider()
+                    DiffDocumentHeader(title: "Documento 2 · Superior / Destino", revision: comparison.afterLabel,
+                                       path: file.name, text: comparison.after)
+                }.fixedSize(horizontal: false, vertical: true)
+                Divider()
+                if !model.diffNotice.isEmpty {
+                    Text(model.diffNotice).font(.caption).foregroundStyle(.orange)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(8)
+                }
+                if model.diffAligned && comparison.before != nil && comparison.after != nil && !comparison.patch.contains("[Diff truncado") {
+                    ParallelDiffView(rows: model.diffRows).frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    TextPreview(text: model.diffText).frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            } else {
+                ContentUnavailableView("No se pudo comparar", systemImage: "doc.text.magnifyingglass",
+                    description: Text("Actualiza el repositorio y vuelve a seleccionar el archivo."))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

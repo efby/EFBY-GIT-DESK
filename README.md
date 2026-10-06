@@ -21,7 +21,7 @@ Para un paquete optimizado: `bash scripts/build-app.sh release`. El paquete incl
 1. Abre una carpeta Git. Comienza en inspección segura: historial y objetos, sin terminal, red ni cambios en archivos.
 2. Revisa la carpeta y concede confianza para habilitar operaciones locales. Las credenciales y la confianza son independientes.
 3. Selecciona **Pendientes** para preparar archivos y **Preparados** para revisar el índice y crear el commit. Las ramas ofrecen acciones en su menú contextual.
-4. Selecciona un commit para revisar sus diferencias; selecciona dos para comparar sus árboles. El tercero conserva el par. Puedes intercambiar A y B y copiar el SHA completo.
+4. Selecciona un commit para revisar sus diferencias; selecciona dos para comparar sus árboles. El tercero conserva el par. La dirección es siempre del commit inferior al superior en el historial, independientemente del orden de selección. Puedes copiar el SHA completo.
 5. Para Bitbucket, usa SSH/credenciales heredadas o agrega un API token en **Conexiones**. El catálogo necesita lectura de workspace y repositorios; publicar requiere permiso de escritura. El token se guarda en Keychain.
 6. Clona en una carpeta nueva. La aplicación realiza `--no-checkout` y solicita confianza antes de materializar archivos.
 7. **Editar mensaje de HEAD** presenta un plan que caduca a los 60 segundos. Publicarlo exige que HEAD coincida con la punta remota y utiliza un lease exacto. La referencia de recuperación se conserva incluso si el envío falla.

@@ -26,8 +26,8 @@ Fecha: 6 de octubre de 2026. Versión de desarrollo; H6 y el criterio de release
 | RF-08 | Push de SHA y rama explícitos, upstream opcional | Git real en fixtures de publicación; servidor Bitbucket y protección de ramas pendientes. |
 | RF-09 | Stage/unstage por archivo y commit del índice | Primer commit, nombres especiales, rename completo y hook rechazado preservando índice. |
 | RF-10 | Historial paginado, búsqueda, grafo y copia de SHA completo | Objetos Git reales SHA-1 y SHA-256; fixture de 100.000 commits. Copia y teclado requieren completar QA manual. |
-| RF-11 | Selección limitada a dos commits, A→B e intercambio | Árboles sin ancestro común, merges y raíz; nunca merge-base. La tercera selección conserva el par. |
-| RF-12 | Diff unificado, lista de rutas, índice/HEAD y worktree/índice | Rename y binario; resúmenes para LFS/submódulos/enlaces. Límite textual visible de 2 MB; inventario hasta 16 MB o error explícito, sin afirmar completitud de salida truncada. |
+| RF-11 | Selección limitada a dos commits, inferior → superior | Árboles sin ancestro común, merges y raíz; nunca merge-base. La tercera selección conserva el par. |
+| RF-12 | Documentos en paralelo, lista de rutas, índice/HEAD y worktree/índice | Rename y binario; resúmenes para LFS/submódulos/enlaces. Límite textual visible de 2 MB; inventario hasta 16 MB o error explícito, sin afirmar completitud de salida truncada. |
 | RF-13 | Plan de un solo uso, caducidad 60 s, recuperación y lease exacta | Árbol/autor/padres preservados; HEAD nuevo, índice preparado, avance remoto y carrera durante push. Tras interrupción de publicación se consulta el destino antes de considerar reintento. |
 | RF-14 | Terminal PTY por repositorio, sesiones, ocultación y cierre confirmado | PTY real: directorio, UTF-8, resize, Ctrl+C, entrada pausada y salida. Refresco cada 4 s/foco. Compatibilidad VT avanzada pendiente. |
 | RF-15 | Permiso por commonGitDir mantenido durante await, journal, cancelación | 20 escritores serializados; lock externo conservado; pipes simultáneos, SIGTERM ignorado y handles heredados acotados. |
@@ -68,3 +68,13 @@ El catálogo está en `~/Library/Application Support/EfbyGitDesk/catalog.sqlite`
 El diff se muestra únicamente después de seleccionar explícitamente un archivo. Su cabecera identifica la ruta y permite cerrarlo; al cerrar, la lista vuelve a ocupar el panel. Cambiar commits o el contexto de comparación cierra el visor. Un refresco conserva la selección explícita, pero no vuelve a abrir un visor cerrado. Las consultas del inventario y del diff tienen cancelación independiente.
 
 El contenedor del repositorio, historial y panel de archivos solicitan todo el espacio disponible, también sin commits seleccionados y en estados vacíos. La prueba de regresión con Git real pasó; la suite general ejecutó 37 pruebas, con 2 optativas omitidas (39 registradas en 11 suites). Después de ajustar el cambio de repositorio se repitió la prueba específica y pasó. La revisión visual de estos cambios en la aplicación queda pendiente.
+
+## Comparación paralela y dirección fija
+
+Por indicación del usuario, A corresponde al commit inferior del historial y B al superior, incluso si se seleccionan en el orden inverso. La posición topológica visible determina el sentido; no se usan fechas ni merge-base. Se retiró el intercambio manual. Un solo commit sigue comparándose contra su padre elegido (o árbol vacío si es raíz).
+
+El visor lee ambos documentos completos desde blobs Git, sin filtros, textconv ni descargas implícitas. Muestra números de línea, signos y colores de cambio; alinea los bloques de adición/eliminación con huecos. Las dos columnas tienen scroll vertical sincronizado y scroll horizontal independiente. Los renombres conservan la ruta original y la nueva; se identifica la ausencia de salto de línea final. Staging y cambios locales mantienen HEAD → índice e índice → área de trabajo.
+
+Se mantienen resúmenes para binarios, submódulos, conflictos y contenido no UTF-8. Límite: 2 MB por documento y 50.000 líneas entre ambos; ante un límite o alineación incompleta se informa y se conserva el resumen de Git. Suite general: 42 pruebas ejecutadas y aprobadas, 2 optativas omitidas (44 registradas, 12 suites). Las nuevas pruebas cubren documentos completos con hunks separados, bloques de distinta longitud, raíz, renombre con salto de línea en la ruta, binarios, índice/worktree, selección en ambos órdenes, límites y sincronización nativa de scroll. La imagen de las columnas AppKit se revisó fuera de pantalla usando un fixture sintético; el recorrido completo de la ventana con repositorios reales sigue pendiente.
+
+El refresco de un archivo ya abierto conserva el visor nativo mientras se consulta el contenido, para no reiniciar el scroll ni la selección cada cuatro segundos. Los controles de fin de línea se representan sin añadir filas visuales; se verificaron CRLF y cambios de salto final.

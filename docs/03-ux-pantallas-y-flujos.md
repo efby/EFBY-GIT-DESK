@@ -60,7 +60,7 @@ Con un commit seleccionado se muestra su detalle: SHA completo copiable, mensaje
 
 La comparación requiere **exactamente dos commits**. El modo de selección mantiene como máximo dos. Una tercera selección se rechaza con «Ya hay dos commits seleccionados; deselecciona uno para cambiarlo»; nunca sustituye silenciosamente un extremo. Salir del modo de comparación devuelve una selección individual coherente.
 
-El encabezado identifica **A: base** y **B: destino**, con mensaje y SHA de ambos. La primera selección ocupa A y la segunda B; la interfaz no deduce el orden por fecha ni por posición en el grafo. «Intercambiar A y B» es una acción explícita. La leyenda «Cambios para pasar de A a B» define el sentido.
+El encabezado identifica **A: base** y **B: destino**, con mensaje y SHA de ambos. A es siempre el commit inferior y B el superior según el orden visible del historial; el orden de clics no afecta la comparación. No hay inversión manual. La leyenda «Cambios para pasar de A a B» define el sentido.
 
 El resultado compara los árboles de A y B directamente. No representa automáticamente el rango de commits ni una comparación desde el ancestro común. Permite comparar commits de ramas distintas y muestra el resultado incluso si uno no es antecesor del otro.
 
@@ -90,6 +90,6 @@ Todas las regiones contemplan carga, vacío, éxito y error. Sin red siguen func
 
 La navegación es completa por teclado y VoiceOver. Atajos propuestos: `⌘O` abrir carpeta, `⇧⌘O` gestor, `⌘F` buscar en la región activa, `⇧⌘C` copiar SHA y `⌘J` alternar terminal. Sus combinaciones se muestran en los menús de macOS y no interceptan entrada del terminal cuando tiene el foco. Los controles tienen nombre accesible, foco visible y objetivos de al menos 32 puntos, ampliables con densidad cómoda. VoiceOver anuncia selección, extremos A/B y resultados sin releer el historial completo. El color nunca es la única señal.
 
-En ventanas estrechas, las referencias se contraen, la comparación pasa a vista unificada y el detalle puede abrirse como región dedicada. Repositorio, rama y extremos A/B permanecen identificables. El ancho mínimo se definirá al validar el prototipo en macOS.
+En ventanas estrechas, las referencias se contraen, la comparación conserva ambas columnas con desplazamiento horizontal independiente y el detalle puede abrirse como región dedicada. Repositorio, rama y extremos A/B permanecen identificables. El ancho mínimo se definirá al validar el prototipo en macOS.
 
-La aceptación UX exige que: quitar referencias no elimine carpetas; la selección admita como máximo dos commits; intercambiar A/B invierta el sentido; copiar entregue el SHA completo; errores remotos conserven contexto; corregir mensajes no incluya cambios preparados; el terminal refresque la vista; y los flujos funcionen con teclado y VoiceOver.
+La aceptación UX exige que: quitar referencias no elimine carpetas; la selección admita como máximo dos commits; la dirección se mantenga del commit inferior al superior; copiar entregue el SHA completo; errores remotos conserven contexto; corregir mensajes no incluya cambios preparados; el terminal refresque la vista; y los flujos funcionen con teclado y VoiceOver.

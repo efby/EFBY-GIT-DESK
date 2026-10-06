@@ -25,6 +25,9 @@ import EfbyGitDeskPresentation
         model.loadDiff(id: file.id)
         try await waitUntil { model.diffText.contains("+changed") }
         #expect(model.selectedFile == file.id)
+        model.loadDiff(id: file.id)
+        #expect(model.comparison != nil)
+        #expect(!model.diffLoading) // Refresh must keep the native columns mounted.
         model.refresh()
         try await waitUntil { !model.loading && !model.filesLoading && model.diffText.contains("+changed") }
         #expect(model.selectedFile == file.id)

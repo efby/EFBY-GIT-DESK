@@ -34,7 +34,7 @@ El terminal inferior comienza en la carpeta del repositorio y conserva su contex
 
 ## 4. Comparar commits y copiar SHA
 
-Entrar en comparación y seleccionar A y B. La primera selección es base y la segunda destino. Con exactamente dos commits, la lista muestra los cambios para pasar de A a B. «Intercambiar» invierte el sentido. Una tercera selección requiere quitar primero uno de los extremos.
+Entrar en comparación y seleccionar A y B. El commit inferior del historial es la base y el superior es el destino, independientemente del orden de selección. Con exactamente dos commits, la lista muestra los cambios para pasar de A a B. Seleccionar un archivo abre ambas versiones completas en columnas paralelas, con números de línea y cambios resaltados. Una tercera selección requiere quitar primero uno de los extremos.
 
 La comparación muestra todos los archivos detectados aunque un binario o archivo grande no pueda representarse como texto. Un filtro puede ocultar filas visualmente, pero se indica el total y el filtro activo. Si los árboles son iguales, el resultado informa que no hay diferencias aunque los SHA sean distintos.
 

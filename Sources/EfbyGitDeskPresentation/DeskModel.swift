@@ -17,6 +17,11 @@ import EfbyGitDeskDomain
     public var files: [FileChange] = []
     public var selectedFile: String?
     public var diffText = ""
+    public var comparison: FileComparison?
+    public var diffRows: [DiffRow] = []
+    public var diffLoading = false
+    public var diffAligned = false
+    public var diffNotice = ""
     public var search = ""
     public var repositorySearch = ""
     public var hasMore = false
@@ -62,11 +67,17 @@ import EfbyGitDeskDomain
     public var profile: ConnectionProfile? { profiles.first { $0.id == profileID } }
     public var context: DiffContext? {
         if workingView { return stagedView ? .staged : .working }
-        if selectedOIDs.count == 2, let pair = try? ComparisonPair(base: selectedOIDs[0], target: selectedOIDs[1]) {
+        if selectedOIDs.count == 2, let pair = try? ComparisonPair(base: orderedComparison[0], target: orderedComparison[1]) {
             return .commits(pair)
         }
         if let oid = selectedOIDs.first { return .commit(oid, parent: parentIndex) }
         return nil
+    }
+    /// The displayed topological order, rather than click order or commit timestamps.
+    public var orderedComparison: [String] {
+        selectedOIDs.sorted { lhs, rhs in
+            (commits.firstIndex { $0.oid == lhs } ?? -1) > (commits.firstIndex { $0.oid == rhs } ?? -1)
+        }
     }
     public var currentTerminals: [TerminalTab] { terminals[selectedID ?? ""] ?? [] }
     public var activeTerminal: TerminalTab? {
@@ -185,7 +196,10 @@ import EfbyGitDeskDomain
                 guard !Task.isCancelled, version == generation, repository.id == selectedID else { return }
                 snapshot = newState; branches = newBranches; remoteNames = newRemotes
                 remote = selectedRemote; remoteSupported = supported
-                if changed { commits = history; hasMore = history.count == 100; tips = newTips }
+                if changed {
+                    commits = history; hasMore = history.count == 100; tips = newTips
+                    selectedOIDs.removeAll { oid in !history.contains { $0.oid == oid } }
+                }
                 if let plan, plan.oldHead != newState.head || newState.files.contains(where: \.staged) { cancelPlan() }
                 loadFiles()
             } catch is CancellationError {} catch {
@@ -218,7 +232,6 @@ import EfbyGitDeskDomain
         else { status = "La comparación admite dos commits. Quita uno antes de seleccionar otro."; return }
         loadFiles()
     }
-    public func swapComparison() { selectedOIDs.reverse(); loadFiles() }
     public func showWorking(staged: Bool) {
         workingView = true; stagedView = staged; selectedOIDs = []; loadFiles()
     }
@@ -245,18 +258,33 @@ import EfbyGitDeskDomain
     public func closeDiff() {
         diffQuery?.cancel()
         selectedFile = nil; diffText = ""
+        comparison = nil; diffRows = []; diffLoading = false; diffAligned = false; diffNotice = ""
     }
     public func loadDiff(id: String) {
         diffQuery?.cancel()
         guard let repository, let context, let file = files.first(where: { $0.id == id }) else { return }
-        selectedFile = id; diffText = "Cargando diferencias…"
+        let preserveView = selectedFile == id && comparison != nil
+        selectedFile = id
+        if !preserveView {
+            diffText = ""; comparison = nil; diffRows = []
+            diffLoading = true; diffAligned = false; diffNotice = ""
+        }
         let version = generation
         diffQuery = Task {
             do {
-                let diff = try await service.git.diff(repository, context: context, file: file)
+                let result = try await service.git.fileComparison(repository, context: context, file: file)
+                let alignment = await Task.detached { () -> Result<[DiffRow], Error> in
+                    Result { try DiffAlignment.make(result) }
+                }.value
                 guard !Task.isCancelled, version == generation, selectedFile == id, self.context == context else { return }
-                diffText = diff.isEmpty ? "Cambio de metadatos, modo o contenido sin diff textual." : diff
-            } catch is CancellationError {} catch { if !Task.isCancelled, version == generation, selectedFile == id, self.context == context { self.error = error.localizedDescription } }
+                comparison = result; diffNotice = result.notice
+                switch alignment {
+                case .success(let rows): diffRows = rows; diffAligned = true
+                case .failure(let error): diffNotice += "\n" + error.localizedDescription
+                }
+                diffLoading = false
+                diffText = result.patch.isEmpty ? "Cambio de metadatos o modo; los documentos se muestran completos." : result.patch
+            } catch is CancellationError {} catch { if !Task.isCancelled, version == generation, selectedFile == id, self.context == context { self.error = error.localizedDescription; diffLoading = false } }
         }
     }
     public func mutate(_ action: GitAction) {

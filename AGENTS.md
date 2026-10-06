@@ -137,6 +137,7 @@ Los iconos deben reutilizar el logotipo y diseño de EFBY_POSTMAN, con la etique
   configuración, temporales ordinarios, logs, PTY o historial. Validar destinos,
   redirecciones/paginación sin propagar Authorization a otro origen. Mantener TLS
   y verificación SSH; cambios de huella requieren decisión visible.
+- Visor: dos documentos completos en paralelo, líneas alineadas y scroll vertical sincronizado; abrir solo tras elegir un archivo. A siempre es el commit inferior y B el superior en el historial, sin inversión manual ni dependencia del orden de clics.
 - Comparación: exactamente dos commits distintos, árboles A→B, también merges o
   ramas sin relación de ancestro. Nunca merge-base/A...B. Un tercer clic conserva
   el par. Separar comparación de commits, índice frente a HEAD y worktree frente a índice.

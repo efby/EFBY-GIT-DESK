@@ -61,7 +61,7 @@ El grafo carga páginas de OIDs con orden topológico sobre las puntas capturada
 
 ## 4. Comparación entre exactamente dos commits
 
-`CompareCommits(baseOid, targetOid)` exige dos OIDs distintos de tipo commit. A es base y B destino; la UI muestra ambos y permite invertirlos. El resultado es el cambio entre **los dos árboles finales**, aunque los commits no sean consecutivos ni compartan una rama. Referencia: `diff --no-ext-diff --no-textconv --name-status -z A B --`; cargar parches por archivo bajo demanda. No usar `A...B`, que cambia la base al ancestro común. [diff](https://git-scm.com/docs/git-diff).
+`CompareCommits(baseOid, targetOid)` exige dos OIDs distintos de tipo commit. A es base y B destino; la UI muestra ambos y fija A en el commit inferior y B en el superior del historial. El resultado es el cambio entre **los dos árboles finales**, aunque los commits no sean consecutivos ni compartan una rama. Referencia: `diff --no-ext-diff --no-textconv --name-status -z A B --`; cargar parches por archivo bajo demanda. No usar `A...B`, que cambia la base al ancestro común. [diff](https://git-scm.com/docs/git-diff).
 
 La lista cubre agregados, eliminados, modificaciones, renombres/copia cuando se detecten, cambios de modo, enlaces y submódulos. La detección de rename es heurística; mostrar puntuación cuando corresponda. Binarios muestran metadatos; archivos grandes tienen límite y aviso de truncado. No ejecutar conversores externos para mejorar la vista.
 
