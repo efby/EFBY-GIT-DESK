@@ -3,3 +3,14 @@
 DerivedData/
 xcuserdata/
 *.xcuserstate
+
+# Claves de autenticación: nunca versionar claves privadas ni públicas.
+.ssh/
+*.key
+*.pem
+*.pub
+*_deploy
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519

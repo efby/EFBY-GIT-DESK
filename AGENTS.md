@@ -101,6 +101,9 @@ copiadas del espejo de ChatGPT; sus originales sincronizados permanecen intactos
 
 ## Invariantes Git, confianza y seguridad
 
+- Nunca incluir claves de autenticación, privadas ni públicas, en commits o
+  artefactos versionados. Las deploy keys permanecen fuera del repositorio;
+  comprobar el contenido del índice antes de cada publicación.
 - Acciones Git de la UI: argumentos estructurados, directorio validado y sin
   concatenación de shell. Drenar stdout/stderr simultáneamente, acotar recursos
   y propagar cancelación. Parsear formatos NUL, preservar bytes/identidades de
