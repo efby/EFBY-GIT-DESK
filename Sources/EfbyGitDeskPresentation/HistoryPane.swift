@@ -20,6 +20,7 @@ struct HistoryPane: View {
                     ProgressView("Cargando historial…").frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if model.commits.isEmpty {
                     ContentUnavailableView("Sin commits", systemImage: "clock", description: Text("El repositorio está vacío o la búsqueda no tiene coincidencias."))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 0) {
@@ -54,6 +55,7 @@ struct HistoryPane: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: model.commits) {
             let commits = model.commits
             let layout = await Task.detached { GraphLayout.make(commits) }.value

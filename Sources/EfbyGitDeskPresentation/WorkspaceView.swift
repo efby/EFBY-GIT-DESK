@@ -43,6 +43,7 @@ public struct WorkspaceView: View {
                         DiffPane(model: model).frame(minWidth: 340, idealWidth: model.detailWidth)
                             .background(PanelWidthObserver { model.detailWidth = $0; model.persistLayout() })
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     if model.terminalVisible {
                         Divider()
                         TerminalPane(model: model).frame(height: model.terminalHeight)
@@ -58,7 +59,8 @@ public struct WorkspaceView: View {
                             .font(.caption.monospaced()).foregroundStyle(.secondary)
                     }
                 }.padding(.horizontal, 14).padding(.vertical, 8)
-            }.background(Color(nsColor: .windowBackgroundColor))
+            }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(nsColor: .windowBackgroundColor))
         }
         .tint(.teal).preferredColorScheme(.dark)
         .frame(minWidth: 1120, minHeight: 700)

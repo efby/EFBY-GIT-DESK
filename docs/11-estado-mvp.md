@@ -62,3 +62,9 @@ Bare/sparse checkout se rechazan; worktrees vinculados, shallow/partial clone y 
 Las referencias de edición se conservan bajo `refs/efbygitdesk/backups/<UUID>`. Ante publicación fallida, consultar HEAD y la referencia remota antes de volver a intentar. El programa no realiza reset ni rollback automático. Cancelar puede dejar cambios ya ejecutados y requiere reconciliar el estado real.
 
 El catálogo está en `~/Library/Application Support/EfbyGitDesk/catalog.sqlite`; contiene metadatos y journal, no tokens. Las sesiones y la salida del terminal no se restauran ni persisten. Quitar registros/perfiles conserva repositorios. Las claves privadas y públicas del repositorio de desarrollo permanecen fuera de Git.
+
+## Ajuste del visor de diferencias
+
+El diff se muestra únicamente después de seleccionar explícitamente un archivo. Su cabecera identifica la ruta y permite cerrarlo; al cerrar, la lista vuelve a ocupar el panel. Cambiar commits o el contexto de comparación cierra el visor. Un refresco conserva la selección explícita, pero no vuelve a abrir un visor cerrado. Las consultas del inventario y del diff tienen cancelación independiente.
+
+El contenedor del repositorio, historial y panel de archivos solicitan todo el espacio disponible, también sin commits seleccionados y en estados vacíos. La prueba de regresión con Git real pasó; la suite general ejecutó 37 pruebas, con 2 optativas omitidas (39 registradas en 11 suites). Después de ajustar el cambio de repositorio se repitió la prueba específica y pasó. La revisión visual de estos cambios en la aplicación queda pendiente.

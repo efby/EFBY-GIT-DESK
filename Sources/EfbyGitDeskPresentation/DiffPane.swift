@@ -37,19 +37,41 @@ struct DiffPane: View {
             if model.context == nil {
                 ContentUnavailableView("Selecciona un commit", systemImage: "arrow.left.arrow.right",
                     description: Text("Selecciona dos para comparar sus árboles A→B. Los cambios locales se revisan por separado."))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let file = model.files.first(where: { $0.id == model.selectedFile }) {
+                VSplitView {
+                    fileList.frame(minHeight: 90, idealHeight: 160, maxHeight: 220)
+                    FileDiffView(file: file, text: model.diffText, close: model.closeDiff)
+                        .frame(minHeight: 180, maxHeight: .infinity)
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(model.files, selection: $model.selectedFile) { file in
-                    HStack {
-                        Text(file.status).font(.caption.monospaced()).frame(width: 28)
-                        Text(file.name).font(.caption).lineLimit(1).truncationMode(.middle)
-                    }.tag(file.id)
-                }.frame(minHeight: 90, idealHeight: 160, maxHeight: 220)
-                    .onChange(of: model.selectedFile) { _, id in if let id { model.loadDiff(id: id) } }
-                Divider()
-                TextPreview(text: model.diffText)
+                VStack(spacing: 0) {
+                    Text("Haz clic en un archivo para ver sus diferencias.")
+                        .font(.caption).foregroundStyle(.secondary).padding(12)
+                    if model.files.isEmpty && !model.filesLoading {
+                        ContentUnavailableView("Sin archivos cambiados", systemImage: "doc", description: Text("No hay diferencias en esta selección."))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else { fileList }
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-        }.background(Color(nsColor: .controlBackgroundColor).opacity(0.45))
+        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(nsColor: .controlBackgroundColor).opacity(0.45))
     }
+    private var fileList: some View {
+        List(model.files) { file in
+            Button { model.loadDiff(id: file.id) } label: {
+                HStack {
+                    Text(file.status).font(.caption.monospaced()).frame(width: 28)
+                    Text(file.name).font(.caption).lineLimit(1).truncationMode(.middle)
+                    Spacer(minLength: 0)
+                }.padding(.vertical, 4).contentShape(Rectangle())
+                    .background(model.selectedFile == file.id ? Color.teal.opacity(0.18) : .clear)
+            }.buttonStyle(.plain)
+                .accessibilityLabel("Ver diferencias de \(file.name)")
+                .help(file.name)
+        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     private var title: String {
         if model.workingView { return model.stagedView ? "HEAD → Índice" : "Índice → Working tree" }
         return model.selectedOIDs.count == 2 ? "Comparación A → B" : "Detalle del commit"

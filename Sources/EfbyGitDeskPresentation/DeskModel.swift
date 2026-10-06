@@ -50,6 +50,7 @@ import EfbyGitDeskDomain
     @ObservationIgnored private var operation: Task<Void, Never>?
     @ObservationIgnored private var query: Task<Void, Never>?
     @ObservationIgnored private var fileQuery: Task<Void, Never>?
+    @ObservationIgnored private var diffQuery: Task<Void, Never>?
     @ObservationIgnored private var layoutSave: Task<Void, Never>?
     @ObservationIgnored private var searchQuery: Task<Void, Never>?
 
@@ -109,7 +110,7 @@ import EfbyGitDeskDomain
     }
     public func select(_ id: String) {
         if !openIDs.contains(id) { openIDs.append(id); persistTabs() }
-        generation += 1; query?.cancel(); fileQuery?.cancel()
+        generation += 1; query?.cancel(); fileQuery?.cancel(); closeDiff(); filesLoading = false
         selectedID = id; selectedOIDs = []; commits = []; files = []; diffText = ""
         workingView = false; tips = []; parentIndex = 0; selectedTerminal = nil
         snapshot = RepositorySnapshot(); branches = []; remoteNames = []; remote = ""; remoteSupported = false; loadedContext = nil
@@ -223,9 +224,11 @@ import EfbyGitDeskDomain
     }
     public func loadFiles() {
         fileQuery?.cancel()
-        guard let repository, let context else { files = []; selectedFile = nil; diffText = ""; return }
+        guard let repository, let context else {
+            files = []; closeDiff(); loadedContext = nil; filesLoading = false; return
+        }
         if loadedContext != context {
-            files = []; selectedFile = nil; diffText = ""; loadedContext = context
+            files = []; closeDiff(); loadedContext = context
         }
         let version = generation; filesLoading = true
         fileQuery = Task {
@@ -235,21 +238,25 @@ import EfbyGitDeskDomain
                 guard !Task.isCancelled, version == generation, self.context == context else { return }
                 files = newFiles
                 if let selectedFile, files.contains(where: { $0.id == selectedFile }) { loadDiff(id: selectedFile) }
-                else { selectedFile = files.first?.id; if let selectedFile { loadDiff(id: selectedFile) } else { diffText = "" } }
+                else { closeDiff() }
             } catch is CancellationError {} catch { if version == generation && self.context == context { self.error = error.localizedDescription } }
         }
     }
+    public func closeDiff() {
+        diffQuery?.cancel()
+        selectedFile = nil; diffText = ""
+    }
     public func loadDiff(id: String) {
-        fileQuery?.cancel()
+        diffQuery?.cancel()
         guard let repository, let context, let file = files.first(where: { $0.id == id }) else { return }
         selectedFile = id; diffText = "Cargando diferencias…"
         let version = generation
-        fileQuery = Task {
+        diffQuery = Task {
             do {
                 let diff = try await service.git.diff(repository, context: context, file: file)
                 guard !Task.isCancelled, version == generation, selectedFile == id, self.context == context else { return }
                 diffText = diff.isEmpty ? "Cambio de metadatos, modo o contenido sin diff textual." : diff
-            } catch is CancellationError {} catch { if version == generation && self.context == context { self.error = error.localizedDescription } }
+            } catch is CancellationError {} catch { if !Task.isCancelled, version == generation, selectedFile == id, self.context == context { self.error = error.localizedDescription } }
         }
     }
     public func mutate(_ action: GitAction) {

@@ -41,8 +41,26 @@
     "architecture": "arm64",
     "signature": "ad-hoc",
     "signatureVerified": true,
-    "binarySHA256": "2c94a6f15c9971c10aa81fa28024b7e61729732417140db7f104844b73208e9a",
+    "binarySHA256": "ac7fb18b2a82c904ba169e5717d81418723d5a6f1870d7ed48dd1efa44d94721",
     "credentialHelperSHA256": "54fecf9f4817fb27ba9701c5959bc4ee7fd23212b7017268f6d13d93332f3f26",
-    "zipSHA256": "800d3641b20511a72d5d112a4cb2fce54d88952ad96d151798dcf6850907ee66"
+    "zipSHA256": "1ebe880d285582731ec280d33d8dcae2edbeb9df3d81574974148b48bed05c21"
+  },
+  "regressionAfterDiffSelection": {
+    "passed": 37,
+    "skippedOptional": 2,
+    "suites": 11,
+    "seconds": 5.692,
+    "targetedAfterRepositoryReset": {
+      "passed": 1,
+      "seconds": 0.626
+    },
+    "covers": [
+      "No se abre automáticamente el primer archivo",
+      "Click explícito abre el diff",
+      "Refresh conserva el archivo elegido",
+      "Cerrar conserva el visor cerrado tras refresh",
+      "Cambiar commits cierra el diff"
+    ],
+    "layoutManualQA": false
   }
 }

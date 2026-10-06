@@ -24,7 +24,7 @@ let package = Package(
         ]),
         .executableTarget(name: "EfbyGitDeskCredential", dependencies: ["EfbyGitDeskInfrastructure"]),
         .testTarget(name: "EfbyGitDeskTests", dependencies: [
-            "EfbyGitDeskDomain", "EfbyGitDeskApplication", "EfbyGitDeskInfrastructure"
+            "EfbyGitDeskDomain", "EfbyGitDeskApplication", "EfbyGitDeskInfrastructure", "EfbyGitDeskPresentation"
         ])
     ],
     swiftLanguageModes: [.v6]
