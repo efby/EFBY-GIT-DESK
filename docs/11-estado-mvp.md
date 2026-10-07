@@ -239,3 +239,11 @@ Validación del cambio: app de desarrollo recompilada; prueba
 overlayKeepsRepositoryMountedInSameWindow aprobada (0,606 segundos), captura
 nativa del visor revisada y git diff --check sin errores. No se regeneró el DMG
 para este ajuste: lo hará el flujo automático al fusionar el PR.
+
+### Árbol de comparación compacto
+
+Padding vertical de las filas reducido de 7 a 3 puntos, separación interna
+de carpetas de 2 a 0 y entre filas raíz de 4 a 1. Menos margen alrededor de
+Expandir todo y del texto de ayuda; se conserva tamaño de texto, selección,
+indentación y navegación. Dos pruebas existentes del panel aprobadas, captura
+nativa revisada y app de desarrollo recompilada.
