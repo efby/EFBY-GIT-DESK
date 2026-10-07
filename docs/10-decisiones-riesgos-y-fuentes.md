@@ -1,5 +1,7 @@
 # Decisiones, riesgos y fuentes
 
+> Este documento conserva el diseño y los criterios iniciales. El comportamiento implementado y las decisiones vigentes se consolidan en [13 — Resumen y continuidad](13-resumen-del-proyecto-y-continuidad.md); las verificaciones están en [11](11-estado-mvp.md) y [12](12-dmg-y-github-actions.md). Propuesta, implementación y aceptación no son equivalentes.
+
 Versión 0.1 · 6 de octubre de 2026. Registro vivo: actualizar al adoptar una decisión o cambiar un requisito.
 
 ## 1. Decisiones confirmadas por el usuario

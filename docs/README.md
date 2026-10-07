@@ -1,6 +1,8 @@
 # EfbyGitDesk — documentación para construir el programa
 
-**Versión:** 0.1 · **Fecha:** 6 de octubre de 2026 · **Estado:** especificación inicial completa para revisión e implementación. **Nombre confirmado por el usuario:** EfbyGitDesk.
+**Actualización:** 7 de octubre de 2026 · **Estado:** MVP implementado y distribución firmada/notarizada publicada; aceptación completa H6 pendiente. Los documentos 01–10 conservan la especificación base. **Nombre confirmado por el usuario:** EfbyGitDesk.
+
+Para retomar el trabajo, comenzar por [13 — Resumen del proyecto y continuidad](13-resumen-del-proyecto-y-continuidad.md). El [registro 11](11-estado-mvp.md) conserva la evolución y evidencia histórica; [12](12-dmg-y-github-actions.md) describe el empaquetado y la automatización.
 
 ## Alcance confirmado
 
@@ -24,6 +26,10 @@ La edición solicitada cambia el **mensaje del último commit de la rama, tambi�
 | [08 — Pruebas y trazabilidad](08-pruebas-y-trazabilidad.md) | 24 casos de prueba y relación con todos los requisitos |
 | [09 — Operación, distribución y manual](09-operacion-distribucion-y-manual.md) | Instalación prevista, uso, diagnóstico, backups, recuperación y release |
 | [10 — Decisiones, riesgos y fuentes](10-decisiones-riesgos-y-fuentes.md) | Decisiones confirmadas, 10 ADR propuestos, pendientes y fuentes primarias |
+| [11 — Estado del MVP](11-estado-mvp.md) | Implementación, trazabilidad y registro histórico de verificaciones |
+| [12 — DMG y GitHub Actions](12-dmg-y-github-actions.md) | Firma, notarización, secretos por nombre y publicación en Releases |
+| [13 — Resumen y continuidad](13-resumen-del-proyecto-y-continuidad.md) | Comportamiento vigente, cambios integrados, incidencias resueltas y pendientes |
+| [Evidencia estructurada](evidencia/mvp-validacion.json) | Resultados históricos y corte de estado actual sin credenciales |
 | [Referencia — Vista principal](referencias/01-vista-principal.png) | Mockup proporcionado por el usuario |
 | [Referencia — Gestor de repositorios](referencias/02-gestor-repositorios.png) | Mockup proporcionado por el usuario |
 
@@ -31,7 +37,7 @@ Para revisar producto, leer 01 y 03. Para implementar, seguir 02, 04, 05 y 06, l
 
 ## Propuesta técnica
 
-Swift 6.2 o posterior, SwiftUI con AppKit donde haga falta, Git instalado en el equipo, SQLite del sistema y Keychain. Se evaluará SwiftTerm como candidato para terminal PTY; no se incorporó ninguna dependencia en esta entrega. macOS mínimo, soporte Intel/Apple Silicon y versiones concretas se validan en el primer prototipo.
+Swift 6.2 o posterior, SwiftUI con AppKit donde haga falta, Git instalado en el equipo, SQLite del sistema y Keychain. Se adoptó un PTY propio; SwiftTerm no se incorporó. El mínimo de compilación es macOS 14 y se generan binarios arm64/x86_64; la ejecución en Intel/macOS 14 sigue pendiente.
 
 Los grupos/favoritos son organización local; no equivalen a workspaces de Bitbucket. SSH y credenciales heredadas pueden permitir transporte Git sin acceso al catálogo API. Las imágenes orientan la composición, pero sus textos/botones no añaden funciones al alcance. IA, pipelines, pull requests, nube, Data Center, otros proveedores y asistentes de rebase/merge quedan fuera del MVP.
 
@@ -41,7 +47,7 @@ El terminal permite comandos del usuario con sus permisos. La integración gesti
 
 La documentación se revisó para coherencia de alcance, contratos y referencias. Se comprobó que la matriz cubra los 24 requisitos con casos de prueba existentes y que los enlaces locales del paquete resuelvan. Las políticas de autenticación/API se contrastaron con fuentes oficiales vigentes a la fecha indicada.
 
-No existe todavía una aplicación, ni se ejecutaron pruebas del programa o conexiones con una cuenta Bitbucket real. Las métricas y criterios QA son objetivos de aceptación. La siguiente actividad de implementación es **H0: viabilidad nativa**, que valida terminal, Git heredado, Keychain y distribución desde Finder antes de desarrollar el resto.
+Existe una aplicación y se ejecutaron pruebas locales y CI, firma, notarización y publicación. Bitbucket real y aceptación completa H6 siguen pendientes; el detalle actualizado está en 13 y la evidencia histórica en 11.
 
 Los archivos Markdown son la fuente editable. El dossier unificado y el ZIP son copias generadas para lectura y traslado; se regeneran al cambiar los documentos.
 

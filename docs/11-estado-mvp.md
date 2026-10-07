@@ -1,6 +1,6 @@
-# EfbyGitDesk 0.1.0 — estado del MVP
+# EFBY Git Desk — registro de implementación y validación
 
-Fecha: 6 de octubre de 2026. Versión de desarrollo; H6 y el criterio de release permanecen pendientes.
+Registro iniciado el 6 de octubre de 2026, actualizado el 7 de octubre. Las secciones conservan resultados y decisiones de cada etapa; las entradas posteriores pueden sustituir decisiones previas. Para el comportamiento vigente consultar [13 — Resumen y continuidad](13-resumen-del-proyecto-y-continuidad.md). Releases publicadas no equivalen a aceptación completa H6.
 
 ## Decisiones adoptadas en la implementación
 
@@ -10,7 +10,7 @@ Fecha: 6 de octubre de 2026. Versión de desarrollo; H6 y el criterio de release
 - SQLite del sistema para catálogo, preferencias y journal. Migración v1 y rechazo de esquemas futuros; no se reanudan escrituras al reiniciar. La confianza incluye directorio canónico e identidad de dispositivo/inodo; sustituir `.git` revoca la confianza recordada.
 - Keychain para tokens y referencias de operación efímeras. El helper recibe una referencia, no el token en argumentos ni entorno. Validación estricta del origen de la solicitud de credenciales, de URLs REST y de enlaces de paginación; redirecciones HTTP deshabilitadas.
 - PTY propio con entrada/salida, resize, UTF-8, Ctrl+C y secuencias VT básicas. No se incorporó SwiftTerm ni otra dependencia externa. Las secuencias OSC no realizan acciones nativas; se revisa el pegado multilínea. No es todavía un emulador xterm completo.
-- Paquete `.app` para desarrollo, con helper y firma ad hoc verificada. Sin App Sandbox. Developer ID, notarización, DMG e Intel/universal no se declaran aprobados.
+- Paquete `.app` para desarrollo, con helper y firma ad hoc verificada. Sin App Sandbox. Esta fue la primera etapa; las verificaciones posteriores de Developer ID, notarización y universal se registran más abajo y en 12. El runtime Intel/macOS 14 sigue pendiente.
 
 ## Funciones y trazabilidad
 
@@ -35,7 +35,7 @@ Fecha: 6 de octubre de 2026. Versión de desarrollo; H6 y el criterio de release
 
 ## Pruebas ejecutadas
 
-**Resultado final:** 38 pruebas aprobadas en 10 suites, sin omisiones, en una ejecución conjunta con benchmark y Keychain habilitados. Tiempo de pruebas: 5,551 s (excluye compilación). La regresión posterior al aislamiento de clone aprobó los 36 casos esenciales; los dos optativos conservaron su evidencia de ejecución separada.
+**Resultado de la primera etapa:** 38 pruebas aprobadas en 10 suites, sin omisiones, en una ejecución conjunta con benchmark y Keychain habilitados. Tiempo de pruebas: 5,551 s (excluye compilación). La regresión posterior al aislamiento de clone aprobó los 36 casos esenciales; los dos optativos conservaron su evidencia de ejecución separada.
 
 Se implementaron pruebas Swift Testing de dominio, almacenamiento/procesos, integración Git, recuperación, terminal, REST con fixtures, coordinación, compatibilidad, rendimiento y Keychain. Cada fixture Git utiliza una carpeta temporal y configuración/identidad/hook/firma de prueba. El transporte a remoto local está habilitado solo en el adaptador de pruebas; la composición de la aplicación lo mantiene deshabilitado.
 
