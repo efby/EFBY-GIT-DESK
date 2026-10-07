@@ -57,9 +57,10 @@ Usar `scripts/test.sh` y `scripts/build-app.sh`; los artefactos de `dist/` son
 locales e ignorados. Consultar [estado y evidencia](docs/11-estado-mvp.md) antes
 de afirmar cobertura o preparar un release. Se adoptaron SwiftUI/AppKit, SQLite,
 Git CLI y un terminal PTY propio con soporte VT básico; SwiftTerm no se incorporó.
-El bundle verificado es arm64 con firma ad hoc de desarrollo. Bitbucket real,
-helper Keychain en distribución, VoiceOver, otros sistemas/CPU y notarización
-siguen pendientes. No tratar el MVP de desarrollo como release H6 aprobado.
+Se verificaron bundles universales arm64/x86_64, firma Developer ID y
+notarización local y en GitHub Actions; ver docs/12-dmg-y-github-actions.md.
+Bitbucket real, helper Keychain en distribución, VoiceOver, runtime Intel/macOS 14
+e instalación del artefacto descargado en otro Mac siguen pendientes. No tratar el MVP de desarrollo como release H6 aprobado.
 
 ## Alcance confirmado y propuestas
 

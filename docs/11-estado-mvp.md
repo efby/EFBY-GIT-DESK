@@ -196,3 +196,12 @@ Validación: 81 pruebas registradas, 79 aprobadas y dos optativas omitidas, en
 El paso completo de CI, incluida compilación, tardó 51 segundos y avanzó a la
 importación del certificado. Ese intento falló luego por RC2 en OpenSSL 3,
 un problema separado de la ejecución de pruebas.
+
+La prueba del overlay dejó de comparar el número global de ventanas de NSApp:
+comprueba la identidad de su ventana y contenido, evitando interferencias de
+otras pruebas de UI paralelas. La suite completa posterior pasó localmente en
+6,400 segundos y en Release DMG #6 en 14,449 segundos (81 registradas, 79 aprobadas
+y dos optativas omitidas). El flujo remoto completó también firma y notarización
+y subió el DMG universal. Ver evidencias y límites en docs/12-dmg-y-github-actions.md.
+El supervisor de CI limita compilación/pruebas a 300 segundos, recoge diagnóstico
+a los 120 segundos y termina su grupo de procesos ante timeout.

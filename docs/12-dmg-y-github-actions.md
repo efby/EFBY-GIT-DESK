@@ -125,8 +125,20 @@ y el DMG en `b8275f2d-99ec-4f3f-aeb0-d5bc80b82fc9`. Los tickets se adjuntaron y
 validaron. Pasaron la firma estricta de la app, checksum del DMG, montaje de solo
 lectura, ticket de la app montada y evaluación Gatekeeper (`Notarized Developer ID`).
 Los resultados JSON y checksum están en `dist/`, excluidos de Git. Esto verifica
-el artefacto local, sin acreditar todavía el workflow remoto ni instalación en otro Mac.
-El navegador integrado permitió configurar los secretos posteriormente; la
-ejecución del workflow de release en GitHub sigue pendiente.
+el artefacto local; la instalación en otro Mac sigue pendiente.
+
+El workflow remoto [Release DMG #6](https://github.com/efby/EFBY-GIT-DESK/actions/runs/37562410880)
+terminó correctamente el 6 de octubre de 2026 en 4 minutos 24 segundos, sobre
+`76686b0`. Ejecutó 81 pruebas registradas (79 aprobadas, dos optativas omitidas)
+en 18 suites, 14,449 segundos; el paso completo de pruebas tardó 1 minuto 20 segundos.
+La importación del certificado exportado por Keychain requiere `-legacy` con
+OpenSSL 3 para leer RC2 del contenedor PKCS#12 existente. La firma, notarización,
+tickets y comprobaciones del DMG montado terminaron correctamente en el runner.
+El artefacto [EFBY-Git-Desk-notarized-universal](https://github.com/efby/EFBY-GIT-DESK/actions/runs/37562410880/artifacts/11457059344)
+ocupa 3,3 MB; digest del ZIP de Actions:
+`be521d4258bdd4a1d3bbe5b35122175d4e7b09b0c11f5054da3bfb2b55281877`.
+La descarga automática del navegador agotó su espera, por lo que no se verificó
+localmente ese ZIP descargado. El disparo automático tras merge sigue pendiente
+de integrar el PR #4; este ensayo utilizó la ejecución manual de `feature/mvp`.
 Los archivos `.env`, `.env.*` y `.secretos/` están excluidos de Git.
 No se ensayó el instalador descargado en otro Mac ni el runtime de Intel/macOS 14.
