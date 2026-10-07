@@ -224,4 +224,5 @@ avatares del proveedor sigue pendiente de una integración de perfiles.
 Validación: suite completa con 83 pruebas registradas en 19 suites (81 aprobadas,
 dos optativas omitidas), 6,439 segundos; dos pruebas del panel aprobadas también
 tras ajustar la captura nativa de SwiftUI. Vista oscura de 560×750 revisada con
-datos sintéticos. No se ejecutó notarización de esta nueva interfaz.
+datos sintéticos. La versión con esta interfaz y la corrección de Keychain terminó correctamente
+en Release DMG #8 (commit 7ed8af5), con firma y notarización verificadas en CI.
