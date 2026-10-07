@@ -1,28 +1,14 @@
-name: CI
+name: Merged PR DMG
 on:
-  push:
-    branches: [main, master, feature/mvp]
   pull_request:
-  workflow_dispatch:
+    branches: [main]
+    types: [closed]
 permissions:
-  contents: read
+  contents: write
+  actions: read
 jobs:
-  test-and-package:
-    runs-on: macos-26
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v6
-      - name: Toolchain
-        run: scripts/select-xcode.sh
-      - name: Tests
-        run: scripts/test.sh
-      - name: Universal development DMG
-        run: scripts/build-dmg.sh --universal
-      - uses: actions/upload-artifact@v4
-        with:
-          name: EFBY-Git-Desk-dev-universal
-          path: |
-            dist/EFBY-Git-Desk-dev.dmg
-            dist/EFBY-Git-Desk-dev.dmg.sha256
-          if-no-files-found: error
-          retention-days: 14
+  signed-dmg:
+    # Repository secrets are unavailable to forks; do not run fork code with them.
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+    uses: ./.github/workflows/release.yml
+    secrets: inherit

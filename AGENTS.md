@@ -57,9 +57,10 @@ Usar `scripts/test.sh` y `scripts/build-app.sh`; los artefactos de `dist/` son
 locales e ignorados. Consultar [estado y evidencia](docs/11-estado-mvp.md) antes
 de afirmar cobertura o preparar un release. Se adoptaron SwiftUI/AppKit, SQLite,
 Git CLI y un terminal PTY propio con soporte VT básico; SwiftTerm no se incorporó.
-El bundle verificado es arm64 con firma ad hoc de desarrollo. Bitbucket real,
-helper Keychain en distribución, VoiceOver, otros sistemas/CPU y notarización
-siguen pendientes. No tratar el MVP de desarrollo como release H6 aprobado.
+Se verificaron bundles universales arm64/x86_64, firma Developer ID y
+notarización local y en GitHub Actions; ver docs/12-dmg-y-github-actions.md.
+Bitbucket real, helper Keychain en distribución, VoiceOver, runtime Intel/macOS 14
+e instalación del artefacto descargado en otro Mac siguen pendientes. No tratar el MVP de desarrollo como release H6 aprobado.
 
 ## Alcance confirmado y propuestas
 
@@ -227,4 +228,4 @@ registrar como pendiente cualquier comprobación que no pueda ejecutarse.
 
 ## DMG y automatización de distribución
 
-Usar scripts/build-dmg.sh y docs/12-dmg-y-github-actions.md. Mantener separados el DMG local ad hoc, el firmado sin ticket y el notarizado. Release no degrada a unsigned ante secretos ausentes. Reutilizar los nombres de secretos de POSTMAN; no copiar ni versionar claves, certificados o valores. App y auxiliar universales, Developer ID/Hardened Runtime/timestamp al firmar; notarizar app antes del DMG, adjuntar tickets y validar el artefacto montado. Tags generan borradores; no publicar una versión sin autorización. Un fallo de credenciales o del navegador no prueba configuración completada.
+Usar scripts/build-dmg.sh y docs/12-dmg-y-github-actions.md. Mantener separados el DMG local ad hoc, el firmado sin ticket y el notarizado. Release no degrada a unsigned ante secretos ausentes. Reutilizar los nombres de secretos de POSTMAN; no copiar ni versionar claves, certificados o valores. App y auxiliar universales, Developer ID/Hardened Runtime/timestamp al firmar; notarizar app antes del DMG, adjuntar tickets y validar el artefacto montado. No hacer push directo a main: integrar mediante PR. Generar DMG firmado/notarizado solo al fusionar un PR hacia main desde ramas del repositorio; no ejecutar empaquetado por otros pushes ni tags. Conservar ejecución manual y omitir firma para forks/Dependabot sin secretos; no usar pull_request_target con código externo. La publicación automática en GitHub Releases tras el merge a main fue autorizada: crear tag semántico incremental y adjuntar DMG y checksum solo tras firma/notarización/verificación correctas. La ejecución manual en main también publica; en otras ramas conserva solo artefactos. Un fallo de credenciales o del navegador no prueba configuración completada.

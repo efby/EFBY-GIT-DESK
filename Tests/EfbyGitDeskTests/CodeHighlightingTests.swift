@@ -97,7 +97,9 @@ struct CodeHighlightingTests {
         hosting.layoutSubtreeIfNeeded()
         #expect(probe.window === source)
         #expect(!source.styleMask.contains(.fullScreen))
-        let windowCount = NSApp.windows.count
+        // Other suites create/close windows while this test suspends. Verify
+        // this workspace's window and content identity, not a global count.
+        let originalContent = source.contentView
         #expect(source.frame == originalFrame)
         if let path = ProcessInfo.processInfo.environment["EFBY_COMPARE_PREVIEW_PATH"], let content = source.contentView {
             content.layoutSubtreeIfNeeded()
@@ -109,7 +111,9 @@ struct CodeHighlightingTests {
         try await Task.sleep(for: .milliseconds(100))
         hosting.layoutSubtreeIfNeeded()
         #expect(probe.window === source)
-        #expect(NSApp.windows.count == windowCount)
+        #expect(source.contentView === originalContent)
+        #expect(hosting.window === source)
+        #expect(!source.styleMask.contains(.fullScreen))
         #expect(source.frame == originalFrame)
         #expect(model.selectedFile == nil)
         #expect(model.selectedOIDs == [oid]); #expect(model.selectedID == f.repository.id)

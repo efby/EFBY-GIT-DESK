@@ -1,18 +1,31 @@
 name: Release DMG
 on:
-  push:
-    tags: ['v[0-9]*']
+  workflow_call:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
+  actions: read
+concurrency:
+  group: gitdesk-release
+  cancel-in-progress: false
 jobs:
   release-dmg:
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      commit: ${{ steps.version.outputs.commit }}
     runs-on: macos-26
     timeout-minutes: 90
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Build the merged commit, even if main advances while the job is queued.
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+          fetch-depth: 0
+      - name: Select release version
+        id: version
+        run: python3 scripts/release-version.py
       - name: Toolchain
         run: scripts/select-xcode.sh
       - name: Check signing configuration
@@ -27,7 +40,8 @@ jobs:
             if [[ -z "${!field}" ]]; then echo "Falta el secreto $field" >&2; exit 1; fi
           done
       - name: Tests
-        run: scripts/test.sh
+        timeout-minutes: 10
+        run: python3 scripts/test-ci.py
       - name: Import Developer ID and configure notarization
         env:
           MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
@@ -45,8 +59,12 @@ jobs:
           security create-keychain -p "$signing_password" "$signing_keychain"
           security set-keychain-settings -lut 21600 "$signing_keychain"
           security unlock-keychain -p "$signing_password" "$signing_keychain"
+          # Keychain-exported PKCS#12 files may use RC2. OpenSSL 3 needs its
+          # legacy provider to read that existing container (no TLS changes).
+          pkcs12_options=()
+          if [[ "$(openssl version)" == OpenSSL\ 3.* ]]; then pkcs12_options=(-legacy); fi
           # Decrypt only through a pipe: no certificate password in process arguments.
-          openssl pkcs12 -in "$RUNNER_TEMP/gitdesk-certificate.p12" -passin env:MACOS_CERTIFICATE_PASSWORD -nodes | security import /dev/stdin -f pemseq -t agg -k "$signing_keychain" -T /usr/bin/codesign
+          openssl pkcs12 "${pkcs12_options[@]}" -in "$RUNNER_TEMP/gitdesk-certificate.p12" -passin env:MACOS_CERTIFICATE_PASSWORD -nodes | security import /dev/stdin -f pemseq -t agg -k "$signing_keychain" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple: -k "$signing_password" "$signing_keychain" >/dev/null
           security list-keychains -d user -s "$signing_keychain" "$HOME/Library/Keychains/login.keychain-db"
           # notarytool reads its secure password prompt from stdin.
@@ -55,14 +73,6 @@ jobs:
           echo "NOTARY_PROFILE=efby-gitdesk-ci" >> "$GITHUB_ENV"
           echo "NOTARY_KEYCHAIN=$signing_keychain" >> "$GITHUB_ENV"
           echo "APPLE_TEAM_ID=$APPLE_TEAM_ID" >> "$GITHUB_ENV"
-      - name: Version
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          version="${RELEASE_TAG#v}"
-          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'El tag debe ser vX.Y.Z'; exit 1; }
-          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
       - name: Signed and notarized universal DMG
         run: scripts/build-dmg.sh --universal --notarize
       - uses: actions/upload-artifact@v4
@@ -74,18 +84,32 @@ jobs:
             dist/EFBY-Git-Desk/app-notary.json
             dist/EFBY-Git-Desk/dmg-notary.json
           if-no-files-found: error
-      - name: Draft GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          generate_release_notes: true
-          fail_on_unmatched_files: true
-          files: |
-            dist/EFBY-Git-Desk.dmg
-            dist/EFBY-Git-Desk.dmg.sha256
       - name: Remove temporary credentials
         if: always()
         run: |
           security delete-keychain "$RUNNER_TEMP/gitdesk-signing.keychain-db" || true
           rm -f "$RUNNER_TEMP/gitdesk-certificate.p12"
+  publish-release:
+    needs: release-dmg
+    if: (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: EFBY-Git-Desk-notarized-universal
+          path: dist
+      - name: Verify downloaded DMG checksum
+        working-directory: dist
+        run: sha256sum --check EFBY-Git-Desk.dmg.sha256
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.release-dmg.outputs.tag }}
+          RELEASE_COMMIT: ${{ needs.release-dmg.outputs.commit }}
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" dist/EFBY-Git-Desk.dmg dist/EFBY-Git-Desk.dmg.sha256 --target "$RELEASE_COMMIT" --title "EFBY Git Desk $RELEASE_TAG" --generate-notes --latest

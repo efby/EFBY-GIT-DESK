@@ -180,3 +180,28 @@ La alineación anterior emparejaba por posición las eliminaciones/adiciones de 
 Límites: 50.000 líneas combinadas, presupuesto de 2.000.000 operaciones de recorrido/matching y 250.000 entradas de trazas. Exceso produce aviso y diff original de Git, sin afirmar una alineación completa. Continúa ejecutándose en Task.detached mediante el pipeline existente. No pretende equivalencia semántica de código ni ignora cambios de indentación.
 
 Validación: 80 pruebas registradas en 18 suites, 78 aprobadas y 2 optativas omitidas, 6,193 segundos. Seis pruebas nuevas: ejemplo de condiciones DE/QA/PR con tres líneas nuevas en ambos sentidos, repetición de 3.000 líneas con desplazamiento, bloques cruzados, límite de complejidad, 1.600 pares de secuencias pequeñas y Git real con líneas vacías en contexto. Preservación de texto/números completa comprobada. Captura sintética revisada: if alineados sin marcas y líneas bucket nuevas con fondo verde; documentos personales no operados. App/DMG universal regenerados, notarización pendiente como antes.
+## Corrección del bloqueo de pruebas en Actions
+
+El bloqueo después de `Build complete!` se reprodujo localmente con salida
+redirigida. La muestra del ejecutor mostró `ProcessJob.run()` esperando a sus
+lectores de pipes desde varios hilos del ejecutor cooperativo de Swift.
+`ProcessRunner` ahora envía ese trabajo bloqueante a una cola concurrente de
+Dispatch y devuelve el resultado mediante una continuación, manteniendo timeout,
+cancelación y drenaje acotado. Una regresión ejecuta 24 procesos concurrentes con
+128 KB de entrada/salida y stderr independiente.
+
+Validación: 81 pruebas registradas, 79 aprobadas y dos optativas omitidas, en
+18 suites; 6,450 segundos localmente y 10,640 segundos en GitHub Actions
+([Release DMG #4](https://github.com/efby/EFBY-GIT-DESK/actions/runs/37561896851)).
+El paso completo de CI, incluida compilación, tardó 51 segundos y avanzó a la
+importación del certificado. Ese intento falló luego por RC2 en OpenSSL 3,
+un problema separado de la ejecución de pruebas.
+
+La prueba del overlay dejó de comparar el número global de ventanas de NSApp:
+comprueba la identidad de su ventana y contenido, evitando interferencias de
+otras pruebas de UI paralelas. La suite completa posterior pasó localmente en
+6,400 segundos y en Release DMG #6 en 14,449 segundos (81 registradas, 79 aprobadas
+y dos optativas omitidas). El flujo remoto completó también firma y notarización
+y subió el DMG universal. Ver evidencias y límites en docs/12-dmg-y-github-actions.md.
+El supervisor de CI limita compilación/pruebas a 300 segundos, recoge diagnóstico
+a los 120 segundos y termina su grupo de procesos ante timeout.
