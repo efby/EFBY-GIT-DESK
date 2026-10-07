@@ -5,6 +5,7 @@ struct FileDiffView: View {
     @Bindable var model: DeskModel
     let file: FileChange
     @State private var jump: DiffJumpTarget?
+    @State private var viewport: DiffViewportStatus?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,9 +38,9 @@ struct FileDiffView: View {
                         .frame(maxWidth: .infinity, alignment: .leading).padding(8)
                 }
                 if model.diffAligned && comparison.before != nil && comparison.after != nil && !comparison.patch.contains("[Diff truncado") {
-                    DiffChangesSection(blocks: model.diffBlocks, map: model.diffMap, rowCount: model.diffRows.count, jump: $jump)
+                    DiffChangesSection(blocks: model.diffBlocks, viewport: viewport, jump: $jump)
                     Divider()
-                    ParallelDiffView(rows: model.diffRows, syntax: model.diffSyntax, jump: jump).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    ParallelDiffView(rows: model.diffRows, blocks: model.diffBlocks, marks: model.diffMap, syntax: model.diffSyntax, jump: jump, viewport: $viewport).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     TextPreview(text: model.diffText).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }

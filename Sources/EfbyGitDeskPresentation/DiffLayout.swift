@@ -3,9 +3,9 @@ import Foundation
 struct DiffLayout: Sendable {
     let rows: [DiffRow]
     let blocks: [DiffChangeBlock]
-    let map: [Bool]
+    let map: [DiffMapMark]
     init(rows: [DiffRow]) {
         self.rows = rows; blocks = DiffChangeOverview.make(rows: rows)
-        map = DiffChangeOverview.map(blocks: blocks, rowCount: rows.count)
+        map = DiffChangeOverview.coloredMap(rows: rows)
     }
 }

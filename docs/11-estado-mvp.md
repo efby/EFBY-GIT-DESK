@@ -96,3 +96,13 @@ Ambos ejes de desplazamiento se sincronizan bidireccionalmente. El ancho de ambo
 Modificaciones agrupa filas cambiadas consecutivas y muestra sus rangos Base/Destino, un mapa acotado a 240 segmentos y distancias en líneas sin cambios. El primer bloque indica su distancia desde el inicio; los siguientes, desde el final del anterior. Tarjetas, mapa y botones anterior/siguiente navegan a la primera fila del bloque. Añadidos, eliminados y cambios del salto final se incluyen; los resúmenes no textuales conservan su diagnóstico.
 
 La suite general aprobó 51 pruebas, con 2 optativas omitidas (53 registradas, 14 suites, 5,323 s). Incluye sincronización de ambos ejes desde ambas columnas, ancho común con versiones de distinta longitud, saltos repetidos, agrupación/distancias, mapa de 50.000 filas y conservación del contexto y la vista nativa en la misma ventana. Se revisó una captura de la capa completa con un fixture sintético; el flujo interactivo con repositorios personales no se automatizó.
+
+## Mapas verticales y distancia al siguiente cambio
+
+La sección horizontal con tarjetas se reemplazó por mapas en las pistas verticales de ambas columnas, detrás de sus indicadores de posición. Los dos mapas muestran las mismas ubicaciones, con rojo para contenido eliminado y verde para agregado; una sustitución muestra ambos colores. Los huecos de alineación del documento opuesto tienen fondo neutro. Las pistas permanecen visibles y conservan el arrastre y comportamiento nativo del scroll.
+
+La cabecera informa dinámicamente las líneas que faltan desde la última fila visible hasta la primera fila del siguiente bloque al bajar. Si hay modificaciones en pantalla, lo indica; después del último bloque muestra que no quedan más cambios hacia abajo. La distancia considera filas alineadas y el tamaño actual del área visible. Anterior/siguiente navega según la posición actual, sin depender del último salto pulsado.
+
+Pruebas nuevas cubren marcas de adición, eliminación y sustitución, cálculo de distancia, cambios visibles, fin de cambios, actualización al mover cualquiera de las dos columnas y proporción del indicador al pasar a un documento corto. Se revisó una captura sintética del visor completo con ambas pistas verticales.
+
+La suite general aprobó 54 pruebas, con 2 optativas omitidas (56 registradas, 14 suites, 5,252 s). El bundle se reconstruye en release arm64 con firma ad hoc de desarrollo.

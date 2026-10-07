@@ -20,7 +20,7 @@ import EfbyGitDeskDomain
     public var comparison: FileComparison?
     public var diffRows: [DiffRow] = []
     public var diffBlocks: [DiffChangeBlock] = []
-    public var diffMap: [Bool] = []
+    public var diffMap: [DiffMapMark] = []
     public var diffLoading = false
     public var diffAligned = false
     public var syntaxLanguage: CodeLanguage = .automatic

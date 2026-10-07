@@ -41,9 +41,9 @@
     "architecture": "arm64",
     "signature": "ad-hoc",
     "signatureVerified": true,
-    "binarySHA256": "1f196bc4cc34c4177714cb8afcd0410e0eca67f045d24c6306b7876bc8729943",
+    "binarySHA256": "8964b23e8f6ac8b45bd073ebbcfcbfcf3ae2afccfb6e5a84d3a8006acba7dcdc",
     "credentialHelperSHA256": "cc10329c338a5e1e119b380a15fd631cb96caaf92a0e685a1988664cf6066ed3",
-    "zipSHA256": "735176b87c1d6b446915e4d4c8bbbe82be99883bf73352a75ac9cb00918c2ee8"
+    "zipSHA256": "40951fdd83fe320ad16db5e73475049f753ed0df5487d1b43ddad3690af24513"
   },
   "regressionAfterDiffSelection": {
     "passed": 37,
@@ -131,6 +131,24 @@
     "boundedMapSegments": 240,
     "changeNavigationVerified": true,
     "overlayVisualSyntheticFixtureReviewed": true,
+    "interactivePersonalRepositoryQA": false
+  },
+  "regressionAfterVerticalScrollMaps": {
+    "passed": 54,
+    "skippedOptional": 2,
+    "suites": 14,
+    "seconds": 5.252,
+    "verticalMapBehindBothNativeThumbs": true,
+    "removedRedAddedGreenVerified": true,
+    "replacementHasBothColors": true,
+    "alignmentGapsNeutral": true,
+    "remainingDistanceFromVisibleBottomVerified": true,
+    "distanceUpdatesFromBothColumns": true,
+    "noLaterChangesStateVerified": true,
+    "shortDocumentThumbProportionVerified": true,
+    "horizontalAndVerticalSyncPreserved": true,
+    "mapSegments": 240,
+    "visualSyntheticFixtureReviewed": true,
     "interactivePersonalRepositoryQA": false
   }
 }

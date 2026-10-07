@@ -7,6 +7,9 @@ import AppKit
     private var syntax: DiffSyntax?
     private var synchronizing = false
     private var lastJump: UUID?
+    private var blocks: [DiffChangeBlock] = []
+    private var lastViewport: DiffViewportStatus?
+    var onViewportChange: ((DiffViewportStatus) -> Void)?
 
     init() {
         super.init(frame: .zero)
@@ -14,6 +17,10 @@ import AppKit
         for (scroll, label) in [(left, "Documento 1, versión inferior"), (right, "Documento 2, versión superior")] {
             scroll.translatesAutoresizingMaskIntoConstraints = false
             scroll.hasVerticalScroller = true; scroll.hasHorizontalScroller = true
+            scroll.scrollerStyle = .legacy
+            scroll.autohidesScrollers = false
+            scroll.verticalScroller = DiffOverviewScroller()
+            scroll.verticalScroller?.setAccessibilityHelp("Mapa vertical: rojo eliminado, verde agregado. El indicador muestra la posición actual.")
             scroll.borderType = .lineBorder
             let text = NSTextView()
             text.isEditable = false; text.isSelectable = true
@@ -39,8 +46,14 @@ import AppKit
     required init?(coder: NSCoder) { nil }
     isolated deinit { NotificationCenter.default.removeObserver(self) }
 
-    func update(_ newRows: [DiffRow], syntax: DiffSyntax? = nil) {
+    func update(_ newRows: [DiffRow], syntax: DiffSyntax? = nil, blocks: [DiffChangeBlock]? = nil, marks: [DiffMapMark]? = nil) {
         guard rows != newRows || self.syntax != syntax else { return }
+        if rows != newRows {
+            self.blocks = blocks ?? DiffChangeOverview.make(rows: newRows)
+            let marks = marks ?? DiffChangeOverview.coloredMap(rows: newRows)
+            (left.verticalScroller as? DiffOverviewScroller)?.marks = marks
+            (right.verticalScroller as? DiffOverviewScroller)?.marks = marks
+        }
         rows = newRows; self.syntax = syntax
         synchronizing = true
         let longest = newRows.reduce(0) { length, row in
@@ -50,6 +63,7 @@ import AppKit
         render(newRows, in: left, before: true, width: width)
         render(newRows, in: right, before: false, width: width)
         synchronizing = false
+        publishViewport()
     }
     private func render(_ rows: [DiffRow], in scroll: NSScrollView, before: Bool, width: CGFloat) {
         guard let text = scroll.documentView as? NSTextView else { return }
@@ -66,11 +80,12 @@ import AppKit
                 .replacingOccurrences(of: "\u{2029}", with: "¶")
             let marker = row.changed ? (number == nil ? "·" : (before ? "−" : "+")) : " "
             let line = (number.map { String(format: "%5d", $0) } ?? "     ") + " " + marker + " │ " + content
-            let color: NSColor = row.changed ? (before ? .systemRed : .systemGreen) : NSColor(calibratedWhite: 0.86, alpha: 1)
+            let hasChange = row.changed && number != nil
+            let color: NSColor = hasChange ? (before ? .systemRed : .systemGreen) : NSColor(calibratedWhite: 0.86, alpha: 1)
             let offset = value.length
             value.append(NSAttributedString(string: line + "\n", attributes: [
                 .font: font, .foregroundColor: color, .paragraphStyle: paragraph,
-                .backgroundColor: row.changed ? color.withAlphaComponent(0.13) : NSColor.clear
+                .backgroundColor: hasChange ? color.withAlphaComponent(0.13) : NSColor.clear
             ]))
             let spans = before ? syntax?.before : syntax?.after
             if let spans, spans.indices.contains(index) {
@@ -107,10 +122,34 @@ import AppKit
         guard let text else { return 0 }
         return text.utf16.count + text.utf16.reduce(0) { $0 + ($1 == 9 ? 3 : 0) }
     }
+    override func layout() {
+        super.layout()
+        left.reflectScrolledClipView(left.contentView)
+        right.reflectScrolledClipView(right.contentView)
+        publishViewport()
+    }
+    private func publishViewport() {
+        guard let rows, !rows.isEmpty else { return }
+        let bounds = left.contentView.bounds
+        // AppKit can keep the previous thumb proportion when a document becomes
+        // shorter than its viewport. Refresh both tracks from their current frames.
+        for scroll in [left, right] {
+            let height = scroll.documentView?.frame.height ?? 0
+            let visible = scroll.contentView.bounds
+            scroll.verticalScroller?.knobProportion = height > 0 ? min(1, visible.height / height) : 1
+            scroll.verticalScroller?.doubleValue = height > visible.height ? min(1, max(0, visible.minY / (height - visible.height))) : 0
+        }
+        let first = min(rows.count - 1, max(0, Int(floor((bounds.minY - 12) / 18))))
+        let last = min(rows.count - 1, max(first, Int(ceil((bounds.maxY - 12) / 18)) - 1))
+        let status = DiffViewportStatus.make(firstRow: first, lastRow: last, blocks: blocks)
+        guard status != lastViewport else { return }
+        lastViewport = status; onViewportChange?(status)
+    }
     @objc private func boundsChanged(_ notification: Notification) {
         guard !synchronizing, let source = notification.object as? NSClipView else { return }
         let target = source === left.contentView ? right : left
         let origin = source.bounds.origin
+        defer { publishViewport() }
         guard abs(target.contentView.bounds.origin.y - origin.y) > 0.5 ||
               abs(target.contentView.bounds.origin.x - origin.x) > 0.5 else { return }
         synchronizing = true

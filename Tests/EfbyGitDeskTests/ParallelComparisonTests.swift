@@ -147,4 +147,36 @@ struct ParallelComparisonTests {
             try data.write(to: URL(fileURLWithPath: path))
         }
     }
+    @MainActor @Test func bothVerticalTracksShowChangeMapAndReportDistanceWhileScrolling() throws {
+        let rows = (0..<200).map { number in
+            DiffRow(before: "line \(number)", after: number == 150 ? "added replacement" : "line \(number)", beforeNumber: number + 1, afterNumber: number + 1)
+        }
+        let container = ParallelDiffContainer()
+        container.frame = NSRect(x: 0, y: 0, width: 1000, height: 400)
+        var status: DiffViewportStatus?
+        container.onViewportChange = { status = $0 }
+        container.update(rows); container.layoutSubtreeIfNeeded()
+        let scrolls = container.subviews.compactMap { $0 as? NSScrollView }
+        let left = try #require(scrolls[0].verticalScroller as? DiffOverviewScroller)
+        let right = try #require(scrolls[1].verticalScroller as? DiffOverviewScroller)
+        #expect(left.marks == right.marks)
+        #expect(left.marks.contains { $0.removed && $0.added })
+        #expect(left.frame.height > left.frame.width)
+        #expect(scrolls.allSatisfy { $0.scrollerStyle == .legacy && !$0.autohidesScrollers })
+        let initial = try #require(status?.linesToNext)
+        scrolls[0].contentView.scroll(to: NSPoint(x: 0, y: 180))
+        let second = try #require(status?.linesToNext)
+        #expect(second == initial - 10)
+        scrolls[1].contentView.scroll(to: NSPoint(x: 0, y: 360))
+        #expect(status?.linesToNext == initial - 20)
+        container.jump(to: DiffJumpTarget(row: 150))
+        #expect(status?.visibleChange == true)
+        #expect(status?.linesToNext == nil)
+        scrolls[0].contentView.scroll(to: NSPoint(x: 0, y: 3400))
+        #expect(status?.visibleChange == false)
+        container.update(Array(rows.prefix(3))); container.layoutSubtreeIfNeeded()
+        #expect((scrolls[0].documentView?.frame.height ?? 0) < scrolls[0].contentView.bounds.height)
+        #expect(left.knobProportion == 1)
+    }
+
 }

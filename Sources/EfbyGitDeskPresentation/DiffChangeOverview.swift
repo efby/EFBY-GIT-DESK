@@ -20,14 +20,15 @@ public enum DiffChangeOverview {
         }
         return blocks
     }
-    public static func map(blocks: [DiffChangeBlock], rowCount: Int, bucketCount: Int = 240) -> [Bool] {
-        guard rowCount > 0, bucketCount > 0 else { return [] }
-        var result = Array(repeating: false, count: bucketCount)
-        for block in blocks {
-            let first = min(bucketCount - 1, block.firstRow * bucketCount / rowCount)
-            let last = min(bucketCount - 1, block.lastRow * bucketCount / rowCount)
-            for index in first...last { result[index] = true }
+    public static func coloredMap(rows: [DiffRow], bucketCount: Int = 240) -> [DiffMapMark] {
+        guard !rows.isEmpty, bucketCount > 0 else { return [] }
+        var result = Array(repeating: DiffMapMark(), count: bucketCount)
+        for (index, row) in rows.enumerated() where row.changed {
+            let bucket = min(bucketCount - 1, index * bucketCount / rows.count)
+            if row.before != nil { result[bucket].removed = true }
+            if row.after != nil { result[bucket].added = true }
         }
         return result
     }
+
 }
