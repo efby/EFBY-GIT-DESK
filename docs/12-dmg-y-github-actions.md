@@ -99,7 +99,8 @@ La firma automática admite PR de ramas del mismo repositorio. Los PR externos
 secretos. No se usa `pull_request_target` para ejecutar código externo con claves.
 
 Las contraseñas persistentes entran por entorno/stdin, nunca por argumentos.
-El .p12 temporal se elimina tras importarlo y el Keychain temporal al terminar,
+El .p12 y PEM temporales se confinan a un directorio 0700 con archivos 0600,
+y se eliminan tras importarlos (también mediante trap si falla el paso). El Keychain se elimina al terminar,
 también si falla el workflow.
 
 Consultar [Actions](https://github.com/efby/EFBY-GIT-DESK/actions) para descargar el
@@ -160,3 +161,12 @@ No se agregan disparadores push ni tag.
 Implementación en el PR #4; pendiente de merge y primera ejecución de publicación.
 El DMG remoto ya verificado de Release DMG #6 sigue disponible como artefacto,
 pero no se ha publicado retroactivamente como una versión.
+
+### Importación estable de Keychain
+
+Merged PR DMG #5, run 37563451311, aprobó las pruebas pero falló en
+SecKeychainItemImport al leer el PEM desde /dev/stdin. La importación ahora
+recibe un archivo completo en RUNNER_TEMP, dentro de un directorio privado
+0700 y con umask 077. OpenSSL mantiene la contraseña fuera de los argumentos.
+P12/PEM se eliminan inmediatamente después de la importación, con trap ante
+fallos y limpieza final del workflow. No se modifica la identidad ni los secretos.
