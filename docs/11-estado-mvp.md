@@ -226,3 +226,16 @@ dos optativas omitidas), 6,439 segundos; dos pruebas del panel aprobadas tambié
 tras ajustar la captura nativa de SwiftUI. Vista oscura de 560×750 revisada con
 datos sintéticos. La versión con esta interfaz y la corrección de Keychain terminó correctamente
 en Release DMG #8 (commit 7ed8af5), con firma y notarización verificadas en CI.
+
+## Visor sin cabeceras duplicadas
+
+Se retiraron las cabeceras Documento 1/Documento 2, SHA y rutas sobre los dos
+documentos porque las tarjetas del panel derecho identifican la comparación.
+Se conserva la barra Modificaciones, distancia en líneas al siguiente cambio,
+navegación, marcas rojo/verde y scroll sincronizado. El aviso de ausencia de
+salto de línea final se conserva en una fila compacta solo cuando corresponde.
+
+Validación del cambio: app de desarrollo recompilada; prueba
+overlayKeepsRepositoryMountedInSameWindow aprobada (0,606 segundos), captura
+nativa del visor revisada y git diff --check sin errores. No se regeneró el DMG
+para este ajuste: lo hará el flujo automático al fusionar el PR.

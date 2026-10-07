@@ -29,18 +29,13 @@ struct FileDiffView: View {
             if model.diffLoading {
                 ProgressView("Comparando documentos…").frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let comparison = model.comparison {
-                HStack(spacing: 0) {
-                    DiffDocumentHeader(title: "Documento 1 · Inferior / Base", revision: comparison.beforeLabel,
-                                       path: file.oldPath.flatMap { String(data: $0, encoding: .utf8) } ?? file.name,
-                                       text: comparison.before)
-                    Divider()
-                    DiffDocumentHeader(title: "Documento 2 · Superior / Destino", revision: comparison.afterLabel,
-                                       path: file.name, text: comparison.after)
-                }.fixedSize(horizontal: false, vertical: true)
-                Divider()
                 if !model.diffNotice.isEmpty {
                     Text(model.diffNotice).font(.caption).foregroundStyle(.orange)
                         .frame(maxWidth: .infinity, alignment: .leading).padding(8)
+                }
+                if !missingFinalNewline(comparison).isEmpty {
+                    Text(missingFinalNewline(comparison)).font(.caption).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 8).padding(.vertical, 4)
                 }
                 if model.diffAligned && comparison.before != nil && comparison.after != nil && !comparison.patch.contains("[Diff truncado") {
                     DiffChangesSection(blocks: model.diffBlocks, viewport: viewport, jump: $jump)
@@ -58,5 +53,12 @@ struct FileDiffView: View {
             .background(Color(nsColor: .windowBackgroundColor))
             .preferredColorScheme(.dark)
             .onChange(of: model.syntaxLanguage) { _, _ in model.refreshHighlighting() }
+    }
+
+    private func missingFinalNewline(_ comparison: FileComparison) -> String {
+        var sides: [String] = []
+        if let text = comparison.before, !text.isEmpty, text.utf8.last != 10 { sides.append("izquierda") }
+        if let text = comparison.after, !text.isEmpty, text.utf8.last != 10 { sides.append("derecha") }
+        return sides.isEmpty ? "" : "Sin salto de línea final: " + sides.joined(separator: " y ")
     }
 }
