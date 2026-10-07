@@ -82,7 +82,8 @@ import AppKit
                 .replacingOccurrences(of: "\u{2029}", with: "¶")
             let marker = row.changed ? (number == nil ? "·" : (before ? "−" : "+")) : " "
             let line = (number.map { String(format: "%5d", $0) } ?? "     ") + " " + marker + " │ " + content
-            let hasChange = row.before != row.after && number != nil
+            let isNewLine = row.before == nil && row.after != nil
+            let hasChange = row.before != row.after && number != nil && !isNewLine
             let color: NSColor = hasChange ? (before ? .systemRed : .systemGreen) : NSColor(calibratedWhite: 0.86, alpha: 1)
             let offset = value.length
             value.append(NSAttributedString(string: line + "\n", attributes: [
@@ -90,7 +91,7 @@ import AppKit
                 .backgroundColor: hasChange ? color.withAlphaComponent(0.13) : NSColor.clear
             ]))
             let prefixLength = line.utf16.count - content.utf16.count
-            if inline.indices.contains(index) {
+            if !isNewLine && inline.indices.contains(index) {
                 let changes = before ? inline[index].before : inline[index].after
                 for change in changes where NSMaxRange(change) <= content.utf16.count {
                     value.addAttribute(.backgroundColor,

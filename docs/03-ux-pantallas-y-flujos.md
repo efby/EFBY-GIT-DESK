@@ -114,3 +114,6 @@ La app informa carpetas no legibles, enlaces a directorios fuera de la raíz ele
 ### Tamaños de paneles y cierre del compare
 
 El botón **Cerrar**, con fondo rojo, vuelve al repositorio; Esc mantiene la misma acción. La comparación A→B comienza en 340 puntos (mínimo actual) y carpetas en 340 (máximo actual, reducible hasta 210). Arrastrar sus separadores permite ajustar los anchos. La app guarda los tamaños elegidos y los restaura al cambiar de repositorio o iniciar otra sesión. Una ventana más pequeña limita temporalmente el espacio sin reemplazar la preferencia. Restablecer distribución recupera esos valores iniciales.
+
+
+Las líneas completamente nuevas sin línea equivalente en el commit anterior se muestran sin fondo de cambio ni resaltado de fragmentos. Se conservan la sintaxis, el signo + y los mapas verdes. Las modificaciones de líneas existentes y las eliminaciones mantienen sus marcas.
