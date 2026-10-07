@@ -72,10 +72,10 @@ struct DiffIntralineTests {
         }
         let addedStorage = try #require(views[1].textStorage)
         let added = (addedStorage.string as NSString).range(of: "add").location
-        #expect(addedStorage.attribute(.backgroundColor, at: added, effectiveRange: nil) as? NSColor == .clear)
+        #expect(addedStorage.attribute(.backgroundColor, at: added, effectiveRange: nil) as? NSColor == NSColor.systemGreen.withAlphaComponent(0.13))
         let addedPrefix = (addedStorage.string as NSString).range(of: "    3 +").location
         #expect(addedPrefix != NSNotFound)
-        #expect(addedStorage.attribute(.backgroundColor, at: addedPrefix, effectiveRange: nil) as? NSColor == .clear)
+        #expect(addedStorage.attribute(.backgroundColor, at: addedPrefix, effectiveRange: nil) as? NSColor == NSColor.systemGreen.withAlphaComponent(0.13))
         #expect(views[0].selectedRange() == NSRange(location: 12, length: 5))
     }
 }

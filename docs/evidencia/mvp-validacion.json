@@ -41,9 +41,9 @@
     "architecture": "arm64",
     "signature": "ad-hoc",
     "signatureVerified": true,
-    "binarySHA256": "f9c364fc37171e50b52b2844034bcbe3c7ce162f90da7e82eec14a4bd37abfee",
+    "binarySHA256": "0a3fb2cc03abe3ace05f88954e35de47bd997935104fba4f234c53da28b7adeb",
     "credentialHelperSHA256": "ba966d0bae89eb55f0172eb7e3764fd204cd22bc3effb5d6da094217b4635b6f",
-    "zipSHA256": "61a462b186843f4239aa1485d3c05ae2cbe226c4710d8012a1430fa8cd0b02a1",
+    "zipSHA256": "11653577cd61e0ad51a4686660ed6d364714aeffa7a78475304a0e8735a8c979",
     "bundleName": "EFBY Git Desk.app"
   },
   "regressionAfterDiffSelection": {
@@ -265,5 +265,16 @@
     "sharedPersistentWidth": true,
     "syntheticVisualReviewed": true,
     "interactivePersonalRepositoryQA": false
+  },
+  "regressionAfterGreenNewLines": {
+    "passed": 72,
+    "skippedOptional": 2,
+    "suites": 17,
+    "seconds": 6.027,
+    "newLinesGreenRowBackground": true,
+    "newLinesWithoutStrongFragmentHighlights": true,
+    "syntaxAndSelectionPreserved": true,
+    "nativeBackgroundVerified": true,
+    "syntheticVisualReviewed": true
   }
 }

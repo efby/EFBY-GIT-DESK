@@ -157,3 +157,10 @@ Las filas con documento anterior ausente y documento nuevo presente no tienen fo
 La capa de comparación incorpora un PersistentSplitView con FileDiffView a la izquierda y el DiffPane existente a la derecha. Reutiliza inventario, selección y encabezados de contexto; mantiene el panel nativo mientras cambia el archivo, reiniciando solo el estado del documento elegido. Comparte `detailWidth` persistente con el workspace, mínimo derecho 340 y reserva izquierda de 640 cuando haya espacio. Loading/error/resúmenes conservan el navegador. Cerrar/Esc mantiene el workspace subyacente y su selección.
 
 Validación: 74 pruebas registradas en 17 suites, 72 aprobadas y 2 optativas omitidas, 5,872 segundos. Nueva integración con Git real temporal compara dos commits y cambia entre README.md y script.py; verifica documentos nuevos, par/contexto intactos, panel derecho en la misma ventana y misma instancia, workspace conservado y cierre. Captura sintética del visor con el navegador derecho revisada. No se operó la ventana ni repositorios personales del usuario.
+
+
+### Fondo verde en líneas nuevas
+
+Ajuste posterior: las líneas totalmente nuevas conservan la ausencia de marcas fuertes por fragmentos, pero ahora reciben fondo verde tenue en B (alpha 0,13), incluidos prefijo/número/signo y salto de línea. El hueco de A queda neutro. Sintaxis, selección, modificaciones existentes y mapas se conservan. Este comportamiento reemplaza la decisión anterior de fondo neutro para adiciones completas.
+
+Validación del ajuste: 74 pruebas registradas en 17 suites, 72 aprobadas y 2 optativas omitidas, 6,027 segundos. Prueba nativa verifica fondo verde tenue en texto y prefijo de la línea nueva, sin perder las marcas fuertes de las modificaciones existentes. Captura sintética revisada del navegador A→B con archivo totalmente nuevo.

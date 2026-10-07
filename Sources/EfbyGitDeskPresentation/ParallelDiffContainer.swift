@@ -85,10 +85,13 @@ import AppKit
             let isNewLine = row.before == nil && row.after != nil
             let hasChange = row.before != row.after && number != nil && !isNewLine
             let color: NSColor = hasChange ? (before ? .systemRed : .systemGreen) : NSColor(calibratedWhite: 0.86, alpha: 1)
+            let background: NSColor = isNewLine && !before
+                ? NSColor.systemGreen.withAlphaComponent(0.13)
+                : (hasChange ? color.withAlphaComponent(0.13) : .clear)
             let offset = value.length
             value.append(NSAttributedString(string: line + "\n", attributes: [
                 .font: font, .foregroundColor: color, .paragraphStyle: paragraph,
-                .backgroundColor: hasChange ? color.withAlphaComponent(0.13) : NSColor.clear
+                .backgroundColor: background
             ]))
             let prefixLength = line.utf16.count - content.utf16.count
             if !isNewLine && inline.indices.contains(index) {
