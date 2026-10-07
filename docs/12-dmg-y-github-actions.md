@@ -89,8 +89,9 @@ de notarización. No se genera un paquete ad hoc.
 No hacer push directo a `main`: trabajar en ramas y abrir PR para integrar cambios.
 Los pushes a ramas o tags no disparan workflows de empaquetado. El flujo firmado
 se activa por el evento de merge, no por un push. Se conserva **Release DMG → Run
-workflow** para solicitudes manuales, sin crear ni publicar GitHub Releases o tags.
-Los permisos del workflow son de lectura. Esta norma de trabajo no equivale a una
+workflow** para solicitudes manuales, publicando también en GitHub Releases cuando se ejecuta sobre main.
+El trabajo de compilación mantiene permisos de lectura; la publicación tiene
+contents: write para crear el tag y la Release. Esta norma de trabajo no equivale a una
 regla de protección impuesta por GitHub; no se modificaron las reglas del repositorio.
 
 La firma automática admite PR de ramas del mismo repositorio. Los PR externos
@@ -142,3 +143,20 @@ localmente ese ZIP descargado. El disparo automático tras merge sigue pendiente
 de integrar el PR #4; este ensayo utilizó la ejecución manual de `feature/mvp`.
 Los archivos `.env`, `.env.*` y `.secretos/` están excluidos de Git.
 No se ensayó el instalador descargado en otro Mac ni el runtime de Intel/macOS 14.
+
+## Publicación en Releases
+
+Flujo autorizado: merge de PR interno a main → pruebas → Developer ID →
+notarización/tickets/verificación → artefacto → checksum del DMG descargado en
+el trabajo de publicación → Release con DMG y checksum, notas automáticas y tag
+sobre el SHA compilado. Primera versión v0.1.0; siguientes incrementan patch del
+mayor tag semántico existente, respetando una versión base superior en Info.plist.
+APP_VERSION se aplica a la app antes de firmar, de modo que coincide con el tag.
+No se reemplazan Releases existentes. Compilación y publicación se serializan
+para evitar que dos ejecuciones elijan la misma versión. Las pruebas manuales
+en otras ramas solo producen artefactos; Run workflow en main también publica.
+No se agregan disparadores push ni tag.
+
+Implementación en el PR #4; pendiente de merge y primera ejecución de publicación.
+El DMG remoto ya verificado de Release DMG #6 sigue disponible como artefacto,
+pero no se ha publicado retroactivamente como una versión.

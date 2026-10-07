@@ -3,9 +3,18 @@ on:
   workflow_call:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
+  actions: read
+concurrency:
+  group: gitdesk-release
+  cancel-in-progress: false
 jobs:
   release-dmg:
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      commit: ${{ steps.version.outputs.commit }}
     runs-on: macos-26
     timeout-minutes: 90
     steps:
@@ -13,6 +22,10 @@ jobs:
         with:
           # Build the merged commit, even if main advances while the job is queued.
           ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+          fetch-depth: 0
+      - name: Select release version
+        id: version
+        run: python3 scripts/release-version.py
       - name: Toolchain
         run: scripts/select-xcode.sh
       - name: Check signing configuration
@@ -76,3 +89,27 @@ jobs:
         run: |
           security delete-keychain "$RUNNER_TEMP/gitdesk-signing.keychain-db" || true
           rm -f "$RUNNER_TEMP/gitdesk-certificate.p12"
+  publish-release:
+    needs: release-dmg
+    if: (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: EFBY-Git-Desk-notarized-universal
+          path: dist
+      - name: Verify downloaded DMG checksum
+        working-directory: dist
+        run: sha256sum --check EFBY-Git-Desk.dmg.sha256
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.release-dmg.outputs.tag }}
+          RELEASE_COMMIT: ${{ needs.release-dmg.outputs.commit }}
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" dist/EFBY-Git-Desk.dmg dist/EFBY-Git-Desk.dmg.sha256 --target "$RELEASE_COMMIT" --title "EFBY Git Desk $RELEASE_TAG" --generate-notes --latest
