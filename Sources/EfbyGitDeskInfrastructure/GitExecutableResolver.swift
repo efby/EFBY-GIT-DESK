@@ -9,7 +9,7 @@ public struct GitExecutableResolver: Sendable {
     public static func candidates(path: String, home: String) -> [String] {
         let directories = path.split(separator: ":", omittingEmptySubsequences: false).map(String.init)
             + [home + "/.local/bin", home + "/bin", home + "/.nix-profile/bin",
-               home + "/homebrew/bin", "/opt/homebrew/bin", "/usr/local/bin", "/usr/local/git/bin", "/opt/local/bin"]
+               home + "/homebrew/bin", home + "/miniforge3/bin", "/opt/homebrew/bin", "/usr/local/bin", "/usr/local/git/bin", "/opt/local/bin"]
         var seen = Set<String>()
         return directories.filter { $0.hasPrefix("/") }.map { URL(fileURLWithPath: $0).appendingPathComponent("git").path }
             .filter { seen.insert($0).inserted && !isDeveloperTool($0) }
