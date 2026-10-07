@@ -41,9 +41,9 @@
     "architecture": "arm64",
     "signature": "ad-hoc",
     "signatureVerified": true,
-    "binarySHA256": "b43d724885adfe1af877c8a82fbaa12f2c3f51117a494ca1fa3ae89a9c45591f",
+    "binarySHA256": "40d627c8ec1e3bd409d48e0f82fd212af1eddfc065ea81fcc67a0772fbd77e0c",
     "credentialHelperSHA256": "cc10329c338a5e1e119b380a15fd631cb96caaf92a0e685a1988664cf6066ed3",
-    "zipSHA256": "e207defff16781a68777d907463bfccfeb2535104d47532f870a234972d79dec"
+    "zipSHA256": "d4871ef97454900b3aaf78cbdc5993af2be8412133b7ceafc4aa21b7db5891a6"
   },
   "regressionAfterDiffSelection": {
     "passed": 37,
@@ -92,5 +92,25 @@
     "crlfAndFinalNewlineVerified": true,
     "textLimitPerDocumentBytes": 2000000,
     "combinedLineLimit": 50000
+  },
+  "regressionAfterFullScreenAndSyntax": {
+    "passed": 47,
+    "skippedOptional": 2,
+    "suites": 13,
+    "seconds": 5.374,
+    "targetedAfterPickerAndDiffBackground": {
+      "passed": 5,
+      "seconds": 0.43
+    },
+    "independentWindowAndContextRestorationVerified": true,
+    "nativeFullScreenRequested": true,
+    "nativeSpaceTransitionManualVerified": false,
+    "codeLanguagesDetected": true,
+    "pythonJSTypeScriptTokensVerified": true,
+    "unicodeAndMultilineStateVerified": true,
+    "scrollAndTextSelectionPreserved": true,
+    "diffBackgroundPreserved": true,
+    "fullCompareVisualSyntheticFixtureReviewed": true,
+    "syntaxTokenLimitPerDocument": 60000
   }
 }

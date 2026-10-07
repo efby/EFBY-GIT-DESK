@@ -27,7 +27,7 @@ Para un paquete optimizado: `bash scripts/build-app.sh release`. El paquete incl
 7. **Editar mensaje de HEAD** presenta un plan que caduca a los 60 segundos. Publicarlo exige que HEAD coincida con la punta remota y utiliza un lease exacto. La referencia de recuperación se conserva incluso si el envío falla.
 8. **Terminal** abre el panel; **Nueva sesión** inicia una shell. Ocultarlo conserva la sesión. Cerrar una sesión activa presenta confirmación. Los cambios se consultan al volver al foco y cada cuatro segundos.
 
-El repositorio ocupa todo el espacio disponible incluso sin seleccionar commits. Selecciona un commit (o dos para comparar A→B) y haz clic en un archivo para abrir su diff. El botón **Cerrar diferencias** devuelve el panel a la lista completa; cambiar la selección de commits cierra el visor.
+El repositorio ocupa todo el espacio disponible incluso sin seleccionar commits. Selecciona un commit (o dos para comparar A→B) y haz clic en un archivo para abrir su diff. El compare se abre en una ventana independiente a pantalla completa, conservando la vista del repositorio. **Volver al repositorio**, `Esc` o cerrar la ventana recuperan la vista anterior; cambiar la selección de commits cierra el visor.
 
 Las preferencias guardan distribución de paneles, terminal, registro y pestañas; al reiniciar no se restauran procesos vivos. Quitar un registro conserva los archivos del repositorio. Los remotos de otros proveedores mantienen disponibles las funciones locales; la integración de red del MVP se limita a Bitbucket Cloud.
 
@@ -56,3 +56,5 @@ La conexión contra una cuenta real de Bitbucket, el acceso del helper a Keychai
 Repositorio de desarrollo: [efby/EFBY-GIT-DESK](https://github.com/efby/EFBY-GIT-DESK). Las claves de autenticación permanecen fuera del repositorio y nunca se versionan.
 
 El icono reutiliza el logotipo y el diseño de EFBY_POSTMAN, con la etiqueta inferior **#GitDesk**. El vector está en `Resources/Brand/EfbyLogo.ai`; `scripts/generate-icon.sh` regenera el PNG y el icono macOS `.icns`, que el empaquetado incorpora al bundle.
+
+El selector **Formato de código** detecta Python, JavaScript/JSX, TypeScript/TSX, Swift, Java/Kotlin, C/C++, C#, Go, Rust, Ruby, Shell, SQL, JSON, YAML/TOML, HTML/XML, CSS y Markdown. Permite elegir manualmente el lenguaje o texto plano. El resaltado léxico distingue cadenas, comentarios, palabras clave, números y llamadas; los fondos y signos de diff se conservan. Es una ayuda de lectura básica, sin ejecutar código ni ofrecer análisis de compilador.

@@ -4,6 +4,7 @@ import AppKit
     private let left = NSScrollView()
     private let right = NSScrollView()
     private var rows: [DiffRow]?
+    private var syntax: DiffSyntax?
     private var synchronizing = false
 
     init() {
@@ -37,9 +38,9 @@ import AppKit
     required init?(coder: NSCoder) { nil }
     isolated deinit { NotificationCenter.default.removeObserver(self) }
 
-    func update(_ newRows: [DiffRow]) {
-        guard rows != newRows else { return }
-        rows = newRows
+    func update(_ newRows: [DiffRow], syntax: DiffSyntax? = nil) {
+        guard rows != newRows || self.syntax != syntax else { return }
+        rows = newRows; self.syntax = syntax
         synchronizing = true
         render(newRows, in: left, before: true)
         render(newRows, in: right, before: false)
@@ -52,7 +53,7 @@ import AppKit
         paragraph.minimumLineHeight = 18; paragraph.maximumLineHeight = 18
         let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         var longest = 0
-        for row in rows {
+        for (index, row) in rows.enumerated() {
             let number = before ? row.beforeNumber : row.afterNumber
             let content = ((before ? row.before : row.after) ?? "")
                 .replacingOccurrences(of: "\r", with: "␍")
@@ -62,16 +63,31 @@ import AppKit
             let line = (number.map { String(format: "%5d", $0) } ?? "     ") + " " + marker + " │ " + content
             longest = max(longest, line.utf16.count)
             let color: NSColor = row.changed ? (before ? .systemRed : .systemGreen) : NSColor(calibratedWhite: 0.86, alpha: 1)
+            let offset = value.length
             value.append(NSAttributedString(string: line + "\n", attributes: [
                 .font: font, .foregroundColor: color, .paragraphStyle: paragraph,
                 .backgroundColor: row.changed ? color.withAlphaComponent(0.13) : NSColor.clear
             ]))
+            let spans = before ? syntax?.before : syntax?.after
+            if let spans, spans.indices.contains(index) {
+                let prefixLength = line.utf16.count - content.utf16.count
+                for token in spans[index] where token.range.location + token.range.length <= content.utf16.count {
+                    value.addAttribute(.foregroundColor, value: token.kind.color,
+                        range: NSRange(location: offset + prefixLength + token.range.location, length: token.range.length))
+                }
+            }
         }
+        let selection = text.selectedRanges
+        let origin = scroll.contentView.bounds.origin
         let width = max(400, CGFloat(longest) * 8 + 32)
         text.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         text.textContainer?.containerSize = NSSize(width: width, height: CGFloat.greatestFiniteMagnitude)
         text.frame = NSRect(x: 0, y: 0, width: width, height: CGFloat(rows.count + 1) * 18 + 24)
         text.textStorage?.setAttributedString(value)
+        let validSelection = selection.filter { $0.rangeValue.location + $0.rangeValue.length <= value.length }
+        text.selectedRanges = validSelection.isEmpty ? [NSValue(range: NSRange(location: 0, length: 0))] : validSelection
+        scroll.contentView.scroll(to: origin)
+        scroll.reflectScrolledClipView(scroll.contentView)
     }
     @objc private func boundsChanged(_ notification: Notification) {
         guard !synchronizing, let source = notification.object as? NSClipView else { return }

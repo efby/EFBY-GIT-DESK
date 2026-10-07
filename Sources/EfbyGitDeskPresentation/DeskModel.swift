@@ -21,6 +21,8 @@ import EfbyGitDeskDomain
     public var diffRows: [DiffRow] = []
     public var diffLoading = false
     public var diffAligned = false
+    public var syntaxLanguage: CodeLanguage = .automatic
+    public var diffSyntax: DiffSyntax?
     public var diffNotice = ""
     public var search = ""
     public var repositorySearch = ""
@@ -55,6 +57,7 @@ import EfbyGitDeskDomain
     @ObservationIgnored private var operation: Task<Void, Never>?
     @ObservationIgnored private var query: Task<Void, Never>?
     @ObservationIgnored private var fileQuery: Task<Void, Never>?
+    @ObservationIgnored private var highlightQuery: Task<Void, Never>?
     @ObservationIgnored private var diffQuery: Task<Void, Never>?
     @ObservationIgnored private var layoutSave: Task<Void, Never>?
     @ObservationIgnored private var searchQuery: Task<Void, Never>?
@@ -77,6 +80,24 @@ import EfbyGitDeskDomain
     public var orderedComparison: [String] {
         selectedOIDs.sorted { lhs, rhs in
             (commits.firstIndex { $0.oid == lhs } ?? -1) > (commits.firstIndex { $0.oid == rhs } ?? -1)
+        }
+    }
+    public var detectedLanguageLabel: String {
+        guard let file = files.first(where: { $0.id == selectedFile }) else { return "" }
+        return (syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.name) : syntaxLanguage).rawValue
+    }
+    public func refreshHighlighting() {
+        highlightQuery?.cancel()
+        guard let file = files.first(where: { $0.id == selectedFile }), diffAligned else { return }
+        let rows = diffRows; let language = syntaxLanguage; let version = generation; let currentContext = context
+        let oldName = file.oldPath.flatMap { String(data: $0, encoding: .utf8) } ?? file.name
+        let before = language == .automatic ? CodeLanguage.detect(path: oldName) : language
+        let after = language == .automatic ? CodeLanguage.detect(path: file.name) : language
+        highlightQuery = Task {
+            let syntax = await Task.detached { CodeHighlighter.highlight(rows: rows, before: before, after: after) }.value
+            guard !Task.isCancelled, generation == version, selectedFile == file.id,
+                  syntaxLanguage == language, context == currentContext, diffRows == rows else { return }
+            diffSyntax = syntax
         }
     }
     public var currentTerminals: [TerminalTab] { terminals[selectedID ?? ""] ?? [] }
@@ -256,8 +277,8 @@ import EfbyGitDeskDomain
         }
     }
     public func closeDiff() {
-        diffQuery?.cancel()
-        selectedFile = nil; diffText = ""
+        diffQuery?.cancel(); highlightQuery?.cancel()
+        selectedFile = nil; diffText = ""; diffSyntax = nil
         comparison = nil; diffRows = []; diffLoading = false; diffAligned = false; diffNotice = ""
     }
     public func loadDiff(id: String) {
@@ -266,7 +287,7 @@ import EfbyGitDeskDomain
         let preserveView = selectedFile == id && comparison != nil
         selectedFile = id
         if !preserveView {
-            diffText = ""; comparison = nil; diffRows = []
+            diffText = ""; comparison = nil; diffRows = []; diffSyntax = nil
             diffLoading = true; diffAligned = false; diffNotice = ""
         }
         let version = generation
@@ -279,10 +300,13 @@ import EfbyGitDeskDomain
                 guard !Task.isCancelled, version == generation, selectedFile == id, self.context == context else { return }
                 comparison = result; diffNotice = result.notice
                 switch alignment {
-                case .success(let rows): diffRows = rows; diffAligned = true
-                case .failure(let error): diffNotice += "\n" + error.localizedDescription
+                case .success(let rows):
+                    if diffRows != rows { diffSyntax = nil }
+                    diffRows = rows; diffAligned = true
+                case .failure(let error): diffRows = []; diffSyntax = nil; diffAligned = false; diffNotice += "\n" + error.localizedDescription
                 }
                 diffLoading = false
+                refreshHighlighting()
                 diffText = result.patch.isEmpty ? "Cambio de metadatos o modo; los documentos se muestran completos." : result.patch
             } catch is CancellationError {} catch { if !Task.isCancelled, version == generation, selectedFile == id, self.context == context { self.error = error.localizedDescription; diffLoading = false } }
         }

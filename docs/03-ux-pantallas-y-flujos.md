@@ -93,3 +93,7 @@ La navegación es completa por teclado y VoiceOver. Atajos propuestos: `⌘O` ab
 En ventanas estrechas, las referencias se contraen, la comparación conserva ambas columnas con desplazamiento horizontal independiente y el detalle puede abrirse como región dedicada. Repositorio, rama y extremos A/B permanecen identificables. El ancho mínimo se definirá al validar el prototipo en macOS.
 
 La aceptación UX exige que: quitar referencias no elimine carpetas; la selección admita como máximo dos commits; la dirección se mantenga del commit inferior al superior; copiar entregue el SHA completo; errores remotos conserven contexto; corregir mensajes no incluya cambios preparados; el terminal refresque la vista; y los flujos funcionen con teclado y VoiceOver.
+
+### Comparación ampliada y lectura de código
+
+Al hacer clic en un archivo, una ventana independiente entra en pantalla completa y muestra únicamente la comparación, con ambas versiones en paralelo. La vista previa del repositorio permanece montada, incluidas su selección, scroll y sesiones de terminal. «Volver al repositorio», Esc o cerrar la ventana regresan a ella. No se persiste un nuevo ancho de panel por ampliar el compare. El formato de código se detecta por extensión y puede seleccionarse manualmente; desconocidos usan texto plano. Los colores de sintaxis no sustituyen los fondos y signos de los cambios.

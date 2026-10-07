@@ -35,12 +35,6 @@ struct DiffPane: View {
                 ContentUnavailableView("Selecciona un commit", systemImage: "arrow.left.arrow.right",
                     description: Text("Selecciona dos para comparar sus árboles A→B. Los cambios locales se revisan por separado."))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let file = model.files.first(where: { $0.id == model.selectedFile }) {
-                VSplitView {
-                    fileList.frame(minHeight: 90, idealHeight: 160, maxHeight: 220)
-                    FileDiffView(model: model, file: file)
-                        .frame(minHeight: 180, maxHeight: .infinity)
-                }.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 VStack(spacing: 0) {
                     Text("Haz clic en un archivo para ver sus diferencias.")

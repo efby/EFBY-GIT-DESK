@@ -11,8 +11,12 @@ struct FileDiffView: View {
                 Label(file.name, systemImage: "doc.text")
                     .font(.caption.monospaced()).lineLimit(2).textSelection(.enabled)
                 Spacer()
-                Button("Cerrar diferencias", systemImage: "xmark", action: model.closeDiff)
-                    .labelStyle(.iconOnly).help("Cerrar diferencias y volver a la lista de archivos")
+                Picker("Formato de código", selection: $model.syntaxLanguage) {
+                    ForEach(CodeLanguage.allCases) { language in Text(language.rawValue).tag(language) }
+                }.labelsHidden().frame(width: 180).help("Detectar el lenguaje por extensión o elegirlo manualmente")
+                Text(model.detectedLanguageLabel).font(.caption).foregroundStyle(.secondary)
+                Button("Volver al repositorio", systemImage: "arrow.backward", action: model.closeDiff)
+                    .keyboardShortcut(.escape, modifiers: []).help("Cerrar la comparación y volver a la vista anterior")
             }.padding(12)
             Divider()
             if model.diffLoading {
@@ -32,7 +36,7 @@ struct FileDiffView: View {
                         .frame(maxWidth: .infinity, alignment: .leading).padding(8)
                 }
                 if model.diffAligned && comparison.before != nil && comparison.after != nil && !comparison.patch.contains("[Diff truncado") {
-                    ParallelDiffView(rows: model.diffRows).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    ParallelDiffView(rows: model.diffRows, syntax: model.diffSyntax).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     TextPreview(text: model.diffText).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -42,5 +46,8 @@ struct FileDiffView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(nsColor: .windowBackgroundColor))
+            .preferredColorScheme(.dark)
+            .onChange(of: model.syntaxLanguage) { _, _ in model.refreshHighlighting() }
     }
 }

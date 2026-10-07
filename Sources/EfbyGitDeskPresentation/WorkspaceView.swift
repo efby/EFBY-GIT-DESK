@@ -62,6 +62,7 @@ public struct WorkspaceView: View {
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
         }
+        .background(ComparisonWindowPresenter(model: model, file: model.files.first { $0.id == model.selectedFile }))
         .tint(.teal).preferredColorScheme(.dark)
         .frame(minWidth: 1120, minHeight: 700)
         .toolbar {
