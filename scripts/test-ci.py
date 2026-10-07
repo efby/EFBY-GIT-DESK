@@ -5,7 +5,7 @@ import signal
 import subprocess
 import time
 
-process = subprocess.Popen(["scripts/test.sh", "--verbose"], start_new_session=True)
+process = subprocess.Popen(["scripts/test.sh"], start_new_session=True)
 started = time.monotonic()
 sampled = False
 try:
@@ -29,7 +29,7 @@ try:
                 if int(pid) not in owned:
                     continue
                 print(f"pid={pid} parent={parent} executable={command}", flush=True)
-                if "EfbyGitDeskPackageTests" in command or command.endswith("/swift-test"):
+                if "EfbyGitDeskPackageTests" in command or command.endswith(("/swift-test", "/swiftpm-testing-helper")):
                     result = subprocess.run(
                         ["/usr/bin/sample", pid, "3", "-file", "/dev/stdout"],
                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,

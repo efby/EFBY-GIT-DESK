@@ -5,6 +5,23 @@ import EfbyGitDeskApplication
 import EfbyGitDeskInfrastructure
 
 struct ProcessAndStorageTests {
+    @Test func concurrentProcessesDoNotStarvePipeReaders() async throws {
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for _ in 0..<24 {
+                group.addTask {
+                    let input = Data(repeating: 120, count: 128 * 1024)
+                    let result = try await ProcessRunner().run(
+                        executable: "/bin/sh", arguments: ["-c", "cat; printf 'stderr complete' >&2"],
+                        directory: NSTemporaryDirectory(), input: input, timeout: 10
+                    )
+                    #expect(result.status == 0)
+                    #expect(result.output == input)
+                    #expect(String(decoding: result.error, as: UTF8.self) == "stderr complete")
+                }
+            }
+            try await group.waitForAll()
+        }
+    }
     @Test func processDrainsBothPipesWithoutDeadlock() async throws {
         let result = try await ProcessRunner().run(executable: "/bin/sh", arguments: [
             "-c", "i=0; while [ \"$i\" -lt 12000 ]; do printf 'stdout line\\n'; printf 'stderr line\\n' >&2; i=$((i+1)); done"
