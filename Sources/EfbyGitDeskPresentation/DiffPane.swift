@@ -3,6 +3,7 @@ import AppKit
 
 struct DiffPane: View {
     @Bindable var model: DeskModel
+    @State private var collapsed: Set<String> = []
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 9) {
@@ -10,15 +11,11 @@ struct DiffPane: View {
                     Text(title).font(.headline)
                     Spacer()
                 }
-                ForEach(Array(model.orderedComparison.enumerated()), id: \.element) { index, oid in
-                    HStack {
-                        Text(model.selectedOIDs.count == 2 ? (index == 0 ? "A · Inferior" : "B · Superior") : "Commit").foregroundStyle(.teal)
-                        Text(String(oid.prefix(12))).font(.caption.monospaced())
-                        Spacer()
-                        Button("Copiar SHA completo", systemImage: "doc.on.doc") {
-                            NSPasteboard.general.clearContents(); NSPasteboard.general.setString(oid, forType: .string)
-                        }.labelStyle(.iconOnly)
-                    }.font(.caption)
+                ForEach(Array(model.orderedComparison.reversed()), id: \.self) { oid in
+                    if let commit = model.commits.first(where: { $0.oid == oid }) {
+                        ComparisonCommitCard(commit: commit, revisionLabel: model.selectedOIDs.count == 2
+                            ? (oid == model.orderedComparison.first ? "A · Inferior · Origen" : "B · Superior · Destino") : "Commit")
+                    }
                 }
                 if model.selectedOIDs.count == 1,
                    let commit = model.commits.first(where: { $0.oid == model.selectedOIDs[0] }), commit.parents.count > 1 {
@@ -26,7 +23,7 @@ struct DiffPane: View {
                         ForEach(commit.parents.indices, id: \.self) { Text("Padre \($0 + 1)").tag($0) }
                     }.onChange(of: model.parentIndex) { _, _ in model.loadFiles() }
                 }
-                if model.context != nil { Text(model.filesLoading ? "Consultando inventario…" : "\(model.files.count) rutas cambiadas · inventario completo").font(.caption).foregroundStyle(.secondary) }
+                if model.context != nil { Text(model.filesLoading ? "Consultando inventario…" : "\(model.files.count) archivos cambiados · inventario completo").font(.caption).foregroundStyle(.secondary) }
                 Button("Editar mensaje de HEAD", systemImage: "pencil.line") { model.beginAmend() }
                     .disabled(!model.mutable || model.snapshot.head.isEmpty)
             }.padding(14)
@@ -49,18 +46,12 @@ struct DiffPane: View {
             .background(Color(nsColor: .controlBackgroundColor).opacity(0.45))
     }
     private var fileList: some View {
-        List(model.files) { file in
-            Button { model.loadDiff(id: file.id) } label: {
-                HStack {
-                    Text(file.status).font(.caption.monospaced()).frame(width: 28)
-                    Text(file.name).font(.caption).lineLimit(1).truncationMode(.middle)
-                    Spacer(minLength: 0)
-                }.padding(.vertical, 4).contentShape(Rectangle())
-                    .background(model.selectedFile == file.id ? Color.teal.opacity(0.18) : .clear)
-            }.buttonStyle(.plain)
-                .accessibilityIdentifier("comparisonFile-" + file.id)
-                .accessibilityLabel("Ver diferencias de \(file.name)")
-                .help(file.name)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 4) {
+                Button("Expandir todo") { collapsed.removeAll() }
+                    .buttonStyle(.plain).padding(.bottom, 8)
+                ComparisonTreeRows(model: model, nodes: ComparisonFileNode.make(model.files), collapsed: $collapsed)
+            }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

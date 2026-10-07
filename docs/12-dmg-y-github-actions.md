@@ -99,7 +99,8 @@ La firma automática admite PR de ramas del mismo repositorio. Los PR externos
 secretos. No se usa `pull_request_target` para ejecutar código externo con claves.
 
 Las contraseñas persistentes entran por entorno/stdin, nunca por argumentos.
-El .p12 temporal se elimina tras importarlo y el Keychain temporal al terminar,
+El .p12 y PEM temporales se confinan a un directorio 0700 con archivos 0600,
+y se eliminan tras importarlos (también mediante trap si falla el paso). El Keychain se elimina al terminar,
 también si falla el workflow.
 
 Consultar [Actions](https://github.com/efby/EFBY-GIT-DESK/actions) para descargar el
@@ -160,3 +161,25 @@ No se agregan disparadores push ni tag.
 Implementación en el PR #4; pendiente de merge y primera ejecución de publicación.
 El DMG remoto ya verificado de Release DMG #6 sigue disponible como artefacto,
 pero no se ha publicado retroactivamente como una versión.
+
+### Importación estable de Keychain
+
+Merged PR DMG #5, run 37563451311, aprobó las pruebas pero falló en
+SecKeychainItemImport al leer el PEM desde /dev/stdin. La importación ahora
+recibe un archivo completo en RUNNER_TEMP, dentro de un directorio privado
+0700 y con umask 077. OpenSSL mantiene la contraseña fuera de los argumentos.
+P12/PEM se eliminan inmediatamente después de la importación, con trap ante
+fallos y limpieza final del workflow. No se modifica la identidad ni los secretos.
+
+Validación remota de la corrección: Release DMG #7 terminó correctamente.
+[Release DMG #8](https://github.com/efby/EFBY-GIT-DESK/actions/runs/37564003950),
+sobre 7ed8af5, incluyó además las últimas tarjetas y árbol del compare. El trabajo
+de generación terminó en 4m 5s, con pruebas (paso completo 1m 22s), importación
+de certificado, firma, notarización, tickets, verificación y subida del artefacto
+correctos. Tiempo total 7m 48s incluida espera por el ensayo anterior.
+[Artefacto](https://github.com/efby/EFBY-GIT-DESK/actions/runs/37564003950/artifacts/11458028017):
+3,39 MB, digest ZIP de Actions
+`3a4c293a8d216a89e460fd4fe5811591bb9d2c6eae7cbcc7f471eee92c69810b`.
+La publicación en Releases se omitió correctamente porque la ejecución manual
+fue sobre fix/keychain-import. La integración del PR #5 y posterior publicación
+en main siguen pendientes. No se verificó la instalación de este ZIP en otro Mac.

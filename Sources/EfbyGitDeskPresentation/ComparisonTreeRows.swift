@@ -1,0 +1,49 @@
+import SwiftUI
+
+struct ComparisonTreeRows: View {
+    @Bindable var model: DeskModel
+    let nodes: [ComparisonFileNode]
+    @Binding var collapsed: Set<String>
+    var body: some View {
+        ForEach(nodes) { node in
+            if let file = node.file {
+                Button { model.loadDiff(id: file.id) } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: symbol(file.status)).foregroundStyle(tint(file.status))
+                        Text(node.name).lineLimit(1).truncationMode(.middle)
+                        Spacer(minLength: 0)
+                    }.padding(.vertical, 7).padding(.horizontal, 8)
+                        .contentShape(Rectangle())
+                        .background(model.selectedFile == file.id ? Color.accentColor.opacity(0.22) : .clear)
+                }.buttonStyle(.plain).help(file.name)
+                    .accessibilityIdentifier("comparisonFile-" + file.id)
+                    .accessibilityLabel("\(file.status): Ver diferencias de \(file.name)")
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    Button { toggle(node.id) } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: collapsed.contains(node.id) ? "chevron.right" : "chevron.down")
+                                .font(.caption).frame(width: 12)
+                            Text(node.name).lineLimit(1)
+                            Text("\(node.count)").font(.caption).foregroundStyle(.secondary)
+                            Spacer(minLength: 0)
+                        }.padding(.vertical, 7).foregroundStyle(.secondary).contentShape(Rectangle())
+                    }.buttonStyle(.plain)
+                        .accessibilityLabel("\(collapsed.contains(node.id) ? "Expandir" : "Contraer") carpeta \(node.name), \(node.count) archivos")
+                    if !collapsed.contains(node.id) {
+                        ComparisonTreeRows(model: model, nodes: node.children, collapsed: $collapsed).padding(.leading, 18)
+                    }
+                }
+            }
+        }
+    }
+    private func toggle(_ id: String) {
+        if collapsed.contains(id) { collapsed.remove(id) } else { collapsed.insert(id) }
+    }
+    private func symbol(_ status: String) -> String {
+        switch status.first { case "A": "plus"; case "D": "minus"; case "R": "arrow.turn.up.right"; default: "pencil" }
+    }
+    private func tint(_ status: String) -> Color {
+        switch status.first { case "A": .green; case "D": .red; default: .orange }
+    }
+}

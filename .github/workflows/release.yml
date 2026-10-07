@@ -55,7 +55,10 @@ jobs:
           signing_keychain="$RUNNER_TEMP/gitdesk-signing.keychain-db"
           signing_password="$(openssl rand -base64 32)"
           echo "::add-mask::$signing_password"
-          printf '%s' "$MACOS_CERTIFICATE_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/gitdesk-certificate.p12"
+          certificate_dir="$RUNNER_TEMP/gitdesk-certificate-material"
+          mkdir -m 700 "$certificate_dir"
+          trap 'rm -rf "$certificate_dir"' EXIT
+          printf '%s' "$MACOS_CERTIFICATE_P12_BASE64" | base64 --decode > "$certificate_dir/certificate.p12"
           security create-keychain -p "$signing_password" "$signing_keychain"
           security set-keychain-settings -lut 21600 "$signing_keychain"
           security unlock-keychain -p "$signing_password" "$signing_keychain"
@@ -63,13 +66,17 @@ jobs:
           # legacy provider to read that existing container (no TLS changes).
           pkcs12_options=()
           if [[ "$(openssl version)" == OpenSSL\ 3.* ]]; then pkcs12_options=(-legacy); fi
-          # Decrypt only through a pipe: no certificate password in process arguments.
-          openssl pkcs12 "${pkcs12_options[@]}" -in "$RUNNER_TEMP/gitdesk-certificate.p12" -passin env:MACOS_CERTIFICATE_PASSWORD -nodes | security import /dev/stdin -f pemseq -t agg -k "$signing_keychain" -T /usr/bin/codesign
+          # security import needs a regular, complete file rather than /dev/stdin.
+          # Private material is confined to a 0700 directory and 0600 files.
+          # Decryption passwords remain in the environment, never in arguments.
+          openssl pkcs12 "${pkcs12_options[@]}" -in "$certificate_dir/certificate.p12" -passin env:MACOS_CERTIFICATE_PASSWORD -nodes -out "$certificate_dir/identity.pem"
+          security import "$certificate_dir/identity.pem" -f pemseq -t agg -k "$signing_keychain" -T /usr/bin/codesign
+          rm -rf "$certificate_dir"
+          trap - EXIT
           security set-key-partition-list -S apple-tool:,apple: -k "$signing_password" "$signing_keychain" >/dev/null
           security list-keychains -d user -s "$signing_keychain" "$HOME/Library/Keychains/login.keychain-db"
           # notarytool reads its secure password prompt from stdin.
           printf '%s\n' "$APPLE_APP_SPECIFIC_PASSWORD" | xcrun notarytool store-credentials efby-gitdesk-ci --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --keychain "$signing_keychain"
-          rm -f "$RUNNER_TEMP/gitdesk-certificate.p12"
           echo "NOTARY_PROFILE=efby-gitdesk-ci" >> "$GITHUB_ENV"
           echo "NOTARY_KEYCHAIN=$signing_keychain" >> "$GITHUB_ENV"
           echo "APPLE_TEAM_ID=$APPLE_TEAM_ID" >> "$GITHUB_ENV"
@@ -88,7 +95,7 @@ jobs:
         if: always()
         run: |
           security delete-keychain "$RUNNER_TEMP/gitdesk-signing.keychain-db" || true
-          rm -f "$RUNNER_TEMP/gitdesk-certificate.p12"
+          rm -rf "$RUNNER_TEMP/gitdesk-certificate-material"
   publish-release:
     needs: release-dmg
     if: (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
