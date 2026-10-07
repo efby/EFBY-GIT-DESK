@@ -68,4 +68,4 @@ El selector **Formato de código** detecta Python, JavaScript/JSX, TypeScript/TS
 
 ## Instalador DMG
 
-Generar el paquete local universal con `scripts/build-dmg.sh --universal`. El instalador se guarda en `dist/EFBY-Git-Desk-dev.dmg`. El flujo firmado/notarizado y los secretos de GitHub están descritos en [DMG y GitHub Actions](docs/12-dmg-y-github-actions.md). CI genera builds de pruebas; tags `vX.Y.Z` generan borradores de versión notarizados cuando la configuración Apple está completa.
+Generar el paquete local universal con `scripts/build-dmg.sh --universal`. El instalador se guarda en `dist/EFBY-Git-Desk-dev.dmg`. El flujo firmado/notarizado y los secretos de GitHub están descritos en [DMG y GitHub Actions](docs/12-dmg-y-github-actions.md). Al fusionar un pull request hacia `main` desde una rama del repositorio se genera un DMG universal firmado y notarizado. Abrir o actualizar un PR no genera el paquete. Trabajar en ramas y PR; no hacer push directo a `main`. Los demás pushes, incluidos tags, no generan DMG. También se conserva la ejecución manual de Release DMG.

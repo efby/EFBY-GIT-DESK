@@ -20,6 +20,9 @@ dist/
 .swiftpm/
 
 # Credenciales de firma y llaveros temporales
+.env
+.env.*
+.secretos/
 *.p12
 *.pfx
 *.keychain

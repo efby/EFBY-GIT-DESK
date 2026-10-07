@@ -1,7 +1,7 @@
 # DMG y GitHub Actions
 
 Se adopta el flujo de EFBY_POSTMAN: app universal, DMG con enlace a Applications,
-CI y versiones por tags. Los secretos usan los mismos nombres. Los archivos de
+automatización por pull requests hacia main. Los secretos usan los mismos nombres. Los archivos de
 EFBY_POSTMAN se consultaron como referencia y no se modificaron.
 
 ## Generar el DMG local
@@ -66,35 +66,67 @@ Agregar estos cinco Repository secrets, con los valores que usa POSTMAN:
 Si ya son secretos de organización, autorizar EFBY-GIT-DESK en su lista de
 repositorios permitidos. GitHub no permite recuperar los valores de secretos
 existentes; reutilizar el origen seguro, no intentar obtenerlos de logs.
-No se exportaron certificados ni se cargaron secretos desde esta sesión.
+Se configuraron los cinco nombres en GitHub. Se cargaron Apple ID, Team y el
+certificado Developer ID Application con su contraseña tras autorización del
+propietario. El .p12 de referencia incluía otras identidades: se aisló únicamente
+la identidad de distribución y se eliminaron las copias temporales tras cargarla.
+El propietario informó que también cargó la contraseña específica de Apple;
+GitHub no permite leer su valor ni esta configuración acredita un release exitoso.
 
 La configuración sigue la [guía de certificados de GitHub](https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications).
 No necesita provisioning profile: distribución Developer ID fuera de App Store.
 El runner es `macos-26`, según las [etiquetas oficiales de runners](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
 El script selecciona un Xcode disponible y exige Swift 6.2+.
 
-CI ejecuta pruebas y sube DMG de desarrollo universal ante push a main/master/feature/mvp,
-PR o ejecución manual. No consume credenciales Apple. Release DMG exige los cinco
-secretos, ejecuta pruebas, firma/notariza y sube el artefacto; falla si falta configuración,
-sin sustituirlo por una versión sin notarizar. Las contraseñas persistentes entran
-por entorno/stdin y no por argumentos. El .p12 temporal se elimina tras importarlo;
-el Keychain temporal se elimina al terminar, también si falla el workflow.
+**Merged PR DMG** se ejecuta únicamente al fusionar un PR hacia `main`:
+`pull_request` de tipo `closed`, filtro de destino `main` y condición `merged == true`.
+Abrir, actualizar o cerrar sin fusionar un PR no genera un DMG. Reutiliza
+**Release DMG**, que exige los cinco secretos, ejecuta las pruebas y genera el DMG
+universal firmado y notarizado. Se compila el SHA de merge del PR, aunque `main`
+avance mientras el trabajo espera. El artefacto incluye DMG, checksum y resultados
+de notarización. No se genera un paquete ad hoc.
 
-Tras subir y configurar, ir a [Actions](https://github.com/efby/EFBY-GIT-DESK/actions):
-primero validar CI; después ejecutar **Release DMG** manualmente sobre la rama
-`feature/mvp`. Esto produce un artefacto notarizado sin crear versión pública.
-El workflow manual debe existir en la rama predeterminada para aparecer en la UI de
-GitHub; si todavía no está integrado, aprobar primero el PR correspondiente.
+No hacer push directo a `main`: trabajar en ramas y abrir PR para integrar cambios.
+Los pushes a ramas o tags no disparan workflows de empaquetado. El flujo firmado
+se activa por el evento de merge, no por un push. Se conserva **Release DMG → Run
+workflow** para solicitudes manuales, sin crear ni publicar GitHub Releases o tags.
+Los permisos del workflow son de lectura. Esta norma de trabajo no equivale a una
+regla de protección impuesta por GitHub; no se modificaron las reglas del repositorio.
 
-Crear un tag `vX.Y.Z` sobre el commit que se quiere distribuir genera el DMG y un
-**borrador** de GitHub Release con checksum. El tag también fija la versión del
-bundle; la publicación pública queda para revisión. No se creó ni publicó un tag
-como parte de esta preparación.
+La firma automática admite PR de ramas del mismo repositorio. Los PR externos
+(forks) y Dependabot omiten el trabajo de firma porque GitHub no les entrega estos
+secretos. No se usa `pull_request_target` para ejecutar código externo con claves.
+
+Las contraseñas persistentes entran por entorno/stdin, nunca por argumentos.
+El .p12 temporal se elimina tras importarlo y el Keychain temporal al terminar,
+también si falla el workflow.
+
+Consultar [Actions](https://github.com/efby/EFBY-GIT-DESK/actions) para descargar el
+artefacto de un PR fusionado o iniciar **Release DMG** manualmente. El flujo manual debe
+existir en la rama predeterminada para aparecer en la interfaz de GitHub.
 
 ## Estado verificado
 
 DMG local universal generado y montado; firma ad hoc de la app y auxiliar válidas.
-Certificado Developer ID local detectado. Notarización pendiente por HTTP 401 del
-perfil actual. Configuración de secretos y ejecución en GitHub pendientes: el
-navegador integrado bloqueó el acceso al no poder verificar la política de seguridad.
+La recompilación posterior ejecutó 80 pruebas registradas (78 aprobadas y dos
+optativas omitidas) y produjo `dist/EFBY-Git-Desk-signed.dmg`: app universal firmada
+con Developer ID, Hardened Runtime y timestamp; firma estricta, checksum del DMG
+y firma de la app montada verificados. Ambas arquitecturas declaran macOS 14.0
+como mínimo en el binario. Este DMG firmado todavía no contiene tickets de Apple.
+Certificado Developer ID local detectado. El intento posterior de registrar el
+perfil `efby-gitdesk-notary`, usando la credencial local aportada por el propietario,
+devolvió inicialmente HTTP 403 por un acuerdo pendiente. Se verificó en Brave el
+equipo correcto y la aceptación por el Account Holder. Tras una comprobación
+posterior, Apple validó las credenciales y se guardó el perfil en Keychain.
+
+El 6 de octubre de 2026 se generó `dist/EFBY-Git-Desk.dmg` universal notarizado:
+la aplicación fue aceptada en la solicitud `88dc33ef-f39f-42e4-907b-eaaf942541bf`
+y el DMG en `b8275f2d-99ec-4f3f-aeb0-d5bc80b82fc9`. Los tickets se adjuntaron y
+validaron. Pasaron la firma estricta de la app, checksum del DMG, montaje de solo
+lectura, ticket de la app montada y evaluación Gatekeeper (`Notarized Developer ID`).
+Los resultados JSON y checksum están en `dist/`, excluidos de Git. Esto verifica
+el artefacto local, sin acreditar todavía el workflow remoto ni instalación en otro Mac.
+El navegador integrado permitió configurar los secretos posteriormente; la
+ejecución del workflow de release en GitHub sigue pendiente.
+Los archivos `.env`, `.env.*` y `.secretos/` están excluidos de Git.
 No se ensayó el instalador descargado en otro Mac ni el runtime de Intel/macOS 14.

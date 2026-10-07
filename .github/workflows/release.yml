@@ -1,7 +1,6 @@
 name: Release DMG
 on:
-  push:
-    tags: ['v[0-9]*']
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
@@ -9,10 +8,11 @@ jobs:
   release-dmg:
     runs-on: macos-26
     timeout-minutes: 90
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Build the merged commit, even if main advances while the job is queued.
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
       - name: Toolchain
         run: scripts/select-xcode.sh
       - name: Check signing configuration
@@ -55,14 +55,6 @@ jobs:
           echo "NOTARY_PROFILE=efby-gitdesk-ci" >> "$GITHUB_ENV"
           echo "NOTARY_KEYCHAIN=$signing_keychain" >> "$GITHUB_ENV"
           echo "APPLE_TEAM_ID=$APPLE_TEAM_ID" >> "$GITHUB_ENV"
-      - name: Version
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          version="${RELEASE_TAG#v}"
-          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'El tag debe ser vX.Y.Z'; exit 1; }
-          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
       - name: Signed and notarized universal DMG
         run: scripts/build-dmg.sh --universal --notarize
       - uses: actions/upload-artifact@v4
@@ -74,16 +66,6 @@ jobs:
             dist/EFBY-Git-Desk/app-notary.json
             dist/EFBY-Git-Desk/dmg-notary.json
           if-no-files-found: error
-      - name: Draft GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          generate_release_notes: true
-          fail_on_unmatched_files: true
-          files: |
-            dist/EFBY-Git-Desk.dmg
-            dist/EFBY-Git-Desk.dmg.sha256
       - name: Remove temporary credentials
         if: always()
         run: |
