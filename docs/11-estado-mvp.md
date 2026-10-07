@@ -205,3 +205,23 @@ y dos optativas omitidas). El flujo remoto completó también firma y notarizaci
 y subió el DMG universal. Ver evidencias y límites en docs/12-dmg-y-github-actions.md.
 El supervisor de CI limita compilación/pruebas a 300 segundos, recoge diagnóstico
 a los 120 segundos y termina su grupo de procesos ante timeout.
+
+## Panel de comparación con tarjetas y árbol
+
+Se muestran tarjetas del commit superior B y del inferior A, con mensaje, SHA
+copiable, autor y fecha local; la dirección de cálculo sigue siendo A→B según
+el orden del historial. El autor procede del commit: Git no guarda quién hizo
+push. Los archivos se agrupan en carpetas desplegables con conteo, expandir todo,
+selección y símbolos/color por tipo de cambio. No se agregaron controles de
+ordenamiento ni selector Path/File. El árbol conserva bytes de rutas, renombres
+y sustituciones archivo/directorio sin perder entradas.
+
+Commit admite una URL opcional de avatar y la tarjeta la representa cuando esté
+disponible. El adaptador local no obtiene imágenes de perfil; se muestran
+iniciales, sin consultar servicios externos usando correos. La obtención de
+avatares del proveedor sigue pendiente de una integración de perfiles.
+
+Validación: suite completa con 83 pruebas registradas en 19 suites (81 aprobadas,
+dos optativas omitidas), 6,439 segundos; dos pruebas del panel aprobadas también
+tras ajustar la captura nativa de SwiftUI. Vista oscura de 560×750 revisada con
+datos sintéticos. No se ejecutó notarización de esta nueva interfaz.
