@@ -58,6 +58,7 @@ struct DiffPane: View {
                 }.padding(.vertical, 4).contentShape(Rectangle())
                     .background(model.selectedFile == file.id ? Color.teal.opacity(0.18) : .clear)
             }.buttonStyle(.plain)
+                .accessibilityIdentifier("comparisonFile-" + file.id)
                 .accessibilityLabel("Ver diferencias de \(file.name)")
                 .help(file.name)
         }.frame(maxWidth: .infinity, maxHeight: .infinity)

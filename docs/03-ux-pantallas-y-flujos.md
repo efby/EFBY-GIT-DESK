@@ -117,3 +117,6 @@ El botón **Cerrar**, con fondo rojo, vuelve al repositorio; Esc mantiene la mis
 
 
 Las líneas completamente nuevas sin línea equivalente en el commit anterior se muestran sin fondo de cambio ni resaltado de fragmentos. Se conservan la sintaxis, el signo + y los mapas verdes. Las modificaciones de líneas existentes y las eliminaciones mantienen sus marcas.
+
+
+El visor de diferencias mantiene **Comparación A→B** a la derecha, con sus commits y lista de archivos. Haz clic en otro archivo para sustituir los documentos sin cerrar la comparación. El archivo actual queda marcado y el separador permite adaptar el ancho, compartido con el panel de la pantalla principal y guardado entre sesiones. **Cerrar** o Esc vuelve al workspace con la selección de commits conservada. También funciona con el detalle de un commit y las comparaciones del índice/working tree.

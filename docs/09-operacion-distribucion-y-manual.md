@@ -97,3 +97,6 @@ El bundle de desarrollo se genera como `dist/EFBY Git Desk.app`. Abrir carpeta b
 ### Tamaños de paneles y cierre del compare
 
 El botón **Cerrar**, con fondo rojo, vuelve al repositorio; Esc mantiene la misma acción. La comparación A→B comienza en 340 puntos (mínimo actual) y carpetas en 340 (máximo actual, reducible hasta 210). Arrastrar sus separadores permite ajustar los anchos. La app guarda los tamaños elegidos y los restaura al cambiar de repositorio o iniciar otra sesión. Una ventana más pequeña limita temporalmente el espacio sin reemplazar la preferencia. Restablecer distribución recupera esos valores iniciales.
+
+
+El visor de diferencias mantiene **Comparación A→B** a la derecha, con sus commits y lista de archivos. Haz clic en otro archivo para sustituir los documentos sin cerrar la comparación. El archivo actual queda marcado y el separador permite adaptar el ancho, compartido con el panel de la pantalla principal y guardado entre sesiones. **Cerrar** o Esc vuelve al workspace con la selección de commits conservada. También funciona con el detalle de un commit y las comparaciones del índice/working tree.

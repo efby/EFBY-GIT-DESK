@@ -41,9 +41,9 @@
     "architecture": "arm64",
     "signature": "ad-hoc",
     "signatureVerified": true,
-    "binarySHA256": "c83e2225445eb5b8fbfdacf44c282e6ab32cacf5de59ebd9791ede859e137343",
+    "binarySHA256": "f9c364fc37171e50b52b2844034bcbe3c7ce162f90da7e82eec14a4bd37abfee",
     "credentialHelperSHA256": "ba966d0bae89eb55f0172eb7e3764fd204cd22bc3effb5d6da094217b4635b6f",
-    "zipSHA256": "0fb2af99e78f1a4786c4e2388ad44e4124bd9b830b41836be1afe8481ebb1bd0",
+    "zipSHA256": "61a462b186843f4239aa1485d3c05ae2cbe226c4710d8012a1430fa8cd0b02a1",
     "bundleName": "EFBY Git Desk.app"
   },
   "regressionAfterDiffSelection": {
@@ -251,5 +251,19 @@
     "removedAndModifiedLinesPreserved": true,
     "nativeTextBackgroundVerified": true,
     "syntaxAndPlusMarkersPreserved": true
+  },
+  "regressionAfterCompareFileNavigator": {
+    "passed": 72,
+    "skippedOptional": 2,
+    "suites": 17,
+    "seconds": 5.872,
+    "rightSideInventoryInOverlay": true,
+    "switchFilesWithoutClosingVerified": true,
+    "commitPairAndContextPreserved": true,
+    "navigatorNativeViewRetained": true,
+    "underlyingWorkspaceRetained": true,
+    "sharedPersistentWidth": true,
+    "syntheticVisualReviewed": true,
+    "interactivePersonalRepositoryQA": false
   }
 }

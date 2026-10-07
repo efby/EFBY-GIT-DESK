@@ -150,3 +150,10 @@ Validación: 73 pruebas registradas en 17 suites, 71 aprobadas y 2 optativas omi
 ### Líneas nuevas sin resaltado
 
 Las filas con documento anterior ausente y documento nuevo presente no tienen fondo tenue de fila ni resaltado fuerte de fragmentos. Se conservan el signo +, números, sintaxis y mapas verdes para navegación. Una línea vacía existente que recibe texto sigue considerándose modificada. Eliminaciones y modificaciones sobre líneas existentes conservan el comportamiento anterior. Pruebas de rangos y texto nativo verifican la excepción y preservación de selección. Regresión completa: 71 aprobadas, 2 optativas omitidas, 73 registradas en 17 suites, 6,012 segundos.
+
+
+### Navegación de archivos dentro del visor
+
+La capa de comparación incorpora un PersistentSplitView con FileDiffView a la izquierda y el DiffPane existente a la derecha. Reutiliza inventario, selección y encabezados de contexto; mantiene el panel nativo mientras cambia el archivo, reiniciando solo el estado del documento elegido. Comparte `detailWidth` persistente con el workspace, mínimo derecho 340 y reserva izquierda de 640 cuando haya espacio. Loading/error/resúmenes conservan el navegador. Cerrar/Esc mantiene el workspace subyacente y su selección.
+
+Validación: 74 pruebas registradas en 17 suites, 72 aprobadas y 2 optativas omitidas, 5,872 segundos. Nueva integración con Git real temporal compara dos commits y cambia entre README.md y script.py; verifica documentos nuevos, par/contexto intactos, panel derecho en la misma ventana y misma instancia, workspace conservado y cierre. Captura sintética del visor con el navegador derecho revisada. No se operó la ventana ni repositorios personales del usuario.

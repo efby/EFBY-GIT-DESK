@@ -56,6 +56,61 @@ import EfbyGitDeskInfrastructure
         #expect(!model.filesLoading)
     }
 
+    @Test func overlayKeepsFileNavigatorWhileSwitchingComparedFiles() async throws {
+        let fixture = try await GitFixture.make(); defer { fixture.cleanup() }
+        try fixture.write("README.md", "changed readme\n")
+        try fixture.write("script.py", "print('new')\n")
+        _ = try await fixture.git(["add", "--", "README.md", "script.py"])
+        _ = try await fixture.git(["commit", "-m", "Two files"])
+        let registry = try SQLiteRegistry(path: fixture.folder.appendingPathComponent("catalog.sqlite").path)
+        let service = DeskService(git: fixture.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
+        let repository = try await service.open(path: fixture.folder.path)
+        let model = DeskModel(service: service, terminalFactory: { PTYTerminal(shell: "/bin/sh", login: false) })
+        model.repositories = [repository]; model.select(repository.id)
+        try await waitUntil { !model.loading && model.commits.count == 2 }
+        model.chooseCommit(model.commits[0]); model.chooseCommit(model.commits[1])
+        try await waitUntil { !model.filesLoading && model.files.count == 2 }
+        let context = model.context, pair = model.orderedComparison
+        let readme = try #require(model.files.first { $0.name == "README.md" })
+        let script = try #require(model.files.first { $0.name == "script.py" })
+        model.loadDiff(id: readme.id)
+        try await waitUntil { !model.diffLoading && model.comparison != nil }
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1280, height: 800), styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false; defer { window.close() }
+        window.appearance = NSAppearance(named: .darkAqua)
+        let probe = NSView()
+        let hosting = NSHostingView(rootView: ComparisonWorkspaceLayer(model: model) { WorkspaceRetentionProbe(view: probe) })
+        hosting.appearance = window.appearance; hosting.sizingOptions = []; window.contentView = hosting
+        hosting.layoutSubtreeIfNeeded(); try await Task.sleep(for: .milliseconds(100)); hosting.layoutSubtreeIfNeeded()
+        func splits(_ view: NSView) -> [PersistentSplitContainer] {
+            ((view as? PersistentSplitContainer).map { [$0] } ?? []) + view.subviews.flatMap { splits($0) }
+        }
+        let split = try #require(splits(hosting).first)
+        let navigator = split.arrangedSubviews[1]
+        #expect(abs(navigator.frame.width - 340) < 1)
+        #expect(navigator.frame.minX > split.arrangedSubviews[0].frame.minX)
+        #expect(navigator.window === window)
+        model.loadDiff(id: script.id)
+        #expect(model.selectedFile == script.id)
+        #expect(model.diffLoading)
+        try await waitUntil { !model.diffLoading && model.comparison?.after?.contains("print('new')") == true }
+        try await Task.sleep(for: .milliseconds(100)); hosting.layoutSubtreeIfNeeded()
+        #expect(splits(hosting).first === split)
+        #expect(split.arrangedSubviews[1] === navigator)
+        #expect(probe.window === window)
+        #expect(model.context == context && model.orderedComparison == pair)
+        #expect(model.files.count == 2)
+        if let path = ProcessInfo.processInfo.environment["EFBY_FILE_NAVIGATOR_PREVIEW_PATH"] {
+            hosting.displayIfNeeded()
+            let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+            hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+            try #require(bitmap.representation(using: .png, properties: [:])).write(to: URL(fileURLWithPath: path))
+        }
+        model.closeDiff()
+        #expect(model.selectedFile == nil && model.files.count == 2)
+        #expect(model.context == context && model.orderedComparison == pair)
+    }
+
     @Test func workspaceTabsKeepStagedAndUnstagedInventoriesSeparate() async throws {
         let fixture = try await GitFixture.make(); defer { fixture.cleanup() }
         let catalog = FileManager.default.temporaryDirectory.appendingPathComponent("GitDeskTabsCatalog-" + UUID().uuidString)
