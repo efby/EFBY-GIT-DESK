@@ -1,6 +1,6 @@
-# EfbyGitDesk 0.1.0 — estado del MVP
+# EFBY Git Desk — registro de implementación y validación
 
-Fecha: 6 de octubre de 2026. Versión de desarrollo; H6 y el criterio de release permanecen pendientes.
+Registro iniciado el 6 de octubre de 2026, actualizado el 7 de octubre. Las secciones conservan resultados y decisiones de cada etapa; las entradas posteriores pueden sustituir decisiones previas. Para el comportamiento vigente consultar [13 — Resumen y continuidad](13-resumen-del-proyecto-y-continuidad.md). Releases publicadas no equivalen a aceptación completa H6.
 
 ## Decisiones adoptadas en la implementación
 
@@ -10,7 +10,7 @@ Fecha: 6 de octubre de 2026. Versión de desarrollo; H6 y el criterio de release
 - SQLite del sistema para catálogo, preferencias y journal. Migración v1 y rechazo de esquemas futuros; no se reanudan escrituras al reiniciar. La confianza incluye directorio canónico e identidad de dispositivo/inodo; sustituir `.git` revoca la confianza recordada.
 - Keychain para tokens y referencias de operación efímeras. El helper recibe una referencia, no el token en argumentos ni entorno. Validación estricta del origen de la solicitud de credenciales, de URLs REST y de enlaces de paginación; redirecciones HTTP deshabilitadas.
 - PTY propio con entrada/salida, resize, UTF-8, Ctrl+C y secuencias VT básicas. No se incorporó SwiftTerm ni otra dependencia externa. Las secuencias OSC no realizan acciones nativas; se revisa el pegado multilínea. No es todavía un emulador xterm completo.
-- Paquete `.app` para desarrollo, con helper y firma ad hoc verificada. Sin App Sandbox. Developer ID, notarización, DMG e Intel/universal no se declaran aprobados.
+- Paquete `.app` para desarrollo, con helper y firma ad hoc verificada. Sin App Sandbox. Esta fue la primera etapa; las verificaciones posteriores de Developer ID, notarización y universal se registran más abajo y en 12. El runtime Intel/macOS 14 sigue pendiente.
 
 ## Funciones y trazabilidad
 
@@ -35,7 +35,7 @@ Fecha: 6 de octubre de 2026. Versión de desarrollo; H6 y el criterio de release
 
 ## Pruebas ejecutadas
 
-**Resultado final:** 38 pruebas aprobadas en 10 suites, sin omisiones, en una ejecución conjunta con benchmark y Keychain habilitados. Tiempo de pruebas: 5,551 s (excluye compilación). La regresión posterior al aislamiento de clone aprobó los 36 casos esenciales; los dos optativos conservaron su evidencia de ejecución separada.
+**Resultado de la primera etapa:** 38 pruebas aprobadas en 10 suites, sin omisiones, en una ejecución conjunta con benchmark y Keychain habilitados. Tiempo de pruebas: 5,551 s (excluye compilación). La regresión posterior al aislamiento de clone aprobó los 36 casos esenciales; los dos optativos conservaron su evidencia de ejecución separada.
 
 Se implementaron pruebas Swift Testing de dominio, almacenamiento/procesos, integración Git, recuperación, terminal, REST con fixtures, coordinación, compatibilidad, rendimiento y Keychain. Cada fixture Git utiliza una carpeta temporal y configuración/identidad/hook/firma de prueba. El transporte a remoto local está habilitado solo en el adaptador de pruebas; la composición de la aplicación lo mantiene deshabilitado.
 
@@ -247,3 +247,30 @@ de carpetas de 2 a 0 y entre filas raíz de 4 a 1. Menos margen alrededor de
 Expandir todo y del texto de ayuda; se conserva tamaño de texto, selección,
 indentación y navegación. Dos pruebas existentes del panel aprobadas, captura
 nativa revisada y app de desarrollo recompilada.
+
+
+## Historial: búsqueda y selección — 7 de octubre de 2026
+
+- Buscar por SHA completo o prefijo hexadecimal de cuatro o más caracteres,
+  incluyendo SHA-256 y mayúsculas. Las otras consultas filtran mensajes.
+  Resolver solo commits alcanzables desde las referencias del historial;
+  rechazar blobs/árboles y no interpretar expresiones u opciones Git.
+- Cambiar o borrar filtros conserva selección, tarjetas, inventario y dirección
+  A→B. Los seleccionados fuera de la página/filtro quedan visibles como selección
+  conservada sin alterar offset ni contador de paginación.
+- Elegir commits desde filtros distintos consulta su orden topológico fuera de
+  MainActor, con límite de salida y aviso ante fallo. Sin ordenar, no compara.
+- Tercer clic sobre otro commit abre confirmación. Cancelar conserva el par;
+  aceptar selecciona solo el último pulsado para iniciar otra comparación.
+- Regresión Git detectada durante implementación: `log --no-walk --skip=0`
+  vuelve a recorrer ancestros. La consulta SHA no utiliza `--skip`; los candidatos
+  están acotados a 64 y caben en una página. Pruebas verifican también SHA de HEAD.
+- Evidencia: `scripts/test.sh`, 88 tests registrados en 20 suites, 86 aprobados,
+  2 opcionales omitidos (Keychain y benchmark), 6,947 s; compilación debug incluida.
+  Suite completa secuencial: 25,850 s. Una ejecución paralela previa detectó dos
+  aserciones de layout transitorias y el defecto de búsqueda de HEAD ya corregido;
+  la última ejecución habitual pasó completa. No se generó un DMG de esta rama.
+- Nuevos casos: SHA-1/SHA-256, prefijos/completo/case, mensajes, objetos no commit,
+  objetos inalcanzables, paginación, selección anterior a los primeros 100 commits,
+  búsqueda vacía/sin resultados, dirección con filtros separados en ambos órdenes,
+  confirmación aceptada y cancelada. Mantener pendientes de aceptación H6.

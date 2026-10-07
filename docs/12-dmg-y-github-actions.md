@@ -140,8 +140,7 @@ El artefacto [EFBY-Git-Desk-notarized-universal](https://github.com/efby/EFBY-GI
 ocupa 3,3 MB; digest del ZIP de Actions:
 `be521d4258bdd4a1d3bbe5b35122175d4e7b09b0c11f5054da3bfb2b55281877`.
 La descarga automática del navegador agotó su espera, por lo que no se verificó
-localmente ese ZIP descargado. El disparo automático tras merge sigue pendiente
-de integrar el PR #4; este ensayo utilizó la ejecución manual de `feature/mvp`.
+localmente ese ZIP descargado. Este ensayo utilizó la ejecución manual de `feature/mvp`. El disparo tras merge se verificó posteriormente con los PR #5 y #6; ver el corte actualizado al final.
 Los archivos `.env`, `.env.*` y `.secretos/` están excluidos de Git.
 No se ensayó el instalador descargado en otro Mac ni el runtime de Intel/macOS 14.
 
@@ -158,7 +157,7 @@ para evitar que dos ejecuciones elijan la misma versión. Las pruebas manuales
 en otras ramas solo producen artefactos; Run workflow en main también publica.
 No se agregan disparadores push ni tag.
 
-Implementación en el PR #4; pendiente de merge y primera ejecución de publicación.
+Implementación incorporada mediante el PR #4; la publicación se verificó tras la corrección del PR #5.
 El DMG remoto ya verificado de Release DMG #6 sigue disponible como artefacto,
 pero no se ha publicado retroactivamente como una versión.
 
@@ -181,5 +180,25 @@ correctos. Tiempo total 7m 48s incluida espera por el ensayo anterior.
 3,39 MB, digest ZIP de Actions
 `3a4c293a8d216a89e460fd4fe5811591bb9d2c6eae7cbcc7f471eee92c69810b`.
 La publicación en Releases se omitió correctamente porque la ejecución manual
-fue sobre fix/keychain-import. La integración del PR #5 y posterior publicación
-en main siguen pendientes. No se verificó la instalación de este ZIP en otro Mac.
+fue sobre fix/keychain-import. Este ensayo fue anterior al merge del PR #5 y su publicación; ambos quedaron verificados posteriormente. No se verificó la instalación de este ZIP en otro Mac.
+
+## Corte de distribución: 7 de octubre de 2026
+
+Se verificaron en GitHub las Releases públicas con DMG y checksum:
+
+| Release | Commit | Integración / ejecución |
+|---|---|---|
+| [v0.1.0](https://github.com/efby/EFBY-GIT-DESK/releases/tag/v0.1.0) | c04bdd4 | PR #5; [Merged PR DMG #6](https://github.com/efby/EFBY-GIT-DESK/actions/runs/37564816832), éxito, 5m 14s |
+| [v0.1.1](https://github.com/efby/EFBY-GIT-DESK/releases/tag/v0.1.1) | 15ac933 | PR #6; [Merged PR DMG #7](https://github.com/efby/EFBY-GIT-DESK/actions/runs/37566099456), éxito, 5m 39s |
+| [v0.1.2](https://github.com/efby/EFBY-GIT-DESK/releases/tag/v0.1.2) | 5e26fd3 | PR #7; [Merged PR DMG #8](https://github.com/efby/EFBY-GIT-DESK/actions/runs/37567560580), éxito, 3m 10s |
+
+SHA-256 del asset DMG de v0.1.1 informado por GitHub:
+`d264344b30f88272bb558a84bab650cf72306db2e48a39b8916f5e03d4c4a437`.
+Es el digest del DMG, distinto del digest de los ZIP de artefactos de Actions.
+No se afirma una instalación en otro Mac ni un nuevo cálculo local del asset.
+
+El PR #7 se fusionó en 5e26fd3 y su generación terminó correctamente. Se verificó
+la publicación v0.1.2 con DMG de 3,43 MB y checksum. SHA-256 del asset DMG informado
+por GitHub: `2ea305d849bab1c021f2e4f18f908122d2d8bbca4febc7b6cbf659176479593c`.
+El trabajo de generación tardó 2m 50s y publicación 9s. Estos apartados son
+evidencia fechada, no un monitor vivo de versiones posteriores.

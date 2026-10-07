@@ -1,5 +1,7 @@
 # UX, pantallas y flujos de EfbyGitDesk
 
+> Este documento conserva el diseño y los criterios iniciales. El comportamiento implementado y las decisiones vigentes se consolidan en [13 — Resumen y continuidad](13-resumen-del-proyecto-y-continuidad.md); las verificaciones están en [11](11-estado-mvp.md) y [12](12-dmg-y-github-actions.md). Propuesta, implementación y aceptación no son equivalentes.
+
 **Estado:** especificación inicial para revisión. **Nombre confirmado:** EfbyGitDesk. **Idioma inicial:** español. **Plataforma:** exclusivamente macOS. **Proveedor remoto:** Bitbucket Cloud. **Stack propuesto:** Swift y SwiftUI con integración AppKit; SwiftTerm es candidata para terminal, pendiente de evaluar. Se incluye editar el mensaje del último commit publicado.
 
 ## 1. Referencias y principios

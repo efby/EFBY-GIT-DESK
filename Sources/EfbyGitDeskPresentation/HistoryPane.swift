@@ -11,10 +11,21 @@ struct HistoryPane: View {
             if model.workingView { working }
             else {
                 HStack {
-                    TextField("Buscar mensajes en todo el historial", text: $model.search).textFieldStyle(.roundedBorder)
+                    TextField("Buscar por SHA o mensaje", text: $model.search).textFieldStyle(.roundedBorder)
                         .onChange(of: model.search) { _, _ in model.searchHistory() }
                     Text("\(model.commits.count) cargados").font(.caption).foregroundStyle(.secondary)
                 }.padding(12)
+                if !model.hiddenSelectedCommits.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Selección conservada fuera de la lista").font(.caption).foregroundStyle(.secondary)
+                        ForEach(model.hiddenSelectedCommits) { commit in
+                            Button { model.chooseCommit(commit) } label: {
+                                Label("\(commit.shortOID) · \(commit.message)", systemImage: "checkmark.circle.fill")
+                                    .font(.caption).lineLimit(1).foregroundStyle(.teal)
+                            }.buttonStyle(.plain).help("Quitar este commit de la selección")
+                        }
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 12).padding(.bottom, 8)
+                }
                 Divider()
                 if model.loading && model.commits.isEmpty {
                     ProgressView("Cargando historial…").frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -56,6 +67,12 @@ struct HistoryPane: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .alert("¿Limpiar la comparación anterior?", isPresented: $model.showReplaceComparison) {
+            Button("Cancelar", role: .cancel) { model.resolveComparisonReplacement(accept: false) }
+            Button("Limpiar y seleccionar") { model.resolveComparisonReplacement(accept: true) }
+        } message: {
+            Text("Se quitarán los dos commits anteriores y quedará seleccionado \(model.pendingComparisonCommit?.shortOID ?? ""). Después podrás elegir otro commit para comparar.")
+        }
         .task(id: model.commits) {
             let commits = model.commits
             let layout = await Task.detached { GraphLayout.make(commits) }.value

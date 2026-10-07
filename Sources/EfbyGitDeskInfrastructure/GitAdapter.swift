@@ -104,11 +104,46 @@ public actor GitAdapter: GitRepositoryPort {
         let tips = Array(Set(tips.filter(ComparisonPair.validOID))).sorted()
         guard !tips.isEmpty else { return [] }
         guard tips.count <= 2_000, offset >= 0 else { throw DeskError("Demasiadas referencias para esta consulta de historial.") }
+        let search = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Resolve only hexadecimal object prefixes, never user-supplied revision expressions.
+        if (4...64).contains(search.utf8.count), search.utf8.allSatisfy({
+            (48...57).contains($0) || (65...70).contains($0) || (97...102).contains($0)
+        }) {
+            let output = try complete(await run(["rev-parse", "--disambiguate=" + search.lowercased()], directory: repository.path))
+            let candidates = String(decoding: output, as: UTF8.self).split(separator: "\n").map(String.init).filter(ComparisonPair.validOID)
+            guard candidates.count <= 64 else { throw DeskError("El SHA abreviado coincide con demasiados objetos. Escribe más caracteres.") }
+            var matches: [String] = []
+            for oid in candidates {
+                let type = try await run(["cat-file", "-t", oid], directory: repository.path)
+                guard type.text.trimmingCharacters(in: .whitespacesAndNewlines) == "commit" else { continue }
+                let outside = try await run(["rev-list", "--count", oid, "--not"] + tips + ["--"], directory: repository.path)
+                if outside.text.trimmingCharacters(in: .whitespacesAndNewlines) == "0" { matches.append(oid) }
+            }
+            // --skip switches Git back to walking ancestors, even with --no-walk.
+            // At most 64 candidates fit in one page; never append pagination flags here.
+            guard !matches.isEmpty, offset == 0 else { return [] }
+            return try GitParsers.history(complete(await run([
+                "log", "--no-walk=sorted", "--date=iso-strict",
+                "--format=%H%x00%P%x00%s%x00%an%x00%aI%x00%D%x00"
+            ] + matches + ["--"], directory: repository.path)))
+        }
         var arguments = ["log", "--topo-order", "--date=iso-strict", "--max-count=100", "--skip=\(offset)",
                          "--format=%H%x00%P%x00%s%x00%an%x00%aI%x00%D%x00"]
         if !search.isEmpty { arguments += ["--fixed-strings", "--regexp-ignore-case", "--grep=" + search] }
         arguments += tips + ["--"]
         return try GitParsers.history(complete(await run(arguments, directory: repository.path)))
+    }
+    public func comparisonOrder(_ repository: Repository, tips: [String], selected: [String]) async throws -> [String] {
+        guard selected.count == 2, Set(selected).count == 2, selected.allSatisfy(ComparisonPair.validOID),
+              !tips.isEmpty, tips.count <= 2_000, tips.allSatisfy(ComparisonPair.validOID) else {
+            throw DeskError("La comparación requiere dos commits válidos y referencias de historial.")
+        }
+        // Keep exactly the history's topology, including unrelated branches and skewed dates.
+        let output = try complete(await run(["rev-list", "--topo-order"] + tips.sorted() + ["--"], directory: repository.path))
+        let wanted = Set(selected)
+        let order = String(decoding: output, as: UTF8.self).split(separator: "\n").map(String.init).filter { wanted.contains($0) }
+        guard order.count == 2 else { throw DeskError("Uno de los commits ya no pertenece al historial disponible.") }
+        return order.reversed()
     }
     public func changes(_ repository: Repository, context: DiffContext) async throws -> [FileChange] {
         if context == .staged || context == .working {

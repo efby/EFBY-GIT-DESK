@@ -35,6 +35,9 @@ La base de trabajo es la documentación Markdown de
 - [07 — Plan de desarrollo](docs/07-plan-de-desarrollo.md): hitos y normas del equipo.
 - [08 — Pruebas y trazabilidad](docs/08-pruebas-y-trazabilidad.md): T-01 a T-24 y cobertura RF/RNF.
 - [09 — Operación y distribución](docs/09-operacion-distribucion-y-manual.md): instalación, manual y release.
+- [13 — Resumen y continuidad](docs/13-resumen-del-proyecto-y-continuidad.md): comportamiento vigente, historial resumido, evidencia y pendientes.
+- [12 — DMG y GitHub Actions](docs/12-dmg-y-github-actions.md): distribución y Releases.
+- [11 — Registro del MVP](docs/11-estado-mvp.md): evolución histórica de implementación y pruebas.
 - [10 — Decisiones y riesgos](docs/10-decisiones-riesgos-y-fuentes.md): decisiones confirmadas, ADR propuestos y pendientes.
 
 Los Markdown de `docs/` son la fuente de requisitos versionable. Los mockups
@@ -150,8 +153,11 @@ Los paneles usan separadores nativos redimensionables: comparación A→B inicia
 - Abrir el compare como capa sobre toda el área de contenido de la misma ventana de la app, manteniendo montada la vista anterior y sus sesiones; no activar el fullscreen de macOS ni crear otra ventana. Resaltado léxico de código automático por extensión, seleccionable manualmente, acotado y calculado fuera de MainActor; conservar los signos/fondos del diff y no ejecutar código. Resaltar los fragmentos modificados en ambos documentos, rojo para eliminaciones y verde para adiciones; líneas idénticas no reciben marcas de texto. Las líneas totalmente nuevas sin equivalente en A reciben fondo verde tenue en B, sin resaltado fuerte de fragmentos; conservar el signo +, sintaxis y mapas verdes de navegación. Preservar selección manual y calcular el detalle fuera de MainActor con trabajo acotado.
 - Visor: realinear por contenido idéntico aunque cambie el número de línea, insertando huecos frente a adiciones/eliminaciones. No confiar en el emparejamiento posicional de hunks ni en líneas vacías como únicas anclas; conservar el orden de cada documento ante bloques cruzados. Trabajo acotado fuera de MainActor; si supera el límite, mostrar el diff original y un aviso explícito, sin una alineación falsa. Dos documentos completos en paralelo, líneas alineadas y scroll horizontal y vertical sincronizados; incluir mapas verticales detrás de los indicadores de scroll de ambas columnas (rojo: eliminado; verde: agregado), distancia dinámica desde el borde inferior visible al próximo cambio y navegación entre bloques; abrir solo tras elegir un archivo. A siempre es el commit inferior y B el superior en el historial, sin inversión manual ni dependencia del orden de clics.
 - Comparación: exactamente dos commits distintos, árboles A→B, también merges o
-  ramas sin relación de ancestro. Nunca merge-base/A...B. Un tercer clic conserva
-  el par. Separar comparación de commits, índice frente a HEAD y worktree frente a índice.
+  ramas sin relación de ancestro. Nunca merge-base/A...B. Un tercer clic sobre
+  otro commit pide confirmación para limpiar el par: cancelar conserva ambos;
+  aceptar selecciona solo el último commit pulsado. Filtrar o borrar la búsqueda
+  del historial conserva selección, metadatos y dirección A→B. Buscar SHA completo
+  o abreviado hexadecimal (mínimo cuatro caracteres), además de mensajes. Separar comparación de commits, índice frente a HEAD y worktree frente a índice.
 - Conservar todas las rutas cambiadas. Binarios, LFS, submódulos, modos, enlaces y
   archivos grandes muestran resumen/límite; declarar completitud y paginación.
   No convertir un límite del visor en omisión de archivos.
@@ -229,3 +235,14 @@ registrar como pendiente cualquier comprobación que no pueda ejecutarse.
 ## DMG y automatización de distribución
 
 Usar scripts/build-dmg.sh y docs/12-dmg-y-github-actions.md. Mantener separados el DMG local ad hoc, el firmado sin ticket y el notarizado. Release no degrada a unsigned ante secretos ausentes. Reutilizar los nombres de secretos de POSTMAN; no copiar ni versionar claves, certificados o valores. App y auxiliar universales, Developer ID/Hardened Runtime/timestamp al firmar; notarizar app antes del DMG, adjuntar tickets y validar el artefacto montado. No hacer push directo a main: integrar mediante PR. Generar DMG firmado/notarizado solo al fusionar un PR hacia main desde ramas del repositorio; no ejecutar empaquetado por otros pushes ni tags. Conservar ejecución manual y omitir firma para forks/Dependabot sin secretos; no usar pull_request_target con código externo. La publicación automática en GitHub Releases tras el merge a main fue autorizada: crear tag semántico incremental y adjuntar DMG y checksum solo tras firma/notarización/verificación correctas. La ejecución manual en main también publica; en otras ramas conserva solo artefactos. Un fallo de credenciales o del navegador no prueba configuración completada.
+
+## Continuidad documental
+
+Al terminar una historia, registrar comportamiento vigente, verificaciones y
+pendientes en docs/13-resumen-del-proyecto-y-continuidad.md; conservar la evidencia
+cronológica en 11 y la distribución en 12. Actualizar el índice y manual cuando
+corresponda. docs/evidencia/mvp-validacion.json contiene snapshots históricos:
+no reemplazar un resultado anterior por una comprobación que no se ejecutó.
+Fechar los estados de PR/Actions/Releases y distinguir digest DMG de digest ZIP.
+Nunca incluir valores de secretos, .env, certificados ni claves en documentos
+o capturas. La publicación del instalador no acredita por sí sola aceptación H6.

@@ -31,7 +31,7 @@ Para un paquete optimizado: `bash scripts/build-app.sh release`. El paquete incl
 
 Las pestañas **Pendientes**, **Preparados** e **Historial** cambian la vista del repositorio; las dos primeras muestran sus contadores. El menú **Ramas** permite consultar ramas locales/remotas y cambiar o borrar una rama local integrada. El panel lateral de área de trabajo se eliminó para ampliar el contenido.
 
-El repositorio ocupa todo el espacio disponible incluso sin seleccionar commits. Selecciona un commit (o dos para comparar A→B) y haz clic en un archivo para abrir su diff. El compare cubre el área de la misma ventana de la app, conservando montada la vista del repositorio y sus sesiones, sin activar el fullscreen de macOS. **Cerrar comparación** o `Esc` recuperan la vista anterior; cambiar la selección de commits cierra el visor.
+El repositorio ocupa todo el espacio disponible incluso sin seleccionar commits. Selecciona un commit (o dos para comparar A→B) y haz clic en un archivo para abrir su diff. El compare cubre el área de la misma ventana de la app, conservando montada la vista del repositorio y sus sesiones, sin activar el fullscreen de macOS. **Cerrar** o `Esc` recuperan la vista anterior; cambiar la selección de commits cierra el visor.
 
 Ambos documentos sincronizan el desplazamiento horizontal y vertical. El texto modificado dentro de cada línea tiene un fondo más intenso: rojo en lo eliminado y verde en lo agregado. Las líneas idénticas no se marcan; el resaltado conserva el formato de código y tu selección manual. **Modificaciones** indica cuántas líneas faltan, desde el borde inferior visible, para llegar al próximo cambio al bajar. El mapa vertical está detrás del indicador de scroll de cada columna: rojo indica líneas eliminadas y verde, agregadas. Arrastra el indicador o usa anterior/siguiente para navegar.
 
@@ -52,8 +52,9 @@ La prueba de Keychain crea y elimina únicamente un valor ficticio con identific
 
 El terminal implementa interacción y secuencias VT básicas; no ofrece aún compatibilidad completa con aplicaciones de pantalla completa ni todos los atributos ANSI. Los worktrees vinculados, clones shallow/parciales y submódulos abiertos individualmente se limitan a inspección; bare y sparse checkout se rechazan con diagnóstico. El diff textual tiene un límite visible de 2 MB y conserva el inventario de archivos.
 
-La conexión contra una cuenta real de Bitbucket, el acceso del helper a Keychain dentro de un paquete de distribución, la aceptación con VoiceOver, macOS 14/Intel y la notarización siguen pendientes. Esta versión se entrega para pruebas de desarrollo; todavía no cumple el criterio de release de H6.
+La conexión contra una cuenta real de Bitbucket, el acceso del helper a Keychain dentro de un paquete de distribución, la aceptación con VoiceOver y el runtime macOS 14/Intel siguen pendientes. La firma Developer ID, notarización y publicación en Releases ya se verificaron en CI. Esta versión se entrega para pruebas de desarrollo; todavía no cumple el criterio de release de H6.
 
+- [Estado consolidado y decisiones actuales](docs/13-resumen-del-proyecto-y-continuidad.md)
 - [Documentación](docs/README.md)
 - [Plan de desarrollo](docs/07-plan-de-desarrollo.md)
 - [Decisiones adoptadas](docs/11-estado-mvp.md)

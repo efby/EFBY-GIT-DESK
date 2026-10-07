@@ -12,13 +12,13 @@ struct DiffPane: View {
                     Spacer()
                 }
                 ForEach(Array(model.orderedComparison.reversed()), id: \.self) { oid in
-                    if let commit = model.commits.first(where: { $0.oid == oid }) {
+                    if let commit = model.commitDetails(oid) {
                         ComparisonCommitCard(commit: commit, revisionLabel: model.selectedOIDs.count == 2
                             ? (oid == model.orderedComparison.first ? "A · Inferior · Origen" : "B · Superior · Destino") : "Commit")
                     }
                 }
                 if model.selectedOIDs.count == 1,
-                   let commit = model.commits.first(where: { $0.oid == model.selectedOIDs[0] }), commit.parents.count > 1 {
+                   let commit = model.commitDetails(model.selectedOIDs[0]), commit.parents.count > 1 {
                     Picker("Padre del merge", selection: $model.parentIndex) {
                         ForEach(commit.parents.indices, id: \.self) { Text("Padre \($0 + 1)").tag($0) }
                     }.onChange(of: model.parentIndex) { _, _ in model.loadFiles() }
@@ -28,7 +28,13 @@ struct DiffPane: View {
                     .disabled(!model.mutable || model.snapshot.head.isEmpty)
             }.padding(14)
             Divider()
-            if model.context == nil {
+            if model.comparisonOrdering {
+                ProgressView("Ordenando commits del historial…").frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if model.comparisonOrderFailed {
+                ContentUnavailableView("No se pudo ordenar la comparación", systemImage: "exclamationmark.triangle",
+                    description: Text("Quita un commit de la selección y vuelve a intentarlo."))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if model.context == nil {
                 ContentUnavailableView("Selecciona un commit", systemImage: "arrow.left.arrow.right",
                     description: Text("Selecciona dos para comparar sus árboles A→B. Los cambios locales se revisan por separado."))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -320,5 +320,81 @@
     "syntheticVisualReviewed": true,
     "universalDMGRegeneratedAndVerified": true,
     "dmgSHA256": "ee9282f4051861f266e6216f191a71b688bb08f66028d5510d56c0d000877807"
+  },
+  "snapshot2026_10_07": {
+    "sourceCommit": "5e26fd3",
+    "interpretation": "Entradas anteriores son evidencia histórica, no estado actual. Ver docs/13-resumen-del-proyecto-y-continuidad.md.",
+    "localFullSuite": {
+      "registered": 83,
+      "passed": 81,
+      "skippedOptional": 2,
+      "suites": 19,
+      "seconds": 6.439
+    },
+    "targetedHeaderTest": {
+      "passed": 1,
+      "seconds": 0.606
+    },
+    "targetedCompactPanelTests": {
+      "passed": 2,
+      "seconds": 0.532
+    },
+    "latestCombinedManualBuild": {
+      "commit": "7ed8af5",
+      "run": "https://github.com/efby/EFBY-GIT-DESK/actions/runs/37564003950",
+      "status": "success",
+      "buildSeconds": 245,
+      "totalSecondsIncludingQueue": 468,
+      "notarizationVerifiedInCI": true
+    },
+    "publishedReleases": [
+      {
+        "tag": "v0.1.0",
+        "commit": "c04bdd4",
+        "run": "37564816832"
+      },
+      {
+        "tag": "v0.1.1",
+        "commit": "15ac933",
+        "run": "37566099456",
+        "dmgDigestReportedByGitHub": "d264344b30f88272bb558a84bab650cf72306db2e48a39b8916f5e03d4c4a437"
+      },
+      {
+        "tag": "v0.1.2",
+        "commit": "5e26fd3",
+        "run": "37567560580",
+        "dmgDigestReportedByGitHub": "2ea305d849bab1c021f2e4f18f908122d2d8bbca4febc7b6cbf659176479593c"
+      }
+    ],
+    "compactTreeMerge": {
+      "pr": 7,
+      "commit": "5e26fd3",
+      "run": "37567560580",
+      "statusAtObservation": "success",
+      "totalSeconds": 190
+    },
+    "providerAvatarsFetched": false,
+    "otherMacInstallVerified": false,
+    "intelRuntimeVerified": false,
+    "macOS14RuntimeVerified": false,
+    "h6AcceptanceComplete": false
+  },
+  "historySearchAndReplacement_2026_10_07": {
+    "registered": 88,
+    "passed": 86,
+    "skippedOptional": 2,
+    "suites": 20,
+    "seconds": 6.947,
+    "sequentialSeconds": 25.85,
+    "command": "scripts/test.sh",
+    "debugBuildPassed": true,
+    "signedDMGGeneratedForThisChange": false,
+    "coverage": [
+      "SHA-1/SHA-256 and uppercase prefixes",
+      "reachable commits only; no revision expressions",
+      "retained selection after clearing filter, including beyond first page",
+      "stable A-to-B topology across separate searches",
+      "third click confirmation accept/cancel"
+    ]
   }
 }
