@@ -28,7 +28,7 @@ jobs:
           done
       - name: Tests
         timeout-minutes: 10
-        run: scripts/test.sh
+        run: python3 scripts/test-ci.py
       - name: Import Developer ID and configure notarization
         env:
           MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
