@@ -1,0 +1,91 @@
+name: Release DMG
+on:
+  push:
+    tags: ['v[0-9]*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  release-dmg:
+    runs-on: macos-26
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Toolchain
+        run: scripts/select-xcode.sh
+      - name: Check signing configuration
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for field in MACOS_CERTIFICATE_P12_BASE64 MACOS_CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [[ -z "${!field}" ]]; then echo "Falta el secreto $field" >&2; exit 1; fi
+          done
+      - name: Tests
+        run: scripts/test.sh
+      - name: Import Developer ID and configure notarization
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          umask 077
+          signing_keychain="$RUNNER_TEMP/gitdesk-signing.keychain-db"
+          signing_password="$(openssl rand -base64 32)"
+          echo "::add-mask::$signing_password"
+          printf '%s' "$MACOS_CERTIFICATE_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/gitdesk-certificate.p12"
+          security create-keychain -p "$signing_password" "$signing_keychain"
+          security set-keychain-settings -lut 21600 "$signing_keychain"
+          security unlock-keychain -p "$signing_password" "$signing_keychain"
+          # Decrypt only through a pipe: no certificate password in process arguments.
+          openssl pkcs12 -in "$RUNNER_TEMP/gitdesk-certificate.p12" -passin env:MACOS_CERTIFICATE_PASSWORD -nodes | security import /dev/stdin -f pemseq -t agg -k "$signing_keychain" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$signing_password" "$signing_keychain" >/dev/null
+          security list-keychains -d user -s "$signing_keychain" "$HOME/Library/Keychains/login.keychain-db"
+          # notarytool reads its secure password prompt from stdin.
+          printf '%s\n' "$APPLE_APP_SPECIFIC_PASSWORD" | xcrun notarytool store-credentials efby-gitdesk-ci --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --keychain "$signing_keychain"
+          rm -f "$RUNNER_TEMP/gitdesk-certificate.p12"
+          echo "NOTARY_PROFILE=efby-gitdesk-ci" >> "$GITHUB_ENV"
+          echo "NOTARY_KEYCHAIN=$signing_keychain" >> "$GITHUB_ENV"
+          echo "APPLE_TEAM_ID=$APPLE_TEAM_ID" >> "$GITHUB_ENV"
+      - name: Version
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'El tag debe ser vX.Y.Z'; exit 1; }
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+      - name: Signed and notarized universal DMG
+        run: scripts/build-dmg.sh --universal --notarize
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EFBY-Git-Desk-notarized-universal
+          path: |
+            dist/EFBY-Git-Desk.dmg
+            dist/EFBY-Git-Desk.dmg.sha256
+            dist/EFBY-Git-Desk/app-notary.json
+            dist/EFBY-Git-Desk/dmg-notary.json
+          if-no-files-found: error
+      - name: Draft GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/EFBY-Git-Desk.dmg
+            dist/EFBY-Git-Desk.dmg.sha256
+      - name: Remove temporary credentials
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/gitdesk-signing.keychain-db" || true
+          rm -f "$RUNNER_TEMP/gitdesk-certificate.p12"

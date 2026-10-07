@@ -1,6 +1,6 @@
 # Operación, distribución y manual previsto
 
-Versión 0.1 · 6 de octubre de 2026 · Describe el comportamiento esperado de la futura aplicación; todavía no existe un instalador.
+Versión 0.1 · 6 de octubre de 2026 · Describe el comportamiento esperado y la distribución de desarrollo; consultar el estado del MVP y la evidencia antes de distribuir.
 
 ## 1. Instalación y requisitos
 
@@ -100,3 +100,6 @@ El botón **Cerrar**, con fondo rojo, vuelve al repositorio; Esc mantiene la mis
 
 
 El visor de diferencias mantiene **Comparación A→B** a la derecha, con sus commits y lista de archivos. Haz clic en otro archivo para sustituir los documentos sin cerrar la comparación. El archivo actual queda marcado y el separador permite adaptar el ancho, compartido con el panel de la pantalla principal y guardado entre sesiones. **Cerrar** o Esc vuelve al workspace con la selección de commits conservada. También funciona con el detalle de un commit y las comparaciones del índice/working tree.
+
+
+El DMG de desarrollo universal y los workflows de CI/release se documentan en [DMG y GitHub Actions](12-dmg-y-github-actions.md). El paquete local está verificado con firma ad hoc; la notarización Apple y la configuración efectiva de GitHub siguen pendientes.

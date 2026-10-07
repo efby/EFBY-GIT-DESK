@@ -18,3 +18,9 @@ id_ed25519
 # Artefactos de compilación local
 dist/
 .swiftpm/
+
+# Credenciales de firma y llaveros temporales
+*.p12
+*.pfx
+*.keychain
+*.keychain-db

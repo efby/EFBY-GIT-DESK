@@ -223,3 +223,8 @@ registrar como pendiente cualquier comprobación que no pueda ejecutarse.
   pérdida de datos, ejecución sin confianza, secretos expuestos o publicación
   incorrecta. Conservar versiones/licencias, resultados, límites, notas, hashes
   y recuperación ensayada según 08 y 09.
+
+
+## DMG y automatización de distribución
+
+Usar scripts/build-dmg.sh y docs/12-dmg-y-github-actions.md. Mantener separados el DMG local ad hoc, el firmado sin ticket y el notarizado. Release no degrada a unsigned ante secretos ausentes. Reutilizar los nombres de secretos de POSTMAN; no copiar ni versionar claves, certificados o valores. App y auxiliar universales, Developer ID/Hardened Runtime/timestamp al firmar; notarizar app antes del DMG, adjuntar tickets y validar el artefacto montado. Tags generan borradores; no publicar una versión sin autorización. Un fallo de credenciales o del navegador no prueba configuración completada.
