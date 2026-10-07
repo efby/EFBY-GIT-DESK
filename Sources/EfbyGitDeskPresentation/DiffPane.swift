@@ -35,7 +35,7 @@ struct DiffPane: View {
             } else {
                 VStack(spacing: 0) {
                     Text("Haz clic en un archivo para ver sus diferencias.")
-                        .font(.caption).foregroundStyle(.secondary).padding(12)
+                        .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12).padding(.vertical, 6)
                     if model.files.isEmpty && !model.filesLoading {
                         ContentUnavailableView("Sin archivos cambiados", systemImage: "doc", description: Text("No hay diferencias en esta selección."))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -47,11 +47,11 @@ struct DiffPane: View {
     }
     private var fileList: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 1) {
                 Button("Expandir todo") { collapsed.removeAll() }
-                    .buttonStyle(.plain).padding(.bottom, 8)
+                    .buttonStyle(.plain).padding(.bottom, 3)
                 ComparisonTreeRows(model: model, nodes: ComparisonFileNode.make(model.files), collapsed: $collapsed)
-            }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
+            }.padding(.horizontal, 12).padding(.vertical, 6).frame(maxWidth: .infinity, alignment: .leading)
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

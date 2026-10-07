@@ -12,14 +12,14 @@ struct ComparisonTreeRows: View {
                         Image(systemName: symbol(file.status)).foregroundStyle(tint(file.status))
                         Text(node.name).lineLimit(1).truncationMode(.middle)
                         Spacer(minLength: 0)
-                    }.padding(.vertical, 7).padding(.horizontal, 8)
+                    }.padding(.vertical, 3).padding(.horizontal, 8)
                         .contentShape(Rectangle())
                         .background(model.selectedFile == file.id ? Color.accentColor.opacity(0.22) : .clear)
                 }.buttonStyle(.plain).help(file.name)
                     .accessibilityIdentifier("comparisonFile-" + file.id)
                     .accessibilityLabel("\(file.status): Ver diferencias de \(file.name)")
             } else {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 0) {
                     Button { toggle(node.id) } label: {
                         HStack(spacing: 8) {
                             Image(systemName: collapsed.contains(node.id) ? "chevron.right" : "chevron.down")
@@ -27,7 +27,7 @@ struct ComparisonTreeRows: View {
                             Text(node.name).lineLimit(1)
                             Text("\(node.count)").font(.caption).foregroundStyle(.secondary)
                             Spacer(minLength: 0)
-                        }.padding(.vertical, 7).foregroundStyle(.secondary).contentShape(Rectangle())
+                        }.padding(.vertical, 3).foregroundStyle(.secondary).contentShape(Rectangle())
                     }.buttonStyle(.plain)
                         .accessibilityLabel("\(collapsed.contains(node.id) ? "Expandir" : "Contraer") carpeta \(node.name), \(node.count) archivos")
                     if !collapsed.contains(node.id) {
