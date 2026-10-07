@@ -9,16 +9,21 @@ struct FileDiffView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            HStack(spacing: 12) {
+                Button("Cerrar comparación", systemImage: "xmark", action: model.closeDiff)
+                    .buttonStyle(.borderedProminent).controlSize(.large).tint(.teal)
+                    .fixedSize().layoutPriority(1)
+                    .keyboardShortcut(.escape, modifiers: [])
+                    .accessibilityIdentifier("closeComparison")
+                    .help("Cerrar solo el visor y volver al repositorio (Esc)")
                 Label(file.name, systemImage: "doc.text")
-                    .font(.caption.monospaced()).lineLimit(2).textSelection(.enabled)
-                Spacer()
+                    .font(.caption.monospaced()).lineLimit(1).truncationMode(.middle)
+                    .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                 Picker("Formato de código", selection: $model.syntaxLanguage) {
                     ForEach(CodeLanguage.allCases) { language in Text(language.rawValue).tag(language) }
                 }.labelsHidden().frame(width: 180).help("Detectar el lenguaje por extensión o elegirlo manualmente")
                 Text(model.detectedLanguageLabel).font(.caption).foregroundStyle(.secondary)
-                Button("Volver al repositorio", systemImage: "arrow.backward", action: model.closeDiff)
-                    .keyboardShortcut(.escape, modifiers: []).help("Cerrar la comparación y volver a la vista anterior")
+                Text("Esc para volver").font(.caption).foregroundStyle(.secondary).fixedSize()
             }.padding(12)
             Divider()
             if model.diffLoading {

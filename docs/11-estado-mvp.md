@@ -106,3 +106,9 @@ La cabecera informa dinámicamente las líneas que faltan desde la última fila 
 Pruebas nuevas cubren marcas de adición, eliminación y sustitución, cálculo de distancia, cambios visibles, fin de cambios, actualización al mover cualquiera de las dos columnas y proporción del indicador al pasar a un documento corto. Se revisó una captura sintética del visor completo con ambas pistas verticales.
 
 La suite general aprobó 54 pruebas, con 2 optativas omitidas (56 registradas, 14 suites, 5,252 s). El bundle se reconstruye en release arm64 con firma ad hoc de desarrollo.
+
+## Cierre visible del visor
+
+El botón «Cerrar comparación», con una X y fondo destacado, está al inicio de la cabecera del visor. Conserva su ancho aunque la ruta sea larga; la ruta se trunca en el medio. «Esc para volver» recuerda el atajo. El botón y Esc ejecutan `closeDiff`, que cierra únicamente la capa de comparación y conserva la ventana, el repositorio y las sesiones. Está disponible también durante la carga y en los estados de error o resumen.
+
+Validación: 6 pruebas dirigidas en 2 suites aprobaron (0,884 s), incluidas conservación de ventana/contexto y persistencia del visor cerrado tras refresh. Se revisó una captura sintética del visor con el nuevo botón.

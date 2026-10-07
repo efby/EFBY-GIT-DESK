@@ -41,9 +41,9 @@
     "architecture": "arm64",
     "signature": "ad-hoc",
     "signatureVerified": true,
-    "binarySHA256": "8964b23e8f6ac8b45bd073ebbcfcbfcf3ae2afccfb6e5a84d3a8006acba7dcdc",
+    "binarySHA256": "eca2a3d257986597811f6ae2b01e5615ec035903fedfd6537f0d56c1be9708c1",
     "credentialHelperSHA256": "cc10329c338a5e1e119b380a15fd631cb96caaf92a0e685a1988664cf6066ed3",
-    "zipSHA256": "40951fdd83fe320ad16db5e73475049f753ed0df5487d1b43ddad3690af24513"
+    "zipSHA256": "bff857e5300b9839ba44b7ac2ea1534979834d6b5f60c0d4a52a935a13970f07"
   },
   "regressionAfterDiffSelection": {
     "passed": 37,
@@ -149,6 +149,21 @@
     "horizontalAndVerticalSyncPreserved": true,
     "mapSegments": 240,
     "visualSyntheticFixtureReviewed": true,
+    "interactivePersonalRepositoryQA": false
+  },
+  "regressionAfterVisibleCloseButton": {
+    "passed": 6,
+    "suites": 2,
+    "seconds": 0.884,
+    "targetedSuites": [
+      "CodeHighlightingTests",
+      "DiffSelectionTests"
+    ],
+    "leadingCloseButtonVisualFixtureReviewed": true,
+    "repositoryNativeViewAndWindowRetained": true,
+    "selectionAndTerminalContextRetained": true,
+    "escapeShortcutAvailable": true,
+    "closeButtonHasReservedWidth": true,
     "interactivePersonalRepositoryQA": false
   }
 }
