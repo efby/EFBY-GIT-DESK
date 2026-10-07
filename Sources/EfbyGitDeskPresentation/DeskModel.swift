@@ -57,6 +57,7 @@ import EfbyGitDeskDomain
     public var profileID = ""
     public var busy = false
     public var gitVersion = ""
+    public var gitExecutable = ""
     public var status = "Abre un repositorio para comenzar."
     public var error: String?
     public var terminalVisible = false
@@ -147,7 +148,6 @@ import EfbyGitDeskDomain
     public var activeTerminalCount: Int { terminals.values.flatMap { $0 }.filter { $0.driver.running }.count }
     public func load() async {
         do {
-            gitVersion = try await service.git.version()
             repositories = try await service.registry.repositories()
             folderRoots = try await service.folderRoots()
             profiles = try await service.registry.profiles()
@@ -159,6 +159,11 @@ import EfbyGitDeskDomain
             branchWidth = Double(try await service.registry.preference("panel.branches") ?? "") ?? 180
             detailWidth = Self.panelWidth(try await service.registry.preference("workspace.detailWidth"), default: 340, minimum: 340)
             sidebarWidth = Self.panelWidth(try await service.registry.preference("workspace.sidebarWidth"), default: 340, minimum: 210, maximum: 340)
+            if let savedGit = try await service.registry.preference("git.executable"), !savedGit.isEmpty {
+                try await service.git.configureExecutable(path: savedGit)
+            }
+            gitVersion = try await service.git.version()
+            gitExecutable = try await service.git.executablePath()
             let savedSelection = try await service.registry.preference("repository.selected")
             if let savedSelection, repositories.contains(where: { $0.id == savedSelection }) {
                 _ = try await service.open(path: savedSelection)
@@ -193,6 +198,25 @@ import EfbyGitDeskDomain
             }
             self.status = "\(result.repositories.count) repositorios encontrados en " + URL(fileURLWithPath: result.root).lastPathComponent
             if !result.issues.isEmpty { self.error = result.issues.prefix(12).joined(separator: "\n") }
+        }
+    }
+    public func chooseGitExecutable() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true; panel.canChooseDirectories = false; panel.allowsMultipleSelection = false
+        panel.title = "Selecciona el ejecutable Git de tu cuenta"
+        if panel.runModal() == .OK, let url = panel.url { configureGit(path: url.path) }
+    }
+    public func configureGit(path: String) {
+        guard !busy else { return }
+        generation += 1; query?.cancel(); searchQuery?.cancel(); loading = false
+        perform("Validando Git…", refreshAfter: false) {
+            let preferred = path.trimmingCharacters(in: .whitespacesAndNewlines)
+            try await self.service.git.configureExecutable(path: preferred.isEmpty ? nil : preferred)
+            self.gitVersion = try await self.service.git.version()
+            self.gitExecutable = try await self.service.git.executablePath()
+            try await self.service.registry.setPreference("git.executable", value: preferred)
+            self.status = "Git disponible para tu cuenta: " + self.gitExecutable
+            self.refresh(forceHistory: true)
         }
     }
     public func select(_ id: String) {

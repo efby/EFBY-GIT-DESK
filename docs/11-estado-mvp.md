@@ -274,3 +274,27 @@ nativa revisada y app de desarrollo recompilada.
   objetos inalcanzables, paginación, selección anterior a los primeros 100 commits,
   búsqueda vacía/sin resultados, dirección con filtros separados en ambos órdenes,
   confirmación aceptada y cancelada. Mantener pendientes de aceptación H6.
+
+
+## Git en cuentas restringidas — 7 de octubre de 2026
+
+El reporte sobre v0.1.4 mostró «El ejecutable encontrado no es Git» en un equipo
+con Xcode sin licencia aceptada. La composición solo elegía el primer archivo
+executable entre tres rutas, con `/usr/bin/git` como fallback. Se sustituye por
+búsqueda y validación asíncronas de instalaciones del usuario; los launchers/rutas
+de herramientas Apple y sus enlaces se excluyen antes de ejecutar. No se intenta
+aceptar licencias ni se solicitan permisos de administrador.
+
+Ajustes → Git ofrece archivo, ruta absoluta y detección automática. Se persiste
+solo una configuración validada; la ruta guardada se restaura antes de reabrir
+repositorios. Si la configuración falla, la aplicación y el catálogo siguen
+accesibles. Git mínimo 2.40; no se instala ni actualiza Git. No se ejecutan perfiles
+de shell ni se modifica el contenido de los repositorios para resolver la herramienta.
+
+Verificado: `scripts/test.sh`, 94 pruebas registradas en 21 suites, 92 aprobadas y
+2 opcionales omitidas, 7,457 s; build debug incluido. Se cubren PATH relativo/vacío,
+duplicados, symlinks a Apple, fallback desde un candidato inválido, ruta con espacios,
+versión antigua, configuración anterior preservada, restauración antes de abrir
+repositorio y catálogo accesible ante Git no disponible. Las fixtures no equivalen
+a una prueba en la cuenta restringida del equipo del reporte. Este cambio se entrega
+por PR; el DMG publicado v0.1.4 todavía tiene la detección anterior.

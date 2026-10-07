@@ -125,6 +125,12 @@ Los paneles usan separadores nativos redimensionables: comparación A→B inicia
 - Serializar mutaciones por `commonGitDir` canónico y mantener el permiso durante
   los `await`. Revalidar precondiciones antes de escribir; descartar resultados
   antiguos por generación y reconciliar cambios de terminal, IDE u otros clientes.
+- Ejecutar el Git independiente ya disponible para la cuenta del usuario. Detectar
+  PATH y rutas habituales o permitir ruta absoluta persistida en Ajustes → Git.
+  No invocar /usr/bin/git, enlaces al launcher ni herramientas de Xcode/Apple
+  durante detección/configuración; no aceptar licencias, instalar Git ni pedir
+  privilegios de administrador. Validar versión y mantener catálogo/ajustes
+  accesibles si falta un Git compatible. Restaurar la ruta antes de abrir repositorios.
 - Git es la fuente de verdad de archivos, índice, objetos y referencias. No escribir
   directamente en `.git` para simular operaciones. Metadatos/cachés son separados;
   migraciones no modifican repositorios y las referencias de recuperación no son caché.

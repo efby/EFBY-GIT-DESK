@@ -6,7 +6,7 @@ Versión 0.1 · 6 de octubre de 2026 · Describe el comportamiento esperado y la
 
 ## 1. Instalación y requisitos
 
-La propuesta técnica es macOS 14 o posterior, binario arm64/x86_64 y Git instalado separadamente. Las versiones mínimas finales se fijan tras H0. La aplicación comprueba Git al arrancar: ejecutable válido, versión y capacidades necesarias. Si la instalación de Apple requiere Command Line Tools, se explica cómo obtenerlas; EFBY Git Desk no instala ni reemplaza Git silenciosamente.
+La propuesta técnica es macOS 14 o posterior, binario arm64/x86_64 y Git instalado separadamente. Las versiones mínimas finales se fijan tras H0. La aplicación comprueba Git al arrancar: ejecutable válido, versión y capacidades necesarias. Para ejecutar la app distribuida no se requiere Xcode ni aceptar su licencia. Se busca un Git independiente accesible al usuario en PATH y ubicaciones habituales, omitiendo /usr/bin/git, enlaces a ese launcher y rutas de herramientas de Apple. Ajustes → Git permite seleccionar y guardar una ruta absoluta existente. La validación exige Git 2.40 o posterior; un archivo inválido, sin permisos o antiguo no sustituye al Git previamente válido. El catálogo y los ajustes siguen accesibles ante un fallo de detección. EFBY Git Desk no instala ni reemplaza Git, no cambia permisos y no solicita privilegios de administrador.
 
 Distribuir un `.app` en DMG o ZIP firmado con Developer ID, Hardened Runtime y notarización; verificar firmas y ticket del artefacto final. Apple documenta los requisitos de firma, runtime y timestamp para notarización. [Notarización de software macOS](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution).
 
