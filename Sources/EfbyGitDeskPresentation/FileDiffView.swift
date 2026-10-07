@@ -4,6 +4,7 @@ import EfbyGitDeskDomain
 struct FileDiffView: View {
     @Bindable var model: DeskModel
     let file: FileChange
+    @State private var jump: DiffJumpTarget?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,7 +37,9 @@ struct FileDiffView: View {
                         .frame(maxWidth: .infinity, alignment: .leading).padding(8)
                 }
                 if model.diffAligned && comparison.before != nil && comparison.after != nil && !comparison.patch.contains("[Diff truncado") {
-                    ParallelDiffView(rows: model.diffRows, syntax: model.diffSyntax).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    DiffChangesSection(blocks: model.diffBlocks, map: model.diffMap, rowCount: model.diffRows.count, jump: $jump)
+                    Divider()
+                    ParallelDiffView(rows: model.diffRows, syntax: model.diffSyntax, jump: jump).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     TextPreview(text: model.diffText).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }

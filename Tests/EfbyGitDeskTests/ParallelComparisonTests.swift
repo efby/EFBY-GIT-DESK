@@ -101,7 +101,7 @@ struct ParallelComparisonTests {
         }
     }
 
-    @MainActor @Test func nativeColumnsSynchronizeVerticalScrolling() throws {
+    @MainActor @Test func nativeColumnsSynchronizeBothAxesAndNavigateChanges() throws {
         let lines = (1...100).map { "line \($0)" }.joined(separator: "\n")
         var changed = lines.components(separatedBy: "\n")
         changed[2] = "modified line 3"; changed.insert("inserted line", at: 3)
@@ -109,15 +109,31 @@ struct ParallelComparisonTests {
             patch: "@@ -1,6 +1,7 @@\n line 1\n line 2\n-line 3\n+modified line 3\n+inserted line\n line 4\n line 5\n line 6\n")
         let container = ParallelDiffContainer()
         container.frame = NSRect(x: 0, y: 0, width: 900, height: 500)
-        container.update(try DiffAlignment.make(comparison))
+        var rows = try DiffAlignment.make(comparison)
+        rows[0] = DiffRow(before: String(repeating: "long", count: 150), after: "short", beforeNumber: 1, afterNumber: 1)
+        container.update(rows)
         container.layoutSubtreeIfNeeded()
         let scrolls = container.subviews.compactMap { $0 as? NSScrollView }
         #expect(scrolls.count == 2)
         #expect(abs(scrolls[0].frame.width - scrolls[1].frame.width) < 1)
-        scrolls[0].contentView.scroll(to: NSPoint(x: 0, y: 180))
+        scrolls[0].contentView.scroll(to: NSPoint(x: 200, y: 180))
         #expect(abs(scrolls[0].contentView.bounds.origin.y - scrolls[1].contentView.bounds.origin.y) < 1)
-        scrolls[1].contentView.scroll(to: NSPoint(x: 30, y: 360))
+        #expect(abs(scrolls[1].contentView.bounds.origin.x - 200) < 1)
+        scrolls[1].contentView.scroll(to: NSPoint(x: 400, y: 360))
         #expect(abs(scrolls[0].contentView.bounds.origin.y - scrolls[1].contentView.bounds.origin.y) < 1)
+        #expect(abs(scrolls[0].contentView.bounds.origin.x - 400) < 1)
+        #expect(abs(scrolls[0].contentView.bounds.origin.x - scrolls[1].contentView.bounds.origin.x) < 1)
+        #expect(scrolls[0].documentView?.frame.width == scrolls[1].documentView?.frame.width)
+        let jump = DiffJumpTarget(row: 35)
+        container.jump(to: jump)
+        #expect(abs(scrolls[0].contentView.bounds.origin.y - 630) < 1)
+        #expect(abs(scrolls[1].contentView.bounds.origin.y - 630) < 1)
+        #expect(abs(scrolls[1].contentView.bounds.origin.x - 400) < 1)
+        scrolls[1].contentView.scroll(to: .zero)
+        container.jump(to: jump) // Updating an unchanged target must preserve manual scrolling.
+        #expect(scrolls[0].contentView.bounds.origin == .zero)
+        container.jump(to: DiffJumpTarget(row: 35))
+        #expect(abs(scrolls[1].contentView.bounds.origin.y - 630) < 1)
         if let path = ProcessInfo.processInfo.environment["EFBY_DIFF_PREVIEW_PATH"] {
             let window = NSWindow(contentRect: container.frame, styleMask: .borderless, backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false

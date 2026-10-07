@@ -12,64 +12,68 @@ public struct WorkspaceView: View {
     @Environment(\.scenePhase) private var phase
     public init(model: DeskModel) { self.model = model }
     public var body: some View {
-        NavigationSplitView {
-            RepositorySidebar(model: model)
-                .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 340)
-        } detail: {
-            VStack(spacing: 0) {
-                RepositoryTabs(model: model)
-                topBar
-                Divider()
-                if let repository = model.repository {
-                    if !repository.trusted {
-                        HStack {
-                            Label("Inspección segura · Confianza pendiente", systemImage: "lock.shield")
-                            Spacer()
-                            Button("Confiar y habilitar operaciones") { trusting = true }.buttonStyle(.borderedProminent)
-                        }.padding(12).background(.orange.opacity(0.12))
-                    } else if !model.remoteNames.isEmpty && !model.remoteSupported {
-                        Label("Este remoto no es Bitbucket Cloud. Historial y operaciones locales disponibles.", systemImage: "info.circle")
-                            .font(.caption).frame(maxWidth: .infinity, alignment: .leading).padding(10)
-                    }
-                    if let reason = repository.inspectionReason {
-                        Label(reason, systemImage: "info.circle").font(.caption).padding(10)
-                    } else if repository.linkedWorktree {
-                        Label("Worktree vinculado: solo inspección en este MVP.", systemImage: "info.circle").font(.caption).padding(10)
-                    }
-                    HSplitView {
-                        BranchSidebar(model: model).frame(minWidth: 150, idealWidth: model.branchWidth, maxWidth: 250)
-                            .background(PanelWidthObserver { model.branchWidth = $0; model.persistLayout() })
-                        HistoryPane(model: model).frame(minWidth: 370)
-                        DiffPane(model: model).frame(minWidth: 340, idealWidth: model.detailWidth)
-                            .background(PanelWidthObserver { model.detailWidth = $0; model.persistLayout() })
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    if model.terminalVisible {
-                        Divider()
-                        TerminalPane(model: model).frame(height: model.terminalHeight)
-                    }
-                } else { welcome }
-                Divider()
-                HStack(spacing: 10) {
-                    if model.busy { ProgressView().controlSize(.small); Button("Cancelar") { model.cancelOperation() } }
-                    Text(model.status).font(.caption).lineLimit(2).textSelection(.enabled)
-                    Spacer()
-                    if !model.snapshot.upstream.isEmpty {
-                        Text("↑ \(model.snapshot.ahead.map(String.init) ?? "?")  ↓ \(model.snapshot.behind.map(String.init) ?? "?") · caché local")
-                            .font(.caption.monospaced()).foregroundStyle(.secondary)
-                    }
-                }.padding(.horizontal, 14).padding(.vertical, 8)
-            }.frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(nsColor: .windowBackgroundColor))
+        ComparisonWorkspaceLayer(model: model) {
+            NavigationSplitView {
+                RepositorySidebar(model: model)
+                    .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 340)
+            } detail: {
+                VStack(spacing: 0) {
+                    RepositoryTabs(model: model)
+                    topBar
+                    Divider()
+                    if let repository = model.repository {
+                        if !repository.trusted {
+                            HStack {
+                                Label("Inspección segura · Confianza pendiente", systemImage: "lock.shield")
+                                Spacer()
+                                Button("Confiar y habilitar operaciones") { trusting = true }.buttonStyle(.borderedProminent)
+                            }.padding(12).background(.orange.opacity(0.12))
+                        } else if !model.remoteNames.isEmpty && !model.remoteSupported {
+                            Label("Este remoto no es Bitbucket Cloud. Historial y operaciones locales disponibles.", systemImage: "info.circle")
+                                .font(.caption).frame(maxWidth: .infinity, alignment: .leading).padding(10)
+                        }
+                        if let reason = repository.inspectionReason {
+                            Label(reason, systemImage: "info.circle").font(.caption).padding(10)
+                        } else if repository.linkedWorktree {
+                            Label("Worktree vinculado: solo inspección en este MVP.", systemImage: "info.circle").font(.caption).padding(10)
+                        }
+                        HSplitView {
+                            BranchSidebar(model: model).frame(minWidth: 150, idealWidth: model.branchWidth, maxWidth: 250)
+                                .background(PanelWidthObserver { model.branchWidth = $0; model.persistLayout() })
+                            HistoryPane(model: model).frame(minWidth: 370)
+                            DiffPane(model: model).frame(minWidth: 340, idealWidth: model.detailWidth)
+                                .background(PanelWidthObserver { model.detailWidth = $0; model.persistLayout() })
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        if model.terminalVisible {
+                            Divider()
+                            TerminalPane(model: model).frame(height: model.terminalHeight)
+                        }
+                    } else { welcome }
+                    Divider()
+                    HStack(spacing: 10) {
+                        if model.busy { ProgressView().controlSize(.small); Button("Cancelar") { model.cancelOperation() } }
+                        Text(model.status).font(.caption).lineLimit(2).textSelection(.enabled)
+                        Spacer()
+                        if !model.snapshot.upstream.isEmpty {
+                            Text("↑ \(model.snapshot.ahead.map(String.init) ?? "?")  ↓ \(model.snapshot.behind.map(String.init) ?? "?") · caché local")
+                                .font(.caption.monospaced()).foregroundStyle(.secondary)
+                        }
+                    }.padding(.horizontal, 14).padding(.vertical, 8)
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(nsColor: .windowBackgroundColor))
+            }
         }
-        .background(ComparisonWindowPresenter(model: model, file: model.files.first { $0.id == model.selectedFile }))
+
         .tint(.teal).preferredColorScheme(.dark)
         .frame(minWidth: 1120, minHeight: 700)
         .toolbar {
-            ToolbarItemGroup {
-                Button("Abrir", systemImage: "folder.badge.plus") { model.chooseRepository() }.keyboardShortcut("o")
-                Button("Clonar", systemImage: "square.and.arrow.down") { cloning = true }
-                Button("Conexiones", systemImage: "network") { connections = true }
+            if model.selectedFile == nil {
+                ToolbarItemGroup {
+                    Button("Abrir", systemImage: "folder.badge.plus") { model.chooseRepository() }.keyboardShortcut("o")
+                    Button("Clonar", systemImage: "square.and.arrow.down") { cloning = true }
+                    Button("Conexiones", systemImage: "network") { connections = true }
+                }
             }
         }
         .task {

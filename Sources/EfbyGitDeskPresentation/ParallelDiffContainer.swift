@@ -6,6 +6,7 @@ import AppKit
     private var rows: [DiffRow]?
     private var syntax: DiffSyntax?
     private var synchronizing = false
+    private var lastJump: UUID?
 
     init() {
         super.init(frame: .zero)
@@ -42,17 +43,21 @@ import AppKit
         guard rows != newRows || self.syntax != syntax else { return }
         rows = newRows; self.syntax = syntax
         synchronizing = true
-        render(newRows, in: left, before: true)
-        render(newRows, in: right, before: false)
+        let longest = newRows.reduce(0) { length, row in
+            max(length, estimatedColumns(row.before), estimatedColumns(row.after))
+        }
+        let width = max(400, CGFloat(longest + 10) * 8 + 32)
+        render(newRows, in: left, before: true, width: width)
+        render(newRows, in: right, before: false, width: width)
         synchronizing = false
     }
-    private func render(_ rows: [DiffRow], in scroll: NSScrollView, before: Bool) {
+    private func render(_ rows: [DiffRow], in scroll: NSScrollView, before: Bool, width: CGFloat) {
         guard let text = scroll.documentView as? NSTextView else { return }
         let value = NSMutableAttributedString(string: "")
         let paragraph = NSMutableParagraphStyle()
         paragraph.minimumLineHeight = 18; paragraph.maximumLineHeight = 18
         let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-        var longest = 0
+        paragraph.tabStops = []; paragraph.defaultTabInterval = 32
         for (index, row) in rows.enumerated() {
             let number = before ? row.beforeNumber : row.afterNumber
             let content = ((before ? row.before : row.after) ?? "")
@@ -61,7 +66,6 @@ import AppKit
                 .replacingOccurrences(of: "\u{2029}", with: "¶")
             let marker = row.changed ? (number == nil ? "·" : (before ? "−" : "+")) : " "
             let line = (number.map { String(format: "%5d", $0) } ?? "     ") + " " + marker + " │ " + content
-            longest = max(longest, line.utf16.count)
             let color: NSColor = row.changed ? (before ? .systemRed : .systemGreen) : NSColor(calibratedWhite: 0.86, alpha: 1)
             let offset = value.length
             value.append(NSAttributedString(string: line + "\n", attributes: [
@@ -79,7 +83,6 @@ import AppKit
         }
         let selection = text.selectedRanges
         let origin = scroll.contentView.bounds.origin
-        let width = max(400, CGFloat(longest) * 8 + 32)
         text.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         text.textContainer?.containerSize = NSSize(width: width, height: CGFloat.greatestFiniteMagnitude)
         text.frame = NSRect(x: 0, y: 0, width: width, height: CGFloat(rows.count + 1) * 18 + 24)
@@ -89,12 +92,29 @@ import AppKit
         scroll.contentView.scroll(to: origin)
         scroll.reflectScrolledClipView(scroll.contentView)
     }
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let window { window.makeFirstResponder(left.documentView) }
+    }
+    func jump(to target: DiffJumpTarget?) {
+        guard let target, lastJump != target.id, let rows, !rows.isEmpty else { return }
+        lastJump = target.id
+        let row = min(max(0, target.row), rows.count - 1)
+        left.contentView.scroll(to: NSPoint(x: left.contentView.bounds.origin.x, y: CGFloat(row) * 18))
+        left.reflectScrolledClipView(left.contentView)
+    }
+    private func estimatedColumns(_ text: String?) -> Int {
+        guard let text else { return 0 }
+        return text.utf16.count + text.utf16.reduce(0) { $0 + ($1 == 9 ? 3 : 0) }
+    }
     @objc private func boundsChanged(_ notification: Notification) {
         guard !synchronizing, let source = notification.object as? NSClipView else { return }
         let target = source === left.contentView ? right : left
-        guard abs(target.contentView.bounds.origin.y - source.bounds.origin.y) > 0.5 else { return }
+        let origin = source.bounds.origin
+        guard abs(target.contentView.bounds.origin.y - origin.y) > 0.5 ||
+              abs(target.contentView.bounds.origin.x - origin.x) > 0.5 else { return }
         synchronizing = true
-        target.contentView.scroll(to: NSPoint(x: target.contentView.bounds.origin.x, y: source.bounds.origin.y))
+        target.contentView.scroll(to: origin)
         target.reflectScrolledClipView(target.contentView)
         synchronizing = false
     }

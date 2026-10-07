@@ -41,9 +41,9 @@
     "architecture": "arm64",
     "signature": "ad-hoc",
     "signatureVerified": true,
-    "binarySHA256": "40d627c8ec1e3bd409d48e0f82fd212af1eddfc065ea81fcc67a0772fbd77e0c",
+    "binarySHA256": "1f196bc4cc34c4177714cb8afcd0410e0eca67f045d24c6306b7876bc8729943",
     "credentialHelperSHA256": "cc10329c338a5e1e119b380a15fd631cb96caaf92a0e685a1988664cf6066ed3",
-    "zipSHA256": "d4871ef97454900b3aaf78cbdc5993af2be8412133b7ceafc4aa21b7db5891a6"
+    "zipSHA256": "735176b87c1d6b446915e4d4c8bbbe82be99883bf73352a75ac9cb00918c2ee8"
   },
   "regressionAfterDiffSelection": {
     "passed": 37,
@@ -112,5 +112,25 @@
     "diffBackgroundPreserved": true,
     "fullCompareVisualSyntheticFixtureReviewed": true,
     "syntaxTokenLimitPerDocument": 60000
+  },
+  "regressionAfterOverlayAndChangeMap": {
+    "passed": 51,
+    "skippedOptional": 2,
+    "suites": 14,
+    "seconds": 5.323,
+    "targetedAfterFocusAndPluralLabel": {
+      "passed": 5,
+      "seconds": 0.627
+    },
+    "sameWindowOverlayVerified": true,
+    "underlyingNativeViewRetained": true,
+    "nativeFullScreenRequested": false,
+    "horizontalAndVerticalSyncVerified": true,
+    "commonHorizontalRangeVerified": true,
+    "changeRangesAndGapCountsVerified": true,
+    "boundedMapSegments": 240,
+    "changeNavigationVerified": true,
+    "overlayVisualSyntheticFixtureReviewed": true,
+    "interactivePersonalRepositoryQA": false
   }
 }

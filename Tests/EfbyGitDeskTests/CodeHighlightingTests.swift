@@ -67,7 +67,7 @@ struct CodeHighlightingTests {
             try #require(bitmap.representation(using: .png, properties: [:])).write(to: URL(fileURLWithPath: path))
         }
     }
-    @MainActor @Test func separateWindowKeepsRepositoryContextAndClosesCleanly() async throws {
+    @MainActor @Test func overlayKeepsRepositoryMountedInSameWindow() async throws {
         let f = try await GitFixture.make(); defer { f.cleanup() }
         let registry = try SQLiteRegistry(path: f.folder.appendingPathComponent("catalog.sqlite").path)
         let service = DeskService(git: f.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
@@ -84,21 +84,31 @@ struct CodeHighlightingTests {
             patch: "@@ -1,3 +1,3 @@\n # Calculate a total\n def total(items):\n-    return sum(items)\n+    return sum(items) * 2\n")
         model.comparison = example; model.diffRows = try DiffAlignment.make(example); model.diffAligned = true
         model.diffSyntax = CodeHighlighter.highlight(rows: model.diffRows, before: .python, after: .python)
-        let coordinator = ComparisonWindowCoordinator(model: model, showWindow: false)
-        coordinator.update(file: file, source: source)
-        let window = try #require(coordinator.window)
-        #expect(window !== source)
-        #expect(window.collectionBehavior.contains(.fullScreenPrimary))
-        #expect(window.contentView is NSHostingView<FileDiffView>)
+        let layout = DiffLayout(rows: model.diffRows)
+        model.diffBlocks = layout.blocks; model.diffMap = layout.map
+        let probe = NSView()
+        let hosting = NSHostingView(rootView: ComparisonWorkspaceLayer(model: model) { WorkspaceRetentionProbe(view: probe) })
+        hosting.sizingOptions = []
+        source.contentView = hosting
+        hosting.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(100))
+        hosting.layoutSubtreeIfNeeded()
+        #expect(probe.window === source)
+        #expect(!source.styleMask.contains(.fullScreen))
+        let windowCount = NSApp.windows.count
         #expect(source.frame == originalFrame)
-        if let path = ProcessInfo.processInfo.environment["EFBY_COMPARE_PREVIEW_PATH"], let content = window.contentView {
+        if let path = ProcessInfo.processInfo.environment["EFBY_COMPARE_PREVIEW_PATH"], let content = source.contentView {
             content.layoutSubtreeIfNeeded()
             let bitmap = try #require(content.bitmapImageRepForCachingDisplay(in: content.bounds))
             content.cacheDisplay(in: content.bounds, to: bitmap)
             try #require(bitmap.representation(using: .png, properties: [:])).write(to: URL(fileURLWithPath: path))
         }
-        window.close()
-        #expect(coordinator.window == nil)
+        model.closeDiff()
+        try await Task.sleep(for: .milliseconds(100))
+        hosting.layoutSubtreeIfNeeded()
+        #expect(probe.window === source)
+        #expect(NSApp.windows.count == windowCount)
+        #expect(source.frame == originalFrame)
         #expect(model.selectedFile == nil)
         #expect(model.selectedOIDs == [oid]); #expect(model.selectedID == f.repository.id)
         #expect(model.terminalVisible); #expect(model.branchWidth == 190)

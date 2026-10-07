@@ -27,7 +27,9 @@ Para un paquete optimizado: `bash scripts/build-app.sh release`. El paquete incl
 7. **Editar mensaje de HEAD** presenta un plan que caduca a los 60 segundos. Publicarlo exige que HEAD coincida con la punta remota y utiliza un lease exacto. La referencia de recuperación se conserva incluso si el envío falla.
 8. **Terminal** abre el panel; **Nueva sesión** inicia una shell. Ocultarlo conserva la sesión. Cerrar una sesión activa presenta confirmación. Los cambios se consultan al volver al foco y cada cuatro segundos.
 
-El repositorio ocupa todo el espacio disponible incluso sin seleccionar commits. Selecciona un commit (o dos para comparar A→B) y haz clic en un archivo para abrir su diff. El compare se abre en una ventana independiente a pantalla completa, conservando la vista del repositorio. **Volver al repositorio**, `Esc` o cerrar la ventana recuperan la vista anterior; cambiar la selección de commits cierra el visor.
+El repositorio ocupa todo el espacio disponible incluso sin seleccionar commits. Selecciona un commit (o dos para comparar A→B) y haz clic en un archivo para abrir su diff. El compare cubre el área de la misma ventana de la app, conservando montada la vista del repositorio y sus sesiones, sin activar el fullscreen de macOS. **Volver al repositorio** o `Esc` recuperan la vista anterior; cambiar la selección de commits cierra el visor.
+
+Ambos documentos sincronizan el desplazamiento horizontal y vertical. **Modificaciones** muestra un mapa, los rangos de líneas y las líneas sin cambios que separan cada bloque. Haz clic en un bloque o usa anterior/siguiente para saltar a él.
 
 Las preferencias guardan distribución de paneles, terminal, registro y pestañas; al reiniciar no se restauran procesos vivos. Quitar un registro conserva los archivos del repositorio. Los remotos de otros proveedores mantienen disponibles las funciones locales; la integración de red del MVP se limita a Bitbucket Cloud.
 
