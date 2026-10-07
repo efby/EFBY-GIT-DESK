@@ -41,9 +41,9 @@
     "architecture": "arm64",
     "signature": "ad-hoc",
     "signatureVerified": true,
-    "binarySHA256": "b191050edd0d49bd209529a2c604c61526669e651bb5d6929b2fc6924e79fb96",
+    "binarySHA256": "95b98eb4c43b2a8dffee9e86a17cf60116134bb681e8e4df41e05f321980fe5b",
     "credentialHelperSHA256": "cc10329c338a5e1e119b380a15fd631cb96caaf92a0e685a1988664cf6066ed3",
-    "zipSHA256": "72b4fc1b6afb0a876e097c6ee83499966873636c29eee1c7e7e9602d9c14390c"
+    "zipSHA256": "c1cdbdba3ab7722b8baf5ec39b1921c2c2fa5aef2ad0738d25fe56dd1c647469"
   },
   "regressionAfterDiffSelection": {
     "passed": 37,
@@ -179,6 +179,25 @@
     "trustRequiredForWorkingTabsVerified": true,
     "contextChangeClosesDiffVerified": true,
     "repositorySelectionRetained": true,
+    "visualSyntheticFixtureReviewed": true,
+    "interactivePersonalRepositoryQA": false
+  },
+  "regressionAfterIntralineHighlights": {
+    "passed": 61,
+    "skippedOptional": 2,
+    "suites": 15,
+    "seconds": 5.264,
+    "separateChangesOnBothSidesVerified": true,
+    "oneSidedInsertionAndDeletionVerified": true,
+    "identicalLinesUnmarked": true,
+    "finalNewlineOnlyHasNoCharacterMarks": true,
+    "unicodeGraphemesAndUTF16Verified": true,
+    "manualSelectionPreservedDuringSyntaxRefresh": true,
+    "backgroundCalculation": true,
+    "complexityFallbackVerified": true,
+    "perFileWorkBudget": 2000000,
+    "perLineWorkBudget": 250000,
+    "maxDetailedChangedCharactersPerSide": 4096,
     "visualSyntheticFixtureReviewed": true,
     "interactivePersonalRepositoryQA": false
   }

@@ -20,6 +20,7 @@ import EfbyGitDeskDomain
     public var comparison: FileComparison?
     public var diffRows: [DiffRow] = []
     public var diffBlocks: [DiffChangeBlock] = []
+    public var diffInline: [DiffInlineRow] = []
     public var diffMap: [DiffMapMark] = []
     public var diffLoading = false
     public var diffAligned = false
@@ -293,7 +294,7 @@ import EfbyGitDeskDomain
     public func closeDiff() {
         diffQuery?.cancel(); highlightQuery?.cancel()
         selectedFile = nil; diffText = ""; diffSyntax = nil
-        comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffLoading = false; diffAligned = false; diffNotice = ""
+        comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffLoading = false; diffAligned = false; diffNotice = ""
     }
     public func loadDiff(id: String) {
         diffQuery?.cancel()
@@ -301,7 +302,7 @@ import EfbyGitDeskDomain
         let preserveView = selectedFile == id && comparison != nil
         selectedFile = id
         if !preserveView {
-            diffText = ""; comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffSyntax = nil
+            diffText = ""; comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffSyntax = nil
             diffLoading = true; diffAligned = false; diffNotice = ""
         }
         let version = generation
@@ -316,8 +317,9 @@ import EfbyGitDeskDomain
                 switch alignment {
                 case .success(let layout):
                     if diffRows != layout.rows { diffSyntax = nil }
-                    diffRows = layout.rows; diffBlocks = layout.blocks; diffMap = layout.map; diffAligned = true
-                case .failure(let error): diffRows = []; diffBlocks = []; diffMap = []; diffSyntax = nil; diffAligned = false; diffNotice += "\n" + error.localizedDescription
+                    diffRows = layout.rows; diffBlocks = layout.blocks; diffMap = layout.map; diffInline = layout.inline; diffAligned = true
+                    if layout.inline.contains(where: \.limited) { diffNotice += "\nEn líneas extensas o complejas, se destaca el tramo modificado entre el prefijo y sufijo comunes." }
+                case .failure(let error): diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffSyntax = nil; diffAligned = false; diffNotice += "\n" + error.localizedDescription
                 }
                 diffLoading = false
                 refreshHighlighting()

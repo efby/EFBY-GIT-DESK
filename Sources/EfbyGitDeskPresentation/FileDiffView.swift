@@ -45,7 +45,7 @@ struct FileDiffView: View {
                 if model.diffAligned && comparison.before != nil && comparison.after != nil && !comparison.patch.contains("[Diff truncado") {
                     DiffChangesSection(blocks: model.diffBlocks, viewport: viewport, jump: $jump)
                     Divider()
-                    ParallelDiffView(rows: model.diffRows, blocks: model.diffBlocks, marks: model.diffMap, syntax: model.diffSyntax, jump: jump, viewport: $viewport).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    ParallelDiffView(rows: model.diffRows, blocks: model.diffBlocks, inline: model.diffInline, marks: model.diffMap, syntax: model.diffSyntax, jump: jump, viewport: $viewport).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     TextPreview(text: model.diffText).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }

@@ -85,7 +85,7 @@ struct CodeHighlightingTests {
         model.comparison = example; model.diffRows = try DiffAlignment.make(example); model.diffAligned = true
         model.diffSyntax = CodeHighlighter.highlight(rows: model.diffRows, before: .python, after: .python)
         let layout = DiffLayout(rows: model.diffRows)
-        model.diffBlocks = layout.blocks; model.diffMap = layout.map
+        model.diffBlocks = layout.blocks; model.diffMap = layout.map; model.diffInline = layout.inline
         let probe = NSView()
         let hosting = NSHostingView(rootView: ComparisonWorkspaceLayer(model: model) { WorkspaceRetentionProbe(view: probe) })
         hosting.sizingOptions = []

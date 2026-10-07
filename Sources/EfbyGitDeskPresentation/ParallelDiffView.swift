@@ -3,6 +3,7 @@ import SwiftUI
 struct ParallelDiffView: NSViewRepresentable {
     let rows: [DiffRow]
     let blocks: [DiffChangeBlock]
+    let inline: [DiffInlineRow]
     let marks: [DiffMapMark]
     var syntax: DiffSyntax? = nil
     var jump: DiffJumpTarget? = nil
@@ -12,7 +13,7 @@ struct ParallelDiffView: NSViewRepresentable {
         view.onViewportChange = { status in
             Task { @MainActor in if viewport != status { viewport = status } }
         }
-        view.update(rows, syntax: syntax, blocks: blocks, marks: marks)
+        view.update(rows, syntax: syntax, blocks: blocks, marks: marks, inline: inline)
         view.jump(to: jump)
     }
 }

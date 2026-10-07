@@ -120,3 +120,11 @@ Se retiró la columna lateral que contenía Área de trabajo, Ramas locales y Ra
 Historial y detalle conservan su identidad dentro de una región de dos columnas que aprovecha el ancho liberado. Las pestañas locales requieren confianza, siguen usando sus contextos Git respectivos y cierran el visor del contexto anterior. El cambio no modifica archivos, ramas ni sesiones de terminal por sí mismo. Se agrega una prueba con Git real para distinguir inventario del índice y del área de trabajo, verificar el bloqueo sin confianza y conservar el repositorio al volver a Historial.
 
 Validación: 55 pruebas aprobadas, 2 optativas omitidas (57 registradas, 14 suites, 5,528 s). Se revisó una captura sintética de las pestañas, el menú Ramas y las dos columnas ampliadas.
+
+## Resaltado de cambios dentro de cada línea
+
+Los fragmentos que cambian tienen fondo más intenso que el contexto de la fila: rojo para lo eliminado en Base y verde para lo agregado en Destino. Se distinguen cambios separados dentro de una misma línea, sin marcar los fragmentos comunes entre ellos. Líneas idénticas no reciben marcas de texto; un cambio exclusivo del salto final conserva el indicador Git sin resaltar caracteres iguales. Los huecos del lado opuesto siguen neutros.
+
+El cálculo usa caracteres Unicode completos y entrega rangos UTF-16 para AppKit, sin dividir emojis o caracteres compuestos. Se ejecuta junto a la alineación fuera de MainActor y se reutiliza al recolorear. No se cambian los rangos seleccionados por el usuario. Se acota el trabajo con un presupuesto de 2.000.000 productos de longitudes por archivo, un máximo de 250.000 por pareja y 4.096 caracteres por tramo; sobre ese límite se marca el tramo entre prefijo/sufijo comunes y se informa el menor detalle.
+
+Validación: 61 pruebas aprobadas, 2 optativas omitidas (63 registradas, 15 suites, 5,264 s). Incluye reemplazos separados, adiciones/eliminaciones unilaterales, igualdad, cambio exclusivo del salto final, espacios, rangos Unicode, límite de complejidad y conservación de fondos/selección al actualizar sintaxis. Se revisó una captura sintética del visor con una inserción marcada en verde.

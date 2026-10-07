@@ -4,6 +4,7 @@ import AppKit
     private let left = NSScrollView()
     private let right = NSScrollView()
     private var rows: [DiffRow]?
+    private var inline: [DiffInlineRow] = []
     private var syntax: DiffSyntax?
     private var synchronizing = false
     private var lastJump: UUID?
@@ -46,9 +47,10 @@ import AppKit
     required init?(coder: NSCoder) { nil }
     isolated deinit { NotificationCenter.default.removeObserver(self) }
 
-    func update(_ newRows: [DiffRow], syntax: DiffSyntax? = nil, blocks: [DiffChangeBlock]? = nil, marks: [DiffMapMark]? = nil) {
+    func update(_ newRows: [DiffRow], syntax: DiffSyntax? = nil, blocks: [DiffChangeBlock]? = nil, marks: [DiffMapMark]? = nil, inline: [DiffInlineRow]? = nil) {
         guard rows != newRows || self.syntax != syntax else { return }
         if rows != newRows {
+            self.inline = inline ?? DiffIntraline.make(rows: newRows)
             self.blocks = blocks ?? DiffChangeOverview.make(rows: newRows)
             let marks = marks ?? DiffChangeOverview.coloredMap(rows: newRows)
             (left.verticalScroller as? DiffOverviewScroller)?.marks = marks
@@ -80,16 +82,24 @@ import AppKit
                 .replacingOccurrences(of: "\u{2029}", with: "¶")
             let marker = row.changed ? (number == nil ? "·" : (before ? "−" : "+")) : " "
             let line = (number.map { String(format: "%5d", $0) } ?? "     ") + " " + marker + " │ " + content
-            let hasChange = row.changed && number != nil
+            let hasChange = row.before != row.after && number != nil
             let color: NSColor = hasChange ? (before ? .systemRed : .systemGreen) : NSColor(calibratedWhite: 0.86, alpha: 1)
             let offset = value.length
             value.append(NSAttributedString(string: line + "\n", attributes: [
                 .font: font, .foregroundColor: color, .paragraphStyle: paragraph,
                 .backgroundColor: hasChange ? color.withAlphaComponent(0.13) : NSColor.clear
             ]))
+            let prefixLength = line.utf16.count - content.utf16.count
+            if inline.indices.contains(index) {
+                let changes = before ? inline[index].before : inline[index].after
+                for change in changes where NSMaxRange(change) <= content.utf16.count {
+                    value.addAttribute(.backgroundColor,
+                        value: (before ? NSColor.systemRed : NSColor.systemGreen).withAlphaComponent(0.48),
+                        range: NSRange(location: offset + prefixLength + change.location, length: change.length))
+                }
+            }
             let spans = before ? syntax?.before : syntax?.after
             if let spans, spans.indices.contains(index) {
-                let prefixLength = line.utf16.count - content.utf16.count
                 for token in spans[index] where token.range.location + token.range.length <= content.utf16.count {
                     value.addAttribute(.foregroundColor, value: token.kind.color,
                         range: NSRange(location: offset + prefixLength + token.range.location, length: token.range.length))
