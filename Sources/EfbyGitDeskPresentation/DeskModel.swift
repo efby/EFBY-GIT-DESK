@@ -7,6 +7,7 @@ import EfbyGitDeskDomain
 @MainActor @Observable public final class DeskModel {
     public let service: DeskService
     @ObservationIgnored private let terminalFactory: @MainActor () -> any TerminalPort
+    public var folderRoots: [String] = []
     public var repositories: [Repository] = []
     public var selectedID: String?
     public var openIDs: [String] = []
@@ -17,6 +18,16 @@ import EfbyGitDeskDomain
     public var files: [FileChange] = []
     public var selectedFile: String?
     public var diffText = ""
+    public var comparison: FileComparison?
+    public var diffRows: [DiffRow] = []
+    public var diffBlocks: [DiffChangeBlock] = []
+    public var diffInline: [DiffInlineRow] = []
+    public var diffMap: [DiffMapMark] = []
+    public var diffLoading = false
+    public var diffAligned = false
+    public var syntaxLanguage: CodeLanguage = .automatic
+    public var diffSyntax: DiffSyntax?
+    public var diffNotice = ""
     public var search = ""
     public var repositorySearch = ""
     public var hasMore = false
@@ -50,6 +61,7 @@ import EfbyGitDeskDomain
     @ObservationIgnored private var operation: Task<Void, Never>?
     @ObservationIgnored private var query: Task<Void, Never>?
     @ObservationIgnored private var fileQuery: Task<Void, Never>?
+    @ObservationIgnored private var highlightQuery: Task<Void, Never>?
     @ObservationIgnored private var diffQuery: Task<Void, Never>?
     @ObservationIgnored private var layoutSave: Task<Void, Never>?
     @ObservationIgnored private var searchQuery: Task<Void, Never>?
@@ -57,16 +69,59 @@ import EfbyGitDeskDomain
     public init(service: DeskService, terminalFactory: @escaping @MainActor () -> any TerminalPort) {
         self.service = service; self.terminalFactory = terminalFactory
     }
+    public var sidebarSelection: String? {
+        get { selectedID }
+        set {
+            guard let newValue, repositories.contains(where: { $0.id == newValue }) else { return }
+            selectedID = newValue
+        }
+    }
     public var repository: Repository? { repositories.first { $0.id == selectedID } }
     public var mutable: Bool { repository?.trusted == true && repository?.linkedWorktree == false && repository?.inspectionReason == nil && !busy }
     public var profile: ConnectionProfile? { profiles.first { $0.id == profileID } }
+    public var workspaceSection: WorkspaceSection {
+        get { workingView ? (stagedView ? .staged : .pending) : .history }
+        set {
+            guard newValue != workspaceSection else { return }
+            switch newValue {
+            case .history: workingView = false; loadFiles()
+            case .pending, .staged:
+                guard repository?.trusted == true else { return }
+                showWorking(staged: newValue == .staged)
+            }
+        }
+    }
     public var context: DiffContext? {
         if workingView { return stagedView ? .staged : .working }
-        if selectedOIDs.count == 2, let pair = try? ComparisonPair(base: selectedOIDs[0], target: selectedOIDs[1]) {
+        if selectedOIDs.count == 2, let pair = try? ComparisonPair(base: orderedComparison[0], target: orderedComparison[1]) {
             return .commits(pair)
         }
         if let oid = selectedOIDs.first { return .commit(oid, parent: parentIndex) }
         return nil
+    }
+    /// The displayed topological order, rather than click order or commit timestamps.
+    public var orderedComparison: [String] {
+        selectedOIDs.sorted { lhs, rhs in
+            (commits.firstIndex { $0.oid == lhs } ?? -1) > (commits.firstIndex { $0.oid == rhs } ?? -1)
+        }
+    }
+    public var detectedLanguageLabel: String {
+        guard let file = files.first(where: { $0.id == selectedFile }) else { return "" }
+        return (syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.name) : syntaxLanguage).rawValue
+    }
+    public func refreshHighlighting() {
+        highlightQuery?.cancel()
+        guard let file = files.first(where: { $0.id == selectedFile }), diffAligned else { return }
+        let rows = diffRows; let language = syntaxLanguage; let version = generation; let currentContext = context
+        let oldName = file.oldPath.flatMap { String(data: $0, encoding: .utf8) } ?? file.name
+        let before = language == .automatic ? CodeLanguage.detect(path: oldName) : language
+        let after = language == .automatic ? CodeLanguage.detect(path: file.name) : language
+        highlightQuery = Task {
+            let syntax = await Task.detached { CodeHighlighter.highlight(rows: rows, before: before, after: after) }.value
+            guard !Task.isCancelled, generation == version, selectedFile == file.id,
+                  syntaxLanguage == language, context == currentContext, diffRows == rows else { return }
+            diffSyntax = syntax
+        }
     }
     public var currentTerminals: [TerminalTab] { terminals[selectedID ?? ""] ?? [] }
     public var activeTerminal: TerminalTab? {
@@ -77,6 +132,7 @@ import EfbyGitDeskDomain
         do {
             gitVersion = try await service.git.version()
             repositories = try await service.registry.repositories()
+            folderRoots = try await service.folderRoots()
             profiles = try await service.registry.profiles()
             terminalVisible = try await service.registry.preference("terminal.visible") == "true"
             terminalHeight = Double(try await service.registry.preference("terminal.height") ?? "") ?? 230
@@ -98,17 +154,31 @@ import EfbyGitDeskDomain
     public func chooseRepository() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true; panel.canChooseFiles = false
-        panel.prompt = "Abrir repositorio"
+        panel.prompt = "Abrir carpeta"
+        panel.message = "Elige un repositorio o una carpeta que contenga proyectos Git. Se buscará en todas sus subcarpetas."
         if panel.runModal() == .OK, let url = panel.url { open(path: url.path) }
     }
     public func open(path: String) {
-        perform("Abriendo repositorio…") {
-            let repository = try await self.service.open(path: path)
+        perform("Buscando repositorios en la carpeta y sus subcarpetas…", refreshAfter: false) {
+            let result: FolderOpenResult
+            do { result = try await self.service.openFolder(path: path) }
+            catch {
+                self.repositories = (try? await self.service.registry.repositories()) ?? self.repositories
+                self.folderRoots = (try? await self.service.folderRoots()) ?? self.folderRoots
+                throw error
+            }
             self.repositories = try await self.service.registry.repositories()
-            self.select(repository.id); self.status = "Repositorio abierto: " + repository.name
+            self.folderRoots = try await self.service.folderRoots()
+            self.repositorySearch = ""
+            if let repository = result.repositories.first(where: { $0.path == result.root }) ?? (result.repositories.count == 1 ? result.repositories.first : nil) {
+                self.select(repository.id)
+            }
+            self.status = "\(result.repositories.count) repositorios encontrados en " + URL(fileURLWithPath: result.root).lastPathComponent
+            if !result.issues.isEmpty { self.error = result.issues.prefix(12).joined(separator: "\n") }
         }
     }
     public func select(_ id: String) {
+        guard repositories.contains(where: { $0.id == id }) else { return }
         if !openIDs.contains(id) { openIDs.append(id); persistTabs() }
         generation += 1; query?.cancel(); fileQuery?.cancel(); closeDiff(); filesLoading = false
         selectedID = id; selectedOIDs = []; commits = []; files = []; diffText = ""
@@ -185,7 +255,10 @@ import EfbyGitDeskDomain
                 guard !Task.isCancelled, version == generation, repository.id == selectedID else { return }
                 snapshot = newState; branches = newBranches; remoteNames = newRemotes
                 remote = selectedRemote; remoteSupported = supported
-                if changed { commits = history; hasMore = history.count == 100; tips = newTips }
+                if changed {
+                    commits = history; hasMore = history.count == 100; tips = newTips
+                    selectedOIDs.removeAll { oid in !history.contains { $0.oid == oid } }
+                }
                 if let plan, plan.oldHead != newState.head || newState.files.contains(where: \.staged) { cancelPlan() }
                 loadFiles()
             } catch is CancellationError {} catch {
@@ -218,7 +291,6 @@ import EfbyGitDeskDomain
         else { status = "La comparación admite dos commits. Quita uno antes de seleccionar otro."; return }
         loadFiles()
     }
-    public func swapComparison() { selectedOIDs.reverse(); loadFiles() }
     public func showWorking(staged: Bool) {
         workingView = true; stagedView = staged; selectedOIDs = []; loadFiles()
     }
@@ -243,20 +315,39 @@ import EfbyGitDeskDomain
         }
     }
     public func closeDiff() {
-        diffQuery?.cancel()
-        selectedFile = nil; diffText = ""
+        diffQuery?.cancel(); highlightQuery?.cancel()
+        selectedFile = nil; diffText = ""; diffSyntax = nil
+        comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffLoading = false; diffAligned = false; diffNotice = ""
     }
     public func loadDiff(id: String) {
         diffQuery?.cancel()
         guard let repository, let context, let file = files.first(where: { $0.id == id }) else { return }
-        selectedFile = id; diffText = "Cargando diferencias…"
+        let preserveView = selectedFile == id && comparison != nil
+        selectedFile = id
+        if !preserveView {
+            diffText = ""; comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffSyntax = nil
+            diffLoading = true; diffAligned = false; diffNotice = ""
+        }
         let version = generation
         diffQuery = Task {
             do {
-                let diff = try await service.git.diff(repository, context: context, file: file)
+                let result = try await service.git.fileComparison(repository, context: context, file: file)
+                let alignment = await Task.detached { () -> Result<DiffLayout, Error> in
+                    Result { DiffLayout(rows: try DiffAlignment.make(result)) }
+                }.value
                 guard !Task.isCancelled, version == generation, selectedFile == id, self.context == context else { return }
-                diffText = diff.isEmpty ? "Cambio de metadatos, modo o contenido sin diff textual." : diff
-            } catch is CancellationError {} catch { if !Task.isCancelled, version == generation, selectedFile == id, self.context == context { self.error = error.localizedDescription } }
+                comparison = result; diffNotice = result.notice
+                switch alignment {
+                case .success(let layout):
+                    if diffRows != layout.rows { diffSyntax = nil }
+                    diffRows = layout.rows; diffBlocks = layout.blocks; diffMap = layout.map; diffInline = layout.inline; diffAligned = true
+                    if layout.inline.contains(where: \.limited) { diffNotice += "\nEn líneas extensas o complejas, se destaca el tramo modificado entre el prefijo y sufijo comunes." }
+                case .failure(let error): diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffSyntax = nil; diffAligned = false; diffNotice += "\n" + error.localizedDescription
+                }
+                diffLoading = false
+                refreshHighlighting()
+                diffText = result.patch.isEmpty ? "Cambio de metadatos o modo; los documentos se muestran completos." : result.patch
+            } catch is CancellationError {} catch { if !Task.isCancelled, version == generation, selectedFile == id, self.context == context { self.error = error.localizedDescription; diffLoading = false } }
         }
     }
     public func mutate(_ action: GitAction) {

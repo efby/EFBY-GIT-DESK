@@ -8,7 +8,7 @@ Un **repositorio local** es una carpeta de trabajo y su repositorio Git asociado
 
 Un **commit** identifica una instantánea, padres y metadatos. Un **push** transfiere objetos y actualiza referencias remotas; no tiene un mensaje de commit propio editable. **Índice/staging** es el contenido preparado para el próximo commit. **Working tree** son los archivos actuales. **Upstream** es la relación de seguimiento de una rama.
 
-Un **perfil de conexión** describe transporte y/o acceso API. **Heredado** significa usar mecanismos ya configurados para Git sin copiar sus secretos. **A** es la instantánea base de una comparación y **B** la instantánea destino. El orden se mantiene visible y puede intercambiarse.
+Un **perfil de conexión** describe transporte y/o acceso API. **Heredado** significa usar mecanismos ya configurados para Git sin copiar sus secretos. **A** es la instantánea base de una comparación y **B** la instantánea destino. El orden se mantiene visible: A es el commit inferior y B el superior del historial, independientemente del orden de selección.
 
 ## 2. Entidades y valores
 

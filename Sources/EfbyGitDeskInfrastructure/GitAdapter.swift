@@ -21,7 +21,7 @@ public actor GitAdapter: GitRepositoryPort {
         }
         let numbers = fields[2].split(separator: ".").compactMap { Int($0) }
         guard numbers.count >= 2, numbers[0] > 2 || (numbers[0] == 2 && numbers[1] >= 40) else {
-            throw DeskError("EfbyGitDesk requiere Git 2.40 o posterior. Instálalo antes de continuar.")
+            throw DeskError("EFBY Git Desk requiere Git 2.40 o posterior. Instálalo antes de continuar.")
         }
         return result.text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -148,10 +148,19 @@ public actor GitAdapter: GitRepositoryPort {
         else { summary = "" }
         return summary + result.text + (result.truncated ? "\n\n[Diff truncado a 2 MB; el archivo permanece en el inventario.]" : "")
     }
+    public func fileComparison(_ repository: Repository, context: DiffContext, file: FileChange) async throws -> FileComparison {
+        if context == .working || context == .staged { try requireTrust(repository) }
+        let patch = try await diff(repository, context: context, file: file)
+        let reader = GitComparisonReader(repository: repository) { [self] arguments, limit, allowFailure in
+            try await run(arguments, directory: repository.path, trusted: repository.trusted,
+                          limit: limit, allowFailure: allowFailure)
+        }
+        return try await reader.load(context: context, file: file, patch: patch)
+    }
     private func diffArguments(_ repository: Repository, context: DiffContext, inventory: Bool) async throws -> [String] {
-        var args = ["diff", "--no-ext-diff", "--no-textconv"]
+        var args = ["-c", "diff.suppressBlankEmpty=false", "diff", "--no-ext-diff", "--no-textconv"]
         if inventory { args += ["--name-status", "-z", "--find-renames"] }
-        else { args += ["--unified=3", "--find-renames"] }
+        else { args += ["--unified=3", "--find-renames", "--output-indicator-new=+", "--output-indicator-old=-", "--output-indicator-context= "] }
         switch context {
         case .commits(let pair):
             try await verify(pair.base, repository: repository); try await verify(pair.target, repository: repository)

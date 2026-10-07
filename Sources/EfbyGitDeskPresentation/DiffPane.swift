@@ -9,13 +9,10 @@ struct DiffPane: View {
                 HStack {
                     Text(title).font(.headline)
                     Spacer()
-                    if model.selectedOIDs.count == 2 {
-                        Button("Intercambiar A y B", systemImage: "arrow.left.arrow.right") { model.swapComparison() }.labelStyle(.iconOnly).help("Intercambiar A y B")
-                    }
                 }
-                ForEach(Array(model.selectedOIDs.enumerated()), id: \.element) { index, oid in
+                ForEach(Array(model.orderedComparison.enumerated()), id: \.element) { index, oid in
                     HStack {
-                        Text(model.selectedOIDs.count == 2 ? (index == 0 ? "A · Base" : "B · Destino") : "Commit").foregroundStyle(.teal)
+                        Text(model.selectedOIDs.count == 2 ? (index == 0 ? "A · Inferior" : "B · Superior") : "Commit").foregroundStyle(.teal)
                         Text(String(oid.prefix(12))).font(.caption.monospaced())
                         Spacer()
                         Button("Copiar SHA completo", systemImage: "doc.on.doc") {
@@ -38,12 +35,6 @@ struct DiffPane: View {
                 ContentUnavailableView("Selecciona un commit", systemImage: "arrow.left.arrow.right",
                     description: Text("Selecciona dos para comparar sus árboles A→B. Los cambios locales se revisan por separado."))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let file = model.files.first(where: { $0.id == model.selectedFile }) {
-                VSplitView {
-                    fileList.frame(minHeight: 90, idealHeight: 160, maxHeight: 220)
-                    FileDiffView(file: file, text: model.diffText, close: model.closeDiff)
-                        .frame(minHeight: 180, maxHeight: .infinity)
-                }.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 VStack(spacing: 0) {
                     Text("Haz clic en un archivo para ver sus diferencias.")

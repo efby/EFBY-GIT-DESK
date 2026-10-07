@@ -17,7 +17,7 @@ import EfbyGitDeskPresentation
         let helper = binaryFolder.appendingPathComponent("EfbyGitDeskCredential").path
         let adapter = GitAdapter(executable: git, vault: vault, credentialHelper: helper)
         let cloud = BitbucketClient(vault: vault)
-        let service = DeskService(git: adapter, registry: registry, cloud: cloud)
+        let service = DeskService(git: adapter, registry: registry, cloud: cloud, discovery: FolderDiscovery())
         return DeskModel(service: service, terminalFactory: { PTYTerminal() })
     }
 }

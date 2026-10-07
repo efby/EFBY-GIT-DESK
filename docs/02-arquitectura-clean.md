@@ -56,7 +56,7 @@ El terminal AppKit se integra con SwiftUI mediante `NSViewRepresentable`. La vis
 | Branches | Referencias, creación, checkout y seguimiento |
 | Synchronization | Fetch, pull ff-only predeterminado y push de rama |
 | History | Historial paginado, padres, referencias y SHA completo |
-| Comparison | Exactamente dos OID distintos, A base y B destino, intercambio explícito |
+| Comparison | Exactamente dos OID distintos, A inferior y B superior del historial, dirección fija |
 | AmendMessage | Plan de modificación de HEAD y publicación protegida |
 | Terminal | Sesión, entrada, salida, tamaño y cierre |
 | Operations | Cola, progreso, cancelación y reconciliación |

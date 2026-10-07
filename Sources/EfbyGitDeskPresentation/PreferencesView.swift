@@ -15,7 +15,7 @@ public struct PreferencesView: View {
                 Text("Las pestañas, el repositorio seleccionado y los anchos de paneles se guardan localmente. Las shells se inician por una acción tuya.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Section("EfbyGitDesk 0.1.0") {
+            Section("EFBY Git Desk 0.1.0") {
                 Text("Español · Apariencia oscura · Bitbucket Cloud")
                 Text(model.gitVersion).font(.caption.monospaced())
                 Text("Versión de desarrollo para pruebas locales.").foregroundStyle(.secondary)

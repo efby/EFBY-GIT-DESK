@@ -26,8 +26,8 @@ Fecha: 6 de octubre de 2026. Versión de desarrollo; H6 y el criterio de release
 | RF-08 | Push de SHA y rama explícitos, upstream opcional | Git real en fixtures de publicación; servidor Bitbucket y protección de ramas pendientes. |
 | RF-09 | Stage/unstage por archivo y commit del índice | Primer commit, nombres especiales, rename completo y hook rechazado preservando índice. |
 | RF-10 | Historial paginado, búsqueda, grafo y copia de SHA completo | Objetos Git reales SHA-1 y SHA-256; fixture de 100.000 commits. Copia y teclado requieren completar QA manual. |
-| RF-11 | Selección limitada a dos commits, A→B e intercambio | Árboles sin ancestro común, merges y raíz; nunca merge-base. La tercera selección conserva el par. |
-| RF-12 | Diff unificado, lista de rutas, índice/HEAD y worktree/índice | Rename y binario; resúmenes para LFS/submódulos/enlaces. Límite textual visible de 2 MB; inventario hasta 16 MB o error explícito, sin afirmar completitud de salida truncada. |
+| RF-11 | Selección limitada a dos commits, inferior → superior | Árboles sin ancestro común, merges y raíz; nunca merge-base. La tercera selección conserva el par. |
+| RF-12 | Documentos en paralelo, lista de rutas, índice/HEAD y worktree/índice | Rename y binario; resúmenes para LFS/submódulos/enlaces. Límite textual visible de 2 MB; inventario hasta 16 MB o error explícito, sin afirmar completitud de salida truncada. |
 | RF-13 | Plan de un solo uso, caducidad 60 s, recuperación y lease exacta | Árbol/autor/padres preservados; HEAD nuevo, índice preparado, avance remoto y carrera durante push. Tras interrupción de publicación se consulta el destino antes de considerar reintento. |
 | RF-14 | Terminal PTY por repositorio, sesiones, ocultación y cierre confirmado | PTY real: directorio, UTF-8, resize, Ctrl+C, entrada pausada y salida. Refresco cada 4 s/foco. Compatibilidad VT avanzada pendiente. |
 | RF-15 | Permiso por commonGitDir mantenido durante await, journal, cancelación | 20 escritores serializados; lock externo conservado; pipes simultáneos, SIGTERM ignorado y handles heredados acotados. |
@@ -68,3 +68,73 @@ El catálogo está en `~/Library/Application Support/EfbyGitDesk/catalog.sqlite`
 El diff se muestra únicamente después de seleccionar explícitamente un archivo. Su cabecera identifica la ruta y permite cerrarlo; al cerrar, la lista vuelve a ocupar el panel. Cambiar commits o el contexto de comparación cierra el visor. Un refresco conserva la selección explícita, pero no vuelve a abrir un visor cerrado. Las consultas del inventario y del diff tienen cancelación independiente.
 
 El contenedor del repositorio, historial y panel de archivos solicitan todo el espacio disponible, también sin commits seleccionados y en estados vacíos. La prueba de regresión con Git real pasó; la suite general ejecutó 37 pruebas, con 2 optativas omitidas (39 registradas en 11 suites). Después de ajustar el cambio de repositorio se repitió la prueba específica y pasó. La revisión visual de estos cambios en la aplicación queda pendiente.
+
+## Comparación paralela y dirección fija
+
+Por indicación del usuario, A corresponde al commit inferior del historial y B al superior, incluso si se seleccionan en el orden inverso. La posición topológica visible determina el sentido; no se usan fechas ni merge-base. Se retiró el intercambio manual. Un solo commit sigue comparándose contra su padre elegido (o árbol vacío si es raíz).
+
+El visor lee ambos documentos completos desde blobs Git, sin filtros, textconv ni descargas implícitas. Muestra números de línea, signos y colores de cambio; alinea los bloques de adición/eliminación con huecos. Las dos columnas tienen scroll vertical y horizontal sincronizados. Los renombres conservan la ruta original y la nueva; se identifica la ausencia de salto de línea final. Staging y cambios locales mantienen HEAD → índice e índice → área de trabajo.
+
+Se mantienen resúmenes para binarios, submódulos, conflictos y contenido no UTF-8. Límite: 2 MB por documento y 50.000 líneas entre ambos; ante un límite o alineación incompleta se informa y se conserva el resumen de Git. Suite general: 42 pruebas ejecutadas y aprobadas, 2 optativas omitidas (44 registradas, 12 suites). Las nuevas pruebas cubren documentos completos con hunks separados, bloques de distinta longitud, raíz, renombre con salto de línea en la ruta, binarios, índice/worktree, selección en ambos órdenes, límites y sincronización nativa de scroll. La imagen de las columnas AppKit se revisó fuera de pantalla usando un fixture sintético; el recorrido completo de la ventana con repositorios reales sigue pendiente.
+
+El refresco de un archivo ya abierto conserva el visor nativo mientras se consulta el contenido, para no reiniciar el scroll ni la selección cada cuatro segundos. Los controles de fin de línea se representan sin añadir filas visuales; se verificaron CRLF y cambios de salto final.
+
+## Resaltado de código y evolución del compare
+
+La primera versión del compare ampliado utilizaba una ventana independiente con fullscreen de macOS. Este comportamiento se reemplazó por una capa dentro de la misma ventana, según la aclaración del usuario. Historial, paneles y terminal permanecen montados debajo; volver al repositorio conserva commits, repositorio y distribución.
+
+Detección automática por extensión y selector manual: Python, JavaScript/JSX, TypeScript/TSX, Swift, Java, Kotlin, C/C++, C#, Go, Rust, Ruby, Shell, SQL, JSON, YAML/TOML, HTML/XML, CSS y Markdown. El lexer básico resalta palabras clave, cadenas, comentarios, números, llamadas, tipos y algunas etiquetas/decoradores; conserva estado de cadenas/comentarios multilínea entre filas de diff. No interpreta código ni analiza gramáticas completas: regex JS, interpolación de templates, anidación de comentarios y lenguajes embebidos pueden tener resaltado aproximado. Archivos desconocidos usan texto plano. El límite adicional de resaltado es 60.000 tokens por documento; el contenido permanece visible después de alcanzarlo. El cálculo se realiza fuera del actor principal.
+
+Las pruebas verifican detección, Unicode y rangos UTF-16, cadenas/comentarios multilínea con huecos, texto plano, preservación de selección/scroll al recolorear y ventana independiente con cierre sin perder contexto. Se revisaron capturas fuera de pantalla del visor completo y de las columnas coloreadas con fixtures sintéticos; la transición a un Space dejó de formar parte del flujo tras reemplazar esa implementación. La suite general aprobó 47 pruebas, con 2 optativas omitidas (49 registradas en 13 suites).
+
+## Compare dentro de la app, scroll y mapa de modificaciones
+
+La comparación cubre toda el área de contenido de la misma ventana. No crea NSWindow ni solicita fullscreen de macOS. La vista anterior sigue montada y no recibe clics ni entrada de teclado mientras está cubierta; Volver al repositorio o Esc cierran la capa.
+
+Ambos ejes de desplazamiento se sincronizan bidireccionalmente. El ancho de ambos documentos se calcula usando la línea más larga de cualquiera de las versiones, para conservar el mismo recorrido horizontal aunque sus longitudes sean distintas. El recoloreado conserva scroll y selección.
+
+Modificaciones agrupa filas cambiadas consecutivas y muestra sus rangos Base/Destino, un mapa acotado a 240 segmentos y distancias en líneas sin cambios. El primer bloque indica su distancia desde el inicio; los siguientes, desde el final del anterior. Tarjetas, mapa y botones anterior/siguiente navegan a la primera fila del bloque. Añadidos, eliminados y cambios del salto final se incluyen; los resúmenes no textuales conservan su diagnóstico.
+
+La suite general aprobó 51 pruebas, con 2 optativas omitidas (53 registradas, 14 suites, 5,323 s). Incluye sincronización de ambos ejes desde ambas columnas, ancho común con versiones de distinta longitud, saltos repetidos, agrupación/distancias, mapa de 50.000 filas y conservación del contexto y la vista nativa en la misma ventana. Se revisó una captura de la capa completa con un fixture sintético; el flujo interactivo con repositorios personales no se automatizó.
+
+## Mapas verticales y distancia al siguiente cambio
+
+La sección horizontal con tarjetas se reemplazó por mapas en las pistas verticales de ambas columnas, detrás de sus indicadores de posición. Los dos mapas muestran las mismas ubicaciones, con rojo para contenido eliminado y verde para agregado; una sustitución muestra ambos colores. Los huecos de alineación del documento opuesto tienen fondo neutro. Las pistas permanecen visibles y conservan el arrastre y comportamiento nativo del scroll.
+
+La cabecera informa dinámicamente las líneas que faltan desde la última fila visible hasta la primera fila del siguiente bloque al bajar. Si hay modificaciones en pantalla, lo indica; después del último bloque muestra que no quedan más cambios hacia abajo. La distancia considera filas alineadas y el tamaño actual del área visible. Anterior/siguiente navega según la posición actual, sin depender del último salto pulsado.
+
+Pruebas nuevas cubren marcas de adición, eliminación y sustitución, cálculo de distancia, cambios visibles, fin de cambios, actualización al mover cualquiera de las dos columnas y proporción del indicador al pasar a un documento corto. Se revisó una captura sintética del visor completo con ambas pistas verticales.
+
+La suite general aprobó 54 pruebas, con 2 optativas omitidas (56 registradas, 14 suites, 5,252 s). El bundle se reconstruye en release arm64 con firma ad hoc de desarrollo.
+
+## Cierre visible del visor
+
+El botón «Cerrar comparación», con una X y fondo destacado, está al inicio de la cabecera del visor. Conserva su ancho aunque la ruta sea larga; la ruta se trunca en el medio. «Esc para volver» recuerda el atajo. El botón y Esc ejecutan `closeDiff`, que cierra únicamente la capa de comparación y conserva la ventana, el repositorio y las sesiones. Está disponible también durante la carga y en los estados de error o resumen.
+
+Validación: 6 pruebas dirigidas en 2 suites aprobaron (0,884 s), incluidas conservación de ventana/contexto y persistencia del visor cerrado tras refresh. Se revisó una captura sintética del visor con el nuevo botón.
+
+## Pestañas del área de trabajo
+
+Se retiró la columna lateral que contenía Área de trabajo, Ramas locales y Ramas remotas. Pendientes, Preparados e Historial son pestañas nativas de selección única sobre el contenido, con contadores de cambios. Ramas locales y remotas se consultan desde un menú compacto, con las acciones existentes de checkout/borrado integrado y copia del nombre.
+
+Historial y detalle conservan su identidad dentro de una región de dos columnas que aprovecha el ancho liberado. Las pestañas locales requieren confianza, siguen usando sus contextos Git respectivos y cierran el visor del contexto anterior. El cambio no modifica archivos, ramas ni sesiones de terminal por sí mismo. Se agrega una prueba con Git real para distinguir inventario del índice y del área de trabajo, verificar el bloqueo sin confianza y conservar el repositorio al volver a Historial.
+
+Validación: 55 pruebas aprobadas, 2 optativas omitidas (57 registradas, 14 suites, 5,528 s). Se revisó una captura sintética de las pestañas, el menú Ramas y las dos columnas ampliadas.
+
+## Resaltado de cambios dentro de cada línea
+
+Los fragmentos que cambian tienen fondo más intenso que el contexto de la fila: rojo para lo eliminado en Base y verde para lo agregado en Destino. Se distinguen cambios separados dentro de una misma línea, sin marcar los fragmentos comunes entre ellos. Líneas idénticas no reciben marcas de texto; un cambio exclusivo del salto final conserva el indicador Git sin resaltar caracteres iguales. Los huecos del lado opuesto siguen neutros.
+
+El cálculo usa caracteres Unicode completos y entrega rangos UTF-16 para AppKit, sin dividir emojis o caracteres compuestos. Se ejecuta junto a la alineación fuera de MainActor y se reutiliza al recolorear. No se cambian los rangos seleccionados por el usuario. Se acota el trabajo con un presupuesto de 2.000.000 productos de longitudes por archivo, un máximo de 250.000 por pareja y 4.096 caracteres por tramo; sobre ese límite se marca el tramo entre prefijo/sufijo comunes y se informa el menor detalle.
+
+Validación: 61 pruebas aprobadas, 2 optativas omitidas (63 registradas, 15 suites, 5,264 s). Incluye reemplazos separados, adiciones/eliminaciones unilaterales, igualdad, cambio exclusivo del salto final, espacios, rangos Unicode, límite de complejidad y conservación de fondos/selección al actualizar sintaxis. Se revisó una captura sintética del visor con una inserción marcada en verde.
+
+## EFBY Git Desk: carpetas superiores y árbol de proyectos
+
+Nombre visible actualizado en ventana, sidebar, preferencias, errores y metadatos del bundle. La distribución local usa EFBY Git Desk.app; ejecutables, módulos, ID del bundle, ubicación del catálogo y servicio Keychain no cambian.
+
+Se incorpora un puerto de descubrimiento de carpetas y un adaptador de recorrido fuera de MainActor. Busca a cualquier profundidad, incluye ocultos/paquetes y .git archivo/directorio, continúa dentro de repositorios anidados, ignora .git interno y evita ciclos/duplicados. Los enlaces a carpetas externas se omiten y se informan, junto a problemas de lectura. Los candidatos se validan con la inspección Git existente; no se ejecuta checkout ni se concede confianza nueva. Los bare siguen sin soporte y se informan sin impedir abrir los demás. La cancelación conserva cualquier registro ya realizado, sin cambiar archivos del proyecto.
+
+Las raíces del árbol se guardan en preferencias del catálogo y se normalizan las rutas para conservar la misma identidad que Git. El sidebar muestra carpetas expandibles y proyectos, junto a accesos de favoritos y grupos. Su árbol se construye en segundo plano. La búsqueda usa todos los repositorios registrados por nombre, ruta o grupo, independientemente de carpetas contraídas. Seleccionar una carpeta agrupadora no activa una ruta sin Git.
+
+Validación: 67 pruebas aprobadas, 2 optativas omitidas (69 registradas, 16 suites, 5,879 s). Nuevas pruebas cubren profundidad, ocultos, paquetes, anidados, .git archivo, worktree real, ciclos/alias, enlaces externos, cancelación, candidatos inválidos/bare, persistencia, deduplicación, conservación de confianza/favoritos/grupos y estructura jerárquica. Se revisaron capturas sintéticas del sidebar y búsqueda de un proyecto con el árbol contraído. La interacción con carpetas personales no se automatizó.

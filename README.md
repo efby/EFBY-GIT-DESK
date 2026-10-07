@@ -1,4 +1,4 @@
-# EfbyGitDesk
+# EFBY Git Desk
 
 MVP de desarrollo de una aplicación nativa macOS para trabajar con Git local y Bitbucket Cloud. SwiftUI/AppKit, Swift 6 y Clean Architecture; sin dependencias de terceros.
 
@@ -11,7 +11,7 @@ Requisitos: Xcode con Swift 6.2 o posterior y Git 2.40 o posterior. El entorno v
 ```sh
 bash scripts/test.sh
 bash scripts/build-app.sh
-open dist/EfbyGitDesk.app
+open "dist/EFBY Git Desk.app"
 ```
 
 Para un paquete optimizado: `bash scripts/build-app.sh release`. El paquete incluye el helper de credenciales y lleva firma ad hoc de desarrollo. No es un release con Developer ID ni notarización. Abrir `Package.swift` en Xcode permite desarrollar los targets.
@@ -21,13 +21,19 @@ Para un paquete optimizado: `bash scripts/build-app.sh release`. El paquete incl
 1. Abre una carpeta Git. Comienza en inspección segura: historial y objetos, sin terminal, red ni cambios en archivos.
 2. Revisa la carpeta y concede confianza para habilitar operaciones locales. Las credenciales y la confianza son independientes.
 3. Selecciona **Pendientes** para preparar archivos y **Preparados** para revisar el índice y crear el commit. Las ramas ofrecen acciones en su menú contextual.
-4. Selecciona un commit para revisar sus diferencias; selecciona dos para comparar sus árboles. El tercero conserva el par. Puedes intercambiar A y B y copiar el SHA completo.
+4. Selecciona un commit para revisar sus diferencias; selecciona dos para comparar sus árboles. El tercero conserva el par. La dirección es siempre del commit inferior al superior en el historial, independientemente del orden de selección. Puedes copiar el SHA completo.
 5. Para Bitbucket, usa SSH/credenciales heredadas o agrega un API token en **Conexiones**. El catálogo necesita lectura de workspace y repositorios; publicar requiere permiso de escritura. El token se guarda en Keychain.
 6. Clona en una carpeta nueva. La aplicación realiza `--no-checkout` y solicita confianza antes de materializar archivos.
 7. **Editar mensaje de HEAD** presenta un plan que caduca a los 60 segundos. Publicarlo exige que HEAD coincida con la punta remota y utiliza un lease exacto. La referencia de recuperación se conserva incluso si el envío falla.
 8. **Terminal** abre el panel; **Nueva sesión** inicia una shell. Ocultarlo conserva la sesión. Cerrar una sesión activa presenta confirmación. Los cambios se consultan al volver al foco y cada cuatro segundos.
 
-El repositorio ocupa todo el espacio disponible incluso sin seleccionar commits. Selecciona un commit (o dos para comparar A→B) y haz clic en un archivo para abrir su diff. El botón **Cerrar diferencias** devuelve el panel a la lista completa; cambiar la selección de commits cierra el visor.
+**Abrir carpeta** admite un repositorio individual o una carpeta superior. Busca proyectos Git en todas las subcarpetas, conserva la estructura en un árbol expandible y recuerda las carpetas agregadas. **Buscar en todos los proyectos** encuentra repositorios por nombre, ruta o grupo incluso con el árbol contraído. No se ejecutan hooks ni se confía automáticamente en los proyectos encontrados. La búsqueda se puede cancelar; si hay carpetas inaccesibles, enlaces externos o repositorios no compatibles, la app informa el resultado parcial.
+
+Las pestañas **Pendientes**, **Preparados** e **Historial** cambian la vista del repositorio; las dos primeras muestran sus contadores. El menú **Ramas** permite consultar ramas locales/remotas y cambiar o borrar una rama local integrada. El panel lateral de área de trabajo se eliminó para ampliar el contenido.
+
+El repositorio ocupa todo el espacio disponible incluso sin seleccionar commits. Selecciona un commit (o dos para comparar A→B) y haz clic en un archivo para abrir su diff. El compare cubre el área de la misma ventana de la app, conservando montada la vista del repositorio y sus sesiones, sin activar el fullscreen de macOS. **Cerrar comparación** o `Esc` recuperan la vista anterior; cambiar la selección de commits cierra el visor.
+
+Ambos documentos sincronizan el desplazamiento horizontal y vertical. El texto modificado dentro de cada línea tiene un fondo más intenso: rojo en lo eliminado y verde en lo agregado. Las líneas idénticas no se marcan; el resaltado conserva el formato de código y tu selección manual. **Modificaciones** indica cuántas líneas faltan, desde el borde inferior visible, para llegar al próximo cambio al bajar. El mapa vertical está detrás del indicador de scroll de cada columna: rojo indica líneas eliminadas y verde, agregadas. Arrastra el indicador o usa anterior/siguiente para navegar.
 
 Las preferencias guardan distribución de paneles, terminal, registro y pestañas; al reiniciar no se restauran procesos vivos. Quitar un registro conserva los archivos del repositorio. Los remotos de otros proveedores mantienen disponibles las funciones locales; la integración de red del MVP se limita a Bitbucket Cloud.
 
@@ -56,3 +62,5 @@ La conexión contra una cuenta real de Bitbucket, el acceso del helper a Keychai
 Repositorio de desarrollo: [efby/EFBY-GIT-DESK](https://github.com/efby/EFBY-GIT-DESK). Las claves de autenticación permanecen fuera del repositorio y nunca se versionan.
 
 El icono reutiliza el logotipo y el diseño de EFBY_POSTMAN, con la etiqueta inferior **#GitDesk**. El vector está en `Resources/Brand/EfbyLogo.ai`; `scripts/generate-icon.sh` regenera el PNG y el icono macOS `.icns`, que el empaquetado incorpora al bundle.
+
+El selector **Formato de código** detecta Python, JavaScript/JSX, TypeScript/TSX, Swift, Java/Kotlin, C/C++, C#, Go, Rust, Ruby, Shell, SQL, JSON, YAML/TOML, HTML/XML, CSS y Markdown. Permite elegir manualmente el lenguaje o texto plano. El resaltado léxico distingue cadenas, comentarios, palabras clave, números y llamadas; los fondos y signos de diff se conservan. Es una ayuda de lectura básica, sin ejecutar código ni ofrecer análisis de compilador.

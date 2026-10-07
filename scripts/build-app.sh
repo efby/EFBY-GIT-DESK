@@ -7,10 +7,10 @@ export SWIFTPM_MODULECACHE_OVERRIDE="$CLANG_MODULE_CACHE_PATH"
 options=(--disable-sandbox --cache-path .build/cache --config-path .build/config --security-path .build/security --scratch-path .build --disable-keychain --disable-netrc --configuration "$configuration")
 swift build "${options[@]}"
 binary_path="$(swift build "${options[@]}" --show-bin-path)"
-output="$PWD/dist/EfbyGitDesk.app"
+output="$PWD/dist/EFBY Git Desk.app"
 staging="$(mktemp -d "$PWD/.build/package.XXXXXX")"
 trap 'rm -rf "$staging"' EXIT
-bundle="$staging/EfbyGitDesk.app"
+bundle="$staging/EFBY Git Desk.app"
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 cp "$binary_path/EfbyGitDesk" "$bundle/Contents/MacOS/"
 cp "$binary_path/EfbyGitDeskCredential" "$bundle/Contents/MacOS/"

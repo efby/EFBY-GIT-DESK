@@ -8,13 +8,13 @@ import EfbyGitDeskPresentation
     init() {
         do { _model = State(initialValue: try MacComposition.makeModel()) }
         catch {
-            let alert = NSAlert(); alert.messageText = "EfbyGitDesk no pudo iniciar"; alert.informativeText = error.localizedDescription
+            let alert = NSAlert(); alert.messageText = "EFBY Git Desk no pudo iniciar"; alert.informativeText = error.localizedDescription
             alert.runModal()
             fatalError("No se pudo preparar el catálogo de la aplicación.")
         }
     }
     var body: some Scene {
-        WindowGroup("EfbyGitDesk") {
+        WindowGroup("EFBY Git Desk") {
             WorkspaceView(model: model)
                 .onAppear { delegate.model = model }
                 .onOpenURL { url in if url.isFileURL { model.open(path: url.path) } }
@@ -22,7 +22,7 @@ import EfbyGitDeskPresentation
         .defaultSize(width: 1480, height: 880)
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("Abrir repositorio…") { model.chooseRepository() }.keyboardShortcut("o")
+                Button("Abrir carpeta…") { model.chooseRepository() }.keyboardShortcut("o")
             }
             CommandMenu("Repositorio") {
                 Button("Actualizar") { model.refresh(forceHistory: true) }.keyboardShortcut("r")

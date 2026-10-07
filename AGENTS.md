@@ -1,4 +1,4 @@
-# EfbyGitDesk — instrucciones del proyecto
+# EFBY Git Desk — instrucciones del proyecto
 
 ## Rol y objetivo
 
@@ -65,8 +65,7 @@ siguen pendientes. No tratar el MVP de desarrollo como release H6 aprobado.
 
 - Swift es el lenguaje solicitado; macOS es la única plataforma y Bitbucket Cloud
   la integración remota inicial. Clean Architecture es obligatoria.
-- El nombre confirmado del proyecto y la aplicación es **EfbyGitDesk**. Usarlo en
-  interfaz, documentación y nombres de módulos.
+- El nombre visible de la aplicación es **EFBY Git Desk**, separado en interfaz, ventanas, menús, preferencias y bundle distribuido. El proyecto técnico, módulos, identificadores, carpeta de datos y servicio Keychain mantienen **EfbyGitDesk** para preservar compatibilidad.
 - Cubrir apertura/clonación, ramas, estado y staging por archivo, commits,
   fetch/pull/push, historial/grafo, SHA completo, diferencias, comparación de
   exactamente dos commits, edición del mensaje de HEAD también publicado,
@@ -93,6 +92,14 @@ siguen pendientes. No tratar el MVP de desarrollo como release H6 aprobado.
 ## Identidad visual
 
 Los iconos deben reutilizar el logotipo y diseño de EFBY_POSTMAN, con la etiqueta inferior **#GitDesk**. Mantener el vector de marca en `Resources/Brand/` y el generador reproducible `scripts/generate-icon.sh`; incorporar `AppIcon.icns` al bundle macOS.
+
+## Carpetas y proyectos
+
+Abrir una carpeta busca repositorios Git en todos sus descendientes, sin límite de profundidad, incluidos ocultos, paquetes y repositorios anidados. Detectar .git directorio o archivo y validar cada candidato mediante la inspección Git existente; no conceder confianza nueva ni ejecutar hooks/checkout. Persistir las carpetas raíz del árbol en el catálogo. Mostrar carpetas expandibles con sus proyectos en el sidebar; la búsqueda global por nombre, ruta o grupo encuentra proyectos aunque sus carpetas estén contraídas. Mantener favoritos/grupos existentes. Recorrer y construir el árbol fuera de MainActor, permitir cancelación y evitar ciclos/duplicados. No explorar .git internamente; enlaces externos e inaccesibles se informan sin afirmar completitud.
+
+## Navegación del workspace
+
+Pendientes, Preparados e Historial son pestañas sobre el contenido, con contadores y una sola selección. No restaurar el panel lateral de área de trabajo/ramas. Mantener ramas locales y remotas en el menú compacto Ramas, conservando las acciones de checkout y borrado de ramas integradas y las restricciones de confianza. Cambiar de pestaña mantiene el repositorio y sus sesiones, separa HEAD→índice de índice→working tree y cierra comparaciones de otro contexto.
 
 ## Arquitectura y responsabilidades de código
 
@@ -137,6 +144,8 @@ Los iconos deben reutilizar el logotipo y diseño de EFBY_POSTMAN, con la etique
   configuración, temporales ordinarios, logs, PTY o historial. Validar destinos,
   redirecciones/paginación sin propagar Authorization a otro origen. Mantener TLS
   y verificación SSH; cambios de huella requieren decisión visible.
+- Abrir el compare como capa sobre toda el área de contenido de la misma ventana de la app, manteniendo montada la vista anterior y sus sesiones; no activar el fullscreen de macOS ni crear otra ventana. Resaltado léxico de código automático por extensión, seleccionable manualmente, acotado y calculado fuera de MainActor; conservar los signos/fondos del diff y no ejecutar código. Resaltar los fragmentos modificados en ambos documentos, rojo para eliminaciones y verde para adiciones; líneas idénticas no reciben marcas de texto. Preservar selección manual y calcular el detalle fuera de MainActor con trabajo acotado.
+- Visor: dos documentos completos en paralelo, líneas alineadas y scroll horizontal y vertical sincronizados; incluir mapas verticales detrás de los indicadores de scroll de ambas columnas (rojo: eliminado; verde: agregado), distancia dinámica desde el borde inferior visible al próximo cambio y navegación entre bloques; abrir solo tras elegir un archivo. A siempre es el commit inferior y B el superior en el historial, sin inversión manual ni dependencia del orden de clics.
 - Comparación: exactamente dos commits distintos, árboles A→B, también merges o
   ramas sin relación de ancestro. Nunca merge-base/A...B. Un tercer clic conserva
   el par. Separar comparación de commits, índice frente a HEAD y worktree frente a índice.

@@ -39,7 +39,7 @@ No se asignan fechas ficticias. Después de H0, estimar cada hito con el tamaño
 | US-09 | Preparo archivos completos y creo un commit con el contenido previsto | RF-09, P0 |
 | US-10 | Publico la rama elegida con su destino visible | RF-08, P0 |
 | US-11 | Copio el SHA completo de un commit desde el historial | RF-10, P0 |
-| US-12 | Selecciono exactamente A y B, veo todas las rutas cambiadas e intercambio el sentido | RF-11/12, P0 |
+| US-12 | Selecciono exactamente A y B, veo todas las rutas cambiadas y comparo del commit inferior al superior | RF-11/12, P0 |
 | US-13 | Corrijo el mensaje del último commit publicado con una revisión del efecto y recuperación | RF-13, P0 |
 | US-14 | Uso comandos en el terminal inferior y la vista se actualiza tras mis cambios | RF-14/15, P0 |
 | US-15 | Trabajo sin red con mis datos locales y reconozco operaciones remotas pendientes | RF-04, P0 |

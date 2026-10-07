@@ -48,7 +48,7 @@ El primer contacto SSH presenta la identidad del servidor que debe verificarse c
 
 La zona superior contiene pestañas con indicadores de confianza, cambios locales y operación en curso. Una cabecera fija muestra repositorio, rama, remoto y seguimiento. La barra incluye obtener, traer, enviar y crear o cambiar rama. La disponibilidad indica si falta confianza o conexión, sin ocultar acciones.
 
-La columna de referencias permite explorar ramas locales, ramas remotas y etiquetas, con búsqueda. Cambiar rama con modificaciones locales presenta los archivos afectados y las alternativas permitidas; nunca descarta cambios automáticamente. Un HEAD separado se muestra de forma persistente y ofrece crear una rama desde ese commit.
+Las vistas Pendientes, Preparados e Historial se eligen mediante pestañas sobre el contenido, con contadores de archivos locales. El panel lateral de área de trabajo y ramas se elimina. Un menú compacto Ramas muestra ramas locales y remotas, identifica la rama actual y conserva las acciones de cambio y borrado de ramas locales integradas. Cambiar rama con modificaciones locales presenta los archivos afectados y las alternativas permitidas; nunca descarta cambios automáticamente. Un HEAD separado se muestra de forma persistente y ofrece crear una rama desde ese commit.
 
 El centro muestra historial paginado con grafo, asunto, autor, fecha y SHA abreviado; el detalle conserva la información completa. El grafo tiene representación textual accesible de padres y referencias. La paginación conserva selección y posición de lectura.
 
@@ -60,7 +60,7 @@ Con un commit seleccionado se muestra su detalle: SHA completo copiable, mensaje
 
 La comparación requiere **exactamente dos commits**. El modo de selección mantiene como máximo dos. Una tercera selección se rechaza con «Ya hay dos commits seleccionados; deselecciona uno para cambiarlo»; nunca sustituye silenciosamente un extremo. Salir del modo de comparación devuelve una selección individual coherente.
 
-El encabezado identifica **A: base** y **B: destino**, con mensaje y SHA de ambos. La primera selección ocupa A y la segunda B; la interfaz no deduce el orden por fecha ni por posición en el grafo. «Intercambiar A y B» es una acción explícita. La leyenda «Cambios para pasar de A a B» define el sentido.
+El encabezado identifica **A: base** y **B: destino**, con mensaje y SHA de ambos. A es siempre el commit inferior y B el superior según el orden visible del historial; el orden de clics no afecta la comparación. No hay inversión manual. La leyenda «Cambios para pasar de A a B» define el sentido.
 
 El resultado compara los árboles de A y B directamente. No representa automáticamente el rango de commits ni una comparación desde el ancestro común. Permite comparar commits de ramas distintas y muestra el resultado incluso si uno no es antecesor del otro.
 
@@ -90,6 +90,22 @@ Todas las regiones contemplan carga, vacío, éxito y error. Sin red siguen func
 
 La navegación es completa por teclado y VoiceOver. Atajos propuestos: `⌘O` abrir carpeta, `⇧⌘O` gestor, `⌘F` buscar en la región activa, `⇧⌘C` copiar SHA y `⌘J` alternar terminal. Sus combinaciones se muestran en los menús de macOS y no interceptan entrada del terminal cuando tiene el foco. Los controles tienen nombre accesible, foco visible y objetivos de al menos 32 puntos, ampliables con densidad cómoda. VoiceOver anuncia selección, extremos A/B y resultados sin releer el historial completo. El color nunca es la única señal.
 
-En ventanas estrechas, las referencias se contraen, la comparación pasa a vista unificada y el detalle puede abrirse como región dedicada. Repositorio, rama y extremos A/B permanecen identificables. El ancho mínimo se definirá al validar el prototipo en macOS.
+En ventanas estrechas, las referencias se contraen, la comparación conserva ambas columnas con desplazamiento horizontal sincronizado y el detalle puede abrirse como región dedicada. Repositorio, rama y extremos A/B permanecen identificables. El ancho mínimo se definirá al validar el prototipo en macOS.
 
-La aceptación UX exige que: quitar referencias no elimine carpetas; la selección admita como máximo dos commits; intercambiar A/B invierta el sentido; copiar entregue el SHA completo; errores remotos conserven contexto; corregir mensajes no incluya cambios preparados; el terminal refresque la vista; y los flujos funcionen con teclado y VoiceOver.
+La aceptación UX exige que: quitar referencias no elimine carpetas; la selección admita como máximo dos commits; la dirección se mantenga del commit inferior al superior; copiar entregue el SHA completo; errores remotos conserven contexto; corregir mensajes no incluya cambios preparados; el terminal refresque la vista; y los flujos funcionen con teclado y VoiceOver.
+
+### Comparación ampliada y lectura de código
+
+Al hacer clic en un archivo, la comparación cubre el área de contenido de la misma ventana, con ambas versiones en paralelo; no crea otra ventana ni activa un Space de fullscreen de macOS. La vista previa del repositorio permanece montada, incluidas su selección, scroll y sesiones de terminal. «Cerrar comparación» o Esc regresan a ella. No se persiste un nuevo ancho de panel por ampliar el compare. El formato de código se detecta por extensión y puede seleccionarse manualmente; desconocidos usan texto plano. Los colores de sintaxis no sustituyen los fondos y signos de los cambios.
+
+La comparación sincroniza ambos ejes de scroll. Los mapas verticales de modificaciones, acotados a 240 segmentos, están en las pistas de scroll de ambas columnas, detrás de sus indicadores. Rojo significa eliminado; verde, agregado; una sustitución contiene ambos. La cabecera muestra cuántas líneas faltan desde el borde inferior visible para llegar al próximo bloque al bajar. Indica cambios visibles y ausencia de cambios posteriores cuando corresponda. Arrastrar el scroll conserva la interacción nativa; anterior/siguiente navega entre bloques. Los documentos comparten ancho de desplazamiento aunque uno tenga líneas más largas.
+
+Dentro de las filas modificadas, los fragmentos eliminados reciben fondo rojo intenso y los agregados, verde intenso, en cualquiera de las columnas. Inserciones o eliminaciones unilaterales solo marcan texto existente del lado correspondiente; líneas idénticas no reciben marcas de texto. Se conservan sintaxis y selección manual. En líneas complejas que excedan el cálculo acotado se informa que el resaltado cubre el tramo entre extremos comunes.
+
+## Apertura de carpetas y navegación por proyectos
+
+El nombre visible es EFBY Git Desk. Abrir carpeta o Agregar carpeta admite la raíz de un repositorio y también un contenedor de múltiples proyectos. Una búsqueda recursiva, cancelable y sin límite de profundidad encuentra repositorios dentro de carpetas ocultas y paquetes, sin detenerse al encontrar un repositorio que contenga otros. Se validan individualmente y conservan sus estados de confianza previos; los nuevos comienzan sin confianza.
+
+El sidebar muestra Proyectos como árbol de directorios expandibles, al estilo de una navegación de proyectos. Las carpetas agrupadoras no se activan como repositorios; sus hojas o nodos con Git abren el proyecto elegido. Favoritos y grupos existentes permanecen como accesos. El buscador encuentra coincidencias de nombre, ruta o grupo en todos los repositorios registrados y presenta resultados directos, sin depender de la expansión del árbol. Las raíces agrupadoras se restauran desde el catálogo al iniciar.
+
+La app informa carpetas no legibles, enlaces a directorios fuera de la raíz elegida y candidatos no compatibles. Evita bucles y duplicados de enlaces y no recorre los objetos internos de .git. Un fallo individual no oculta los proyectos encontrados en otras carpetas.

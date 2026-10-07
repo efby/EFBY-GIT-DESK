@@ -5,10 +5,11 @@ public actor DeskService {
     public let git: any GitRepositoryPort
     public let registry: any RegistryPort
     public let cloud: any HostingProviderPort
+    private let discovery: (any FolderDiscoveryPort)?
     private let gate = OperationGate()
     private var plans: [UUID: AmendPlan] = [:]
-    public init(git: any GitRepositoryPort, registry: any RegistryPort, cloud: any HostingProviderPort) {
-        self.git = git; self.registry = registry; self.cloud = cloud
+    public init(git: any GitRepositoryPort, registry: any RegistryPort, cloud: any HostingProviderPort, discovery: (any FolderDiscoveryPort)? = nil) {
+        self.git = git; self.registry = registry; self.cloud = cloud; self.discovery = discovery
     }
     public func open(path: String) async throws -> Repository {
         var result = try await git.discover(path: path)
@@ -19,6 +20,41 @@ public actor DeskService {
         result.lastOpened = .now
         try await registry.save(result)
         return result
+    }
+    public func openFolder(path: String) async throws -> FolderOpenResult {
+        guard let discovery else {
+            let repository = try await open(path: path)
+            return FolderOpenResult(root: repository.path, repositories: [repository], issues: [])
+        }
+        let scan = try await discovery.scan(path: path)
+        var opened: [Repository] = [], issues: [String] = []
+        if scan.unreadableDirectories > 0 { issues.append("No se pudieron leer \(scan.unreadableDirectories) carpetas.") }
+        if scan.externalLinks > 0 { issues.append("Se omitieron \(scan.externalLinks) enlaces a carpetas fuera de la ubicación elegida.") }
+        for candidate in scan.paths {
+            try Task.checkCancellation()
+            do { opened.append(try await open(path: candidate)) }
+            catch is CancellationError { throw CancellationError() }
+            catch { issues.append(URL(fileURLWithPath: candidate).lastPathComponent + ": " + error.localizedDescription) }
+        }
+        if scan.paths.isEmpty {
+            // Preserve opening a subfolder within an existing repository.
+            do { opened = [try await open(path: path)] }
+            catch is CancellationError { throw CancellationError() }
+            catch { issues.append("No se encontraron repositorios Git en esta carpeta ni en sus subcarpetas.") }
+        }
+        if !opened.isEmpty {
+            var roots = try await folderRoots()
+            if opened.count > 1 || opened.first?.path != scan.root {
+                if !roots.contains(scan.root) { roots.append(scan.root) }
+                let encoded = try JSONEncoder().encode(roots)
+                try await registry.setPreference("repository.folderRoots", value: String(decoding: encoded, as: UTF8.self))
+            }
+        }
+        return FolderOpenResult(root: scan.root, repositories: opened, issues: issues)
+    }
+    public func folderRoots() async throws -> [String] {
+        guard let value = try await registry.preference("repository.folderRoots"), let data = value.data(using: .utf8) else { return [] }
+        return (try? JSONDecoder().decode([String].self, from: data)) ?? []
     }
     public func trust(_ repository: Repository) async throws -> Repository {
         let actual = try await git.discover(path: repository.path)

@@ -6,10 +6,11 @@ struct RepositorySidebar: View {
     @Bindable var model: DeskModel
     @State private var editing: Repository?
     @State private var group = ""
+    @State private var tree: [RepositoryTreeNode] = []
     private var filtered: [Repository] {
         model.repositories.filter {
-            model.repositorySearch.isEmpty || ($0.name + " " + $0.path + " " + $0.group)
-                .localizedCaseInsensitiveContains(model.repositorySearch)
+            model.repositorySearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || ($0.name + " " + $0.path + " " + $0.group)
+                .localizedStandardContains(model.repositorySearch.trimmingCharacters(in: .whitespacesAndNewlines))
         }
     }
     var body: some View {
@@ -17,20 +18,43 @@ struct RepositorySidebar: View {
             HStack {
                 Text("EF").font(.title3.bold()).padding(9).background(.teal.opacity(0.2), in: RoundedRectangle(cornerRadius: 9))
                 VStack(alignment: .leading) {
-                    Text("EfbyGitDesk").font(.headline)
+                    Text("EFBY Git Desk").font(.headline)
                     Text("BITBUCKET CLOUD").font(.caption2).foregroundStyle(.secondary)
                 }
             }.padding(.horizontal, 16).padding(.top, 14)
-            TextField("Buscar repositorios", text: $model.repositorySearch).textFieldStyle(.roundedBorder).padding(.horizontal, 12)
-            List(selection: $model.selectedID) {
-                Section("Favoritos") { ForEach(filtered.filter(\.favorite)) { repositoryRow($0) } }
-                Section("Recientes") { ForEach(filtered.filter { $0.group.isEmpty && !$0.favorite }) { repositoryRow($0) } }
-                ForEach(Array(Set(filtered.map(\.group).filter { !$0.isEmpty })).sorted(), id: \.self) { name in
-                    Section(name) { ForEach(filtered.filter { $0.group == name }) { repositoryRow($0) } }
+            TextField("Buscar en todos los proyectos", text: $model.repositorySearch).textFieldStyle(.roundedBorder).padding(.horizontal, 12)
+            List(selection: $model.sidebarSelection) {
+                if !model.repositorySearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Section("Resultados en todos los proyectos") {
+                        ForEach(filtered) { repositoryRow($0) }
+                    }
+                } else {
+                    if model.repositories.contains(where: \.favorite) {
+                        Section("Favoritos") { ForEach(model.repositories.filter(\.favorite)) { repositoryRow($0).id("favorite:" + $0.id) } }
+                    }
+                    Section("Proyectos") {
+                        OutlineGroup(tree, children: \.children) { node in
+                            if let repository = node.repository { repositoryRow(repository) }
+                            else {
+                                Label(node.name, systemImage: "folder").font(.body.weight(.medium))
+                                    .help(node.id).accessibilityLabel("Carpeta " + node.name)
+                            }
+                        }
+                    }
+                    ForEach(Array(Set(model.repositories.map(\.group).filter { !$0.isEmpty })).sorted(), id: \.self) { name in
+                        Section(name) { ForEach(model.repositories.filter { $0.group == name }) { repositoryRow($0).id("group:" + $0.id) } }
+                    }
                 }
             }.listStyle(.sidebar)
             if filtered.isEmpty && !model.repositories.isEmpty { Text("Sin coincidencias").foregroundStyle(.secondary).padding() }
+            Button("Agregar carpeta", systemImage: "folder.badge.plus") { model.chooseRepository() }
+                .buttonStyle(.bordered).disabled(model.busy).padding(.horizontal, 12)
             Text("\(model.repositories.count) repositorios locales").font(.caption).foregroundStyle(.secondary).padding(16)
+        }
+        .task(id: RepositoryTreeSnapshot(repositories: model.repositories, roots: model.folderRoots)) {
+            let repositories = model.repositories, roots = model.folderRoots
+            let result = await Task.detached { RepositoryTreeBuilder.make(repositories: repositories, roots: roots) }.value
+            if !Task.isCancelled { tree = result }
         }
         .sheet(item: $editing) { repository in
             VStack(alignment: .leading, spacing: 18) {
