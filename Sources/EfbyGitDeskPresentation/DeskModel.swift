@@ -70,6 +70,18 @@ import EfbyGitDeskDomain
     public var repository: Repository? { repositories.first { $0.id == selectedID } }
     public var mutable: Bool { repository?.trusted == true && repository?.linkedWorktree == false && repository?.inspectionReason == nil && !busy }
     public var profile: ConnectionProfile? { profiles.first { $0.id == profileID } }
+    public var workspaceSection: WorkspaceSection {
+        get { workingView ? (stagedView ? .staged : .pending) : .history }
+        set {
+            guard newValue != workspaceSection else { return }
+            switch newValue {
+            case .history: workingView = false; loadFiles()
+            case .pending, .staged:
+                guard repository?.trusted == true else { return }
+                showWorking(staged: newValue == .staged)
+            }
+        }
+    }
     public var context: DiffContext? {
         if workingView { return stagedView ? .staged : .working }
         if selectedOIDs.count == 2, let pair = try? ComparisonPair(base: orderedComparison[0], target: orderedComparison[1]) {

@@ -37,14 +37,7 @@ public struct WorkspaceView: View {
                         } else if repository.linkedWorktree {
                             Label("Worktree vinculado: solo inspección en este MVP.", systemImage: "info.circle").font(.caption).padding(10)
                         }
-                        HSplitView {
-                            BranchSidebar(model: model).frame(minWidth: 150, idealWidth: model.branchWidth, maxWidth: 250)
-                                .background(PanelWidthObserver { model.branchWidth = $0; model.persistLayout() })
-                            HistoryPane(model: model).frame(minWidth: 370)
-                            DiffPane(model: model).frame(minWidth: 340, idealWidth: model.detailWidth)
-                                .background(PanelWidthObserver { model.detailWidth = $0; model.persistLayout() })
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        RepositoryWorkArea(model: model)
                         if model.terminalVisible {
                             Divider()
                             TerminalPane(model: model).frame(height: model.terminalHeight)

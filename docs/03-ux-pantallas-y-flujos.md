@@ -48,7 +48,7 @@ El primer contacto SSH presenta la identidad del servidor que debe verificarse c
 
 La zona superior contiene pestañas con indicadores de confianza, cambios locales y operación en curso. Una cabecera fija muestra repositorio, rama, remoto y seguimiento. La barra incluye obtener, traer, enviar y crear o cambiar rama. La disponibilidad indica si falta confianza o conexión, sin ocultar acciones.
 
-La columna de referencias permite explorar ramas locales, ramas remotas y etiquetas, con búsqueda. Cambiar rama con modificaciones locales presenta los archivos afectados y las alternativas permitidas; nunca descarta cambios automáticamente. Un HEAD separado se muestra de forma persistente y ofrece crear una rama desde ese commit.
+Las vistas Pendientes, Preparados e Historial se eligen mediante pestañas sobre el contenido, con contadores de archivos locales. El panel lateral de área de trabajo y ramas se elimina. Un menú compacto Ramas muestra ramas locales y remotas, identifica la rama actual y conserva las acciones de cambio y borrado de ramas locales integradas. Cambiar rama con modificaciones locales presenta los archivos afectados y las alternativas permitidas; nunca descarta cambios automáticamente. Un HEAD separado se muestra de forma persistente y ofrece crear una rama desde ese commit.
 
 El centro muestra historial paginado con grafo, asunto, autor, fecha y SHA abreviado; el detalle conserva la información completa. El grafo tiene representación textual accesible de padres y referencias. La paginación conserva selección y posición de lectura.
 

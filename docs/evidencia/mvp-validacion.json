@@ -41,9 +41,9 @@
     "architecture": "arm64",
     "signature": "ad-hoc",
     "signatureVerified": true,
-    "binarySHA256": "eca2a3d257986597811f6ae2b01e5615ec035903fedfd6537f0d56c1be9708c1",
+    "binarySHA256": "b191050edd0d49bd209529a2c604c61526669e651bb5d6929b2fc6924e79fb96",
     "credentialHelperSHA256": "cc10329c338a5e1e119b380a15fd631cb96caaf92a0e685a1988664cf6066ed3",
-    "zipSHA256": "bff857e5300b9839ba44b7ac2ea1534979834d6b5f60c0d4a52a935a13970f07"
+    "zipSHA256": "72b4fc1b6afb0a876e097c6ee83499966873636c29eee1c7e7e9602d9c14390c"
   },
   "regressionAfterDiffSelection": {
     "passed": 37,
@@ -164,6 +164,22 @@
     "selectionAndTerminalContextRetained": true,
     "escapeShortcutAvailable": true,
     "closeButtonHasReservedWidth": true,
+    "interactivePersonalRepositoryQA": false
+  },
+  "regressionAfterWorkspaceTabs": {
+    "passed": 55,
+    "skippedOptional": 2,
+    "suites": 14,
+    "seconds": 5.528,
+    "workAreaBranchSidebarRemoved": true,
+    "nativeSingleSelectionTabs": true,
+    "pendingAndStagedCountsVisible": true,
+    "branchActionsRetainedInCompactMenu": true,
+    "separateStagedAndWorkingInventoriesVerified": true,
+    "trustRequiredForWorkingTabsVerified": true,
+    "contextChangeClosesDiffVerified": true,
+    "repositorySelectionRetained": true,
+    "visualSyntheticFixtureReviewed": true,
     "interactivePersonalRepositoryQA": false
   }
 }

@@ -94,6 +94,10 @@ siguen pendientes. No tratar el MVP de desarrollo como release H6 aprobado.
 
 Los iconos deben reutilizar el logotipo y diseño de EFBY_POSTMAN, con la etiqueta inferior **#GitDesk**. Mantener el vector de marca en `Resources/Brand/` y el generador reproducible `scripts/generate-icon.sh`; incorporar `AppIcon.icns` al bundle macOS.
 
+## Navegación del workspace
+
+Pendientes, Preparados e Historial son pestañas sobre el contenido, con contadores y una sola selección. No restaurar el panel lateral de área de trabajo/ramas. Mantener ramas locales y remotas en el menú compacto Ramas, conservando las acciones de checkout y borrado de ramas integradas y las restricciones de confianza. Cambiar de pestaña mantiene el repositorio y sus sesiones, separa HEAD→índice de índice→working tree y cierra comparaciones de otro contexto.
+
 ## Arquitectura y responsabilidades de código
 
 - Separar dominio, aplicación, infraestructura, presentación y composición mediante

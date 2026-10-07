@@ -112,3 +112,11 @@ La suite general aprobó 54 pruebas, con 2 optativas omitidas (56 registradas, 1
 El botón «Cerrar comparación», con una X y fondo destacado, está al inicio de la cabecera del visor. Conserva su ancho aunque la ruta sea larga; la ruta se trunca en el medio. «Esc para volver» recuerda el atajo. El botón y Esc ejecutan `closeDiff`, que cierra únicamente la capa de comparación y conserva la ventana, el repositorio y las sesiones. Está disponible también durante la carga y en los estados de error o resumen.
 
 Validación: 6 pruebas dirigidas en 2 suites aprobaron (0,884 s), incluidas conservación de ventana/contexto y persistencia del visor cerrado tras refresh. Se revisó una captura sintética del visor con el nuevo botón.
+
+## Pestañas del área de trabajo
+
+Se retiró la columna lateral que contenía Área de trabajo, Ramas locales y Ramas remotas. Pendientes, Preparados e Historial son pestañas nativas de selección única sobre el contenido, con contadores de cambios. Ramas locales y remotas se consultan desde un menú compacto, con las acciones existentes de checkout/borrado integrado y copia del nombre.
+
+Historial y detalle conservan su identidad dentro de una región de dos columnas que aprovecha el ancho liberado. Las pestañas locales requieren confianza, siguen usando sus contextos Git respectivos y cierran el visor del contexto anterior. El cambio no modifica archivos, ramas ni sesiones de terminal por sí mismo. Se agrega una prueba con Git real para distinguir inventario del índice y del área de trabajo, verificar el bloqueo sin confianza y conservar el repositorio al volver a Historial.
+
+Validación: 55 pruebas aprobadas, 2 optativas omitidas (57 registradas, 14 suites, 5,528 s). Se revisó una captura sintética de las pestañas, el menú Ramas y las dos columnas ampliadas.
