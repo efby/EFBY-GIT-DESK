@@ -415,5 +415,18 @@
       "saved Git restored before repository access",
       "catalog remains usable when Git unavailable"
     ]
+  },
+  "miniforgeFallback_2026_10_07": {
+    "registered": 95,
+    "passed": 93,
+    "skippedOptional": 2,
+    "suites": 21,
+    "seconds": 25.211,
+    "debugBuildPassed": true,
+    "restrictedUserMachineRuntimeVerified": false,
+    "coverage": [
+      "Miniforge detection without Terminal PATH",
+      "preferred path and PATH keep priority"
+    ]
   }
 }

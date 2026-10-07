@@ -94,6 +94,21 @@ struct GitExecutableResolverTests {
         }
     }
 
+    @Test func findsMiniforgeWithoutTerminalPATHAndKeepsPreferredGitFirst() async throws {
+        let folder = try temporaryFolder(); defer { try? FileManager.default.removeItem(at: folder) }
+        let miniforge = folder.appendingPathComponent("miniforge3/bin")
+        let preferred = folder.appendingPathComponent("preferred/bin")
+        try makeGit(in: miniforge, output: "git version 2.55.0")
+        try makeGit(in: preferred, output: "git version 2.51.0")
+        let resolver = GitExecutableResolver()
+        #expect(try await resolver.resolve(path: "/usr/bin:/bin", home: folder.path)
+            == miniforge.appendingPathComponent("git").path)
+        #expect(try await resolver.resolve(preferred: preferred.appendingPathComponent("git").path,
+            path: "/usr/bin:/bin", home: folder.path) == preferred.appendingPathComponent("git").path)
+        #expect(try await resolver.resolve(path: preferred.path, home: folder.path)
+            == preferred.appendingPathComponent("git").path)
+    }
+
     private func temporaryFolder() throws -> URL {
         let path = FileManager.default.temporaryDirectory.appendingPathComponent("GitResolver-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: path, withIntermediateDirectories: true)

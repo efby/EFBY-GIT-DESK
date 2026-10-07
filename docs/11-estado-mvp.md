@@ -298,3 +298,16 @@ versión antigua, configuración anterior preservada, restauración antes de abr
 repositorio y catálogo accesible ante Git no disponible. Las fixtures no equivalen
 a una prueba en la cuenta restringida del equipo del reporte. Este cambio se entrega
 por PR; el DMG publicado v0.1.4 todavía tiene la detección anterior.
+
+
+### Fallback Miniforge — 7 de octubre de 2026
+
+La detección incluye `~/miniforge3/bin/git`, usando el directorio personal de la
+cuenta actual y sin depender de que Finder reciba el PATH de Terminal. Una ruta
+configurada explícitamente y el Git válido de PATH conservan prioridad. Si no
+se detecta otra instalación independiente, se valida el Git existente de Miniforge;
+no se modifica `.zshrc`, instala software ni acepta la licencia de Xcode.
+La prueba cubre PATH limitado a rutas del sistema y prioridad del Git elegido.
+Validación: suite completa, 95 pruebas registradas, 93 aprobadas y 2 opcionales
+omitidas en 25,211 s, con compilación debug correcta. Pendiente validar el DMG
+en el equipo con Miniforge del reporte.

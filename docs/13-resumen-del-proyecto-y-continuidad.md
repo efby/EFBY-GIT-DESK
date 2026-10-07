@@ -78,7 +78,7 @@ ni rollback automático. La recuperación permanece ante fallos. La matriz RF-01
 y sus límites están en [11](11-estado-mvp.md); implementación no equivale a QA completo.
 
 El Git de ejecución se detecta entre instalaciones existentes del usuario (PATH,
-`~/.local/bin`, `~/bin`, perfiles Nix/Homebrew y rutas habituales Homebrew,
+`~/.local/bin`, `~/bin`, `~/miniforge3/bin`, perfiles Nix/Homebrew y rutas habituales Homebrew,
 MacPorts y `/usr/local/git/bin`). No se ejecutan `/usr/bin/git`, sus enlaces ni
 rutas de herramientas de Apple durante la detección/configuración. Ajustes → Git
 permite elegir o escribir una ruta absoluta y conservarla para siguientes sesiones;
