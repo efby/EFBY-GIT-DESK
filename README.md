@@ -1,4 +1,4 @@
-# EfbyGitDesk
+# EFBY Git Desk
 
 MVP de desarrollo de una aplicación nativa macOS para trabajar con Git local y Bitbucket Cloud. SwiftUI/AppKit, Swift 6 y Clean Architecture; sin dependencias de terceros.
 
@@ -11,7 +11,7 @@ Requisitos: Xcode con Swift 6.2 o posterior y Git 2.40 o posterior. El entorno v
 ```sh
 bash scripts/test.sh
 bash scripts/build-app.sh
-open dist/EfbyGitDesk.app
+open "dist/EFBY Git Desk.app"
 ```
 
 Para un paquete optimizado: `bash scripts/build-app.sh release`. El paquete incluye el helper de credenciales y lleva firma ad hoc de desarrollo. No es un release con Developer ID ni notarización. Abrir `Package.swift` en Xcode permite desarrollar los targets.
@@ -26,6 +26,8 @@ Para un paquete optimizado: `bash scripts/build-app.sh release`. El paquete incl
 6. Clona en una carpeta nueva. La aplicación realiza `--no-checkout` y solicita confianza antes de materializar archivos.
 7. **Editar mensaje de HEAD** presenta un plan que caduca a los 60 segundos. Publicarlo exige que HEAD coincida con la punta remota y utiliza un lease exacto. La referencia de recuperación se conserva incluso si el envío falla.
 8. **Terminal** abre el panel; **Nueva sesión** inicia una shell. Ocultarlo conserva la sesión. Cerrar una sesión activa presenta confirmación. Los cambios se consultan al volver al foco y cada cuatro segundos.
+
+**Abrir carpeta** admite un repositorio individual o una carpeta superior. Busca proyectos Git en todas las subcarpetas, conserva la estructura en un árbol expandible y recuerda las carpetas agregadas. **Buscar en todos los proyectos** encuentra repositorios por nombre, ruta o grupo incluso con el árbol contraído. No se ejecutan hooks ni se confía automáticamente en los proyectos encontrados. La búsqueda se puede cancelar; si hay carpetas inaccesibles, enlaces externos o repositorios no compatibles, la app informa el resultado parcial.
 
 Las pestañas **Pendientes**, **Preparados** e **Historial** cambian la vista del repositorio; las dos primeras muestran sus contadores. El menú **Ramas** permite consultar ramas locales/remotas y cambiar o borrar una rama local integrada. El panel lateral de área de trabajo se eliminó para ampliar el contenido.
 

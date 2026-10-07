@@ -23,7 +23,7 @@ public actor SQLiteRegistry: RegistryPort {
         let version = sqlite3_column_int(versionQuery, 0)
         sqlite3_finalize(versionQuery)
         guard state == SQLITE_ROW, version <= 1 else {
-            throw DeskError("Este catálogo pertenece a una versión más reciente de EfbyGitDesk.")
+            throw DeskError("Este catálogo pertenece a una versión más reciente de EFBY Git Desk.")
         }
         let schema = """
         PRAGMA journal_mode=WAL;

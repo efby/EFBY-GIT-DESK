@@ -1,4 +1,4 @@
-# EfbyGitDesk — instrucciones del proyecto
+# EFBY Git Desk — instrucciones del proyecto
 
 ## Rol y objetivo
 
@@ -65,8 +65,7 @@ siguen pendientes. No tratar el MVP de desarrollo como release H6 aprobado.
 
 - Swift es el lenguaje solicitado; macOS es la única plataforma y Bitbucket Cloud
   la integración remota inicial. Clean Architecture es obligatoria.
-- El nombre confirmado del proyecto y la aplicación es **EfbyGitDesk**. Usarlo en
-  interfaz, documentación y nombres de módulos.
+- El nombre visible de la aplicación es **EFBY Git Desk**, separado en interfaz, ventanas, menús, preferencias y bundle distribuido. El proyecto técnico, módulos, identificadores, carpeta de datos y servicio Keychain mantienen **EfbyGitDesk** para preservar compatibilidad.
 - Cubrir apertura/clonación, ramas, estado y staging por archivo, commits,
   fetch/pull/push, historial/grafo, SHA completo, diferencias, comparación de
   exactamente dos commits, edición del mensaje de HEAD también publicado,
@@ -93,6 +92,10 @@ siguen pendientes. No tratar el MVP de desarrollo como release H6 aprobado.
 ## Identidad visual
 
 Los iconos deben reutilizar el logotipo y diseño de EFBY_POSTMAN, con la etiqueta inferior **#GitDesk**. Mantener el vector de marca en `Resources/Brand/` y el generador reproducible `scripts/generate-icon.sh`; incorporar `AppIcon.icns` al bundle macOS.
+
+## Carpetas y proyectos
+
+Abrir una carpeta busca repositorios Git en todos sus descendientes, sin límite de profundidad, incluidos ocultos, paquetes y repositorios anidados. Detectar .git directorio o archivo y validar cada candidato mediante la inspección Git existente; no conceder confianza nueva ni ejecutar hooks/checkout. Persistir las carpetas raíz del árbol en el catálogo. Mostrar carpetas expandibles con sus proyectos en el sidebar; la búsqueda global por nombre, ruta o grupo encuentra proyectos aunque sus carpetas estén contraídas. Mantener favoritos/grupos existentes. Recorrer y construir el árbol fuera de MainActor, permitir cancelación y evitar ciclos/duplicados. No explorar .git internamente; enlaces externos e inaccesibles se informan sin afirmar completitud.
 
 ## Navegación del workspace
 

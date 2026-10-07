@@ -21,7 +21,7 @@ public actor GitAdapter: GitRepositoryPort {
         }
         let numbers = fields[2].split(separator: ".").compactMap { Int($0) }
         guard numbers.count >= 2, numbers[0] > 2 || (numbers[0] == 2 && numbers[1] >= 40) else {
-            throw DeskError("EfbyGitDesk requiere Git 2.40 o posterior. Instálalo antes de continuar.")
+            throw DeskError("EFBY Git Desk requiere Git 2.40 o posterior. Instálalo antes de continuar.")
         }
         return result.text.trimmingCharacters(in: .whitespacesAndNewlines)
     }

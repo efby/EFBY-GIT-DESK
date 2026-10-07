@@ -1,6 +1,6 @@
 {
   "date": "2026-10-06",
-  "application": "EfbyGitDesk 0.1.0",
+  "application": "EFBY Git Desk 0.1.0",
   "macOS": "26.6.2",
   "architecture": "arm64",
   "swift": "6.4",
@@ -41,9 +41,10 @@
     "architecture": "arm64",
     "signature": "ad-hoc",
     "signatureVerified": true,
-    "binarySHA256": "95b98eb4c43b2a8dffee9e86a17cf60116134bb681e8e4df41e05f321980fe5b",
-    "credentialHelperSHA256": "cc10329c338a5e1e119b380a15fd631cb96caaf92a0e685a1988664cf6066ed3",
-    "zipSHA256": "c1cdbdba3ab7722b8baf5ec39b1921c2c2fa5aef2ad0738d25fe56dd1c647469"
+    "binarySHA256": "6e38ee43618a5befc6824a327bfeaee5d700882425f87e446e9c9069addaa6d6",
+    "credentialHelperSHA256": "ba966d0bae89eb55f0172eb7e3764fd204cd22bc3effb5d6da094217b4635b6f",
+    "zipSHA256": "edd2bd5fd31e6a1733956cef23f43643a90efc5a9352d6b555f7fbcb2b67e7b2",
+    "bundleName": "EFBY Git Desk.app"
   },
   "regressionAfterDiffSelection": {
     "passed": 37,
@@ -200,5 +201,26 @@
     "maxDetailedChangedCharactersPerSide": 4096,
     "visualSyntheticFixtureReviewed": true,
     "interactivePersonalRepositoryQA": false
+  },
+  "regressionAfterProjectFolderTree": {
+    "passed": 67,
+    "skippedOptional": 2,
+    "suites": 16,
+    "seconds": 5.879,
+    "visibleName": "EFBY Git Desk",
+    "recursiveFolderDiscoveryVerified": true,
+    "noDepthLimit": true,
+    "hiddenPackagesAndNestedRepositoriesVerified": true,
+    "gitFileAndRealWorktreeVerified": true,
+    "cyclesAliasesAndExternalLinksVerified": true,
+    "cancellationVerified": true,
+    "individualFailureDoesNotBlockOtherProjects": true,
+    "trustFavoritesAndGroupsPreserved": true,
+    "folderRootsPersistedAndRestored": true,
+    "folderTreeHierarchyVerified": true,
+    "searchIndependentOfCollapsedTreeVisualReviewed": true,
+    "catalogAndCredentialIdentifiersUnchanged": true,
+    "visualSyntheticFixtureReviewed": true,
+    "interactivePersonalFolderQA": false
   }
 }

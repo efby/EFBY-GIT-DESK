@@ -7,6 +7,7 @@ import EfbyGitDeskDomain
 @MainActor @Observable public final class DeskModel {
     public let service: DeskService
     @ObservationIgnored private let terminalFactory: @MainActor () -> any TerminalPort
+    public var folderRoots: [String] = []
     public var repositories: [Repository] = []
     public var selectedID: String?
     public var openIDs: [String] = []
@@ -68,6 +69,13 @@ import EfbyGitDeskDomain
     public init(service: DeskService, terminalFactory: @escaping @MainActor () -> any TerminalPort) {
         self.service = service; self.terminalFactory = terminalFactory
     }
+    public var sidebarSelection: String? {
+        get { selectedID }
+        set {
+            guard let newValue, repositories.contains(where: { $0.id == newValue }) else { return }
+            selectedID = newValue
+        }
+    }
     public var repository: Repository? { repositories.first { $0.id == selectedID } }
     public var mutable: Bool { repository?.trusted == true && repository?.linkedWorktree == false && repository?.inspectionReason == nil && !busy }
     public var profile: ConnectionProfile? { profiles.first { $0.id == profileID } }
@@ -124,6 +132,7 @@ import EfbyGitDeskDomain
         do {
             gitVersion = try await service.git.version()
             repositories = try await service.registry.repositories()
+            folderRoots = try await service.folderRoots()
             profiles = try await service.registry.profiles()
             terminalVisible = try await service.registry.preference("terminal.visible") == "true"
             terminalHeight = Double(try await service.registry.preference("terminal.height") ?? "") ?? 230
@@ -145,17 +154,31 @@ import EfbyGitDeskDomain
     public func chooseRepository() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true; panel.canChooseFiles = false
-        panel.prompt = "Abrir repositorio"
+        panel.prompt = "Abrir carpeta"
+        panel.message = "Elige un repositorio o una carpeta que contenga proyectos Git. Se buscará en todas sus subcarpetas."
         if panel.runModal() == .OK, let url = panel.url { open(path: url.path) }
     }
     public func open(path: String) {
-        perform("Abriendo repositorio…") {
-            let repository = try await self.service.open(path: path)
+        perform("Buscando repositorios en la carpeta y sus subcarpetas…", refreshAfter: false) {
+            let result: FolderOpenResult
+            do { result = try await self.service.openFolder(path: path) }
+            catch {
+                self.repositories = (try? await self.service.registry.repositories()) ?? self.repositories
+                self.folderRoots = (try? await self.service.folderRoots()) ?? self.folderRoots
+                throw error
+            }
             self.repositories = try await self.service.registry.repositories()
-            self.select(repository.id); self.status = "Repositorio abierto: " + repository.name
+            self.folderRoots = try await self.service.folderRoots()
+            self.repositorySearch = ""
+            if let repository = result.repositories.first(where: { $0.path == result.root }) ?? (result.repositories.count == 1 ? result.repositories.first : nil) {
+                self.select(repository.id)
+            }
+            self.status = "\(result.repositories.count) repositorios encontrados en " + URL(fileURLWithPath: result.root).lastPathComponent
+            if !result.issues.isEmpty { self.error = result.issues.prefix(12).joined(separator: "\n") }
         }
     }
     public func select(_ id: String) {
+        guard repositories.contains(where: { $0.id == id }) else { return }
         if !openIDs.contains(id) { openIDs.append(id); persistTabs() }
         generation += 1; query?.cancel(); fileQuery?.cancel(); closeDiff(); filesLoading = false
         selectedID = id; selectedOIDs = []; commits = []; files = []; diffText = ""

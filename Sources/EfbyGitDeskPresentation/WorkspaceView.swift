@@ -63,7 +63,7 @@ public struct WorkspaceView: View {
         .toolbar {
             if model.selectedFile == nil {
                 ToolbarItemGroup {
-                    Button("Abrir", systemImage: "folder.badge.plus") { model.chooseRepository() }.keyboardShortcut("o")
+                    Button("Abrir carpeta", systemImage: "folder.badge.plus") { model.chooseRepository() }.keyboardShortcut("o")
                     Button("Clonar", systemImage: "square.and.arrow.down") { cloning = true }
                     Button("Conexiones", systemImage: "network") { connections = true }
                 }
@@ -100,7 +100,7 @@ public struct WorkspaceView: View {
     private var topBar: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(model.repository?.name ?? "EfbyGitDesk").font(.headline)
+                Text(model.repository?.name ?? "EFBY Git Desk").font(.headline)
                 Label(model.snapshot.branch.isEmpty ? "Sin rama" : model.snapshot.branch, systemImage: "arrow.triangle.branch")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -121,11 +121,11 @@ public struct WorkspaceView: View {
     private var welcome: some View {
         VStack(spacing: 22) {
             Image(systemName: "arrow.triangle.branch").font(.system(size: 58)).foregroundStyle(.teal).accessibilityHidden(true)
-            Text("Tus repositorios, en una sola vista.").font(.largeTitle.bold())
-            Text("Explora el historial, prepara cambios y trabaja con Bitbucket Cloud.\nLos repositorios locales funcionan sin conexión.")
+            Text("Tus proyectos, en una sola vista.").font(.largeTitle.bold())
+            Text("Abre un proyecto o una carpeta para encontrar todos sus repositorios Git.\nOrganízalos por carpetas, explora su historial y prepara cambios.")
                 .foregroundStyle(.secondary).multilineTextAlignment(.center)
             HStack {
-                Button("Abrir repositorio") { model.chooseRepository() }.buttonStyle(.borderedProminent)
+                Button("Abrir carpeta") { model.chooseRepository() }.buttonStyle(.borderedProminent)
                 Button("Clonar desde Bitbucket") { cloning = true }.buttonStyle(.bordered)
             }
             Label("Cada repositorio comienza en modo de inspección segura.", systemImage: "lock.shield").font(.caption).foregroundStyle(.secondary)

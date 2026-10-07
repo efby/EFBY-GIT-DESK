@@ -4,7 +4,7 @@ Versión 0.1 · 6 de octubre de 2026 · Describe el comportamiento esperado de l
 
 ## 1. Instalación y requisitos
 
-La propuesta técnica es macOS 14 o posterior, binario arm64/x86_64 y Git instalado separadamente. Las versiones mínimas finales se fijan tras H0. La aplicación comprueba Git al arrancar: ejecutable válido, versión y capacidades necesarias. Si la instalación de Apple requiere Command Line Tools, se explica cómo obtenerlas; EfbyGitDesk no instala ni reemplaza Git silenciosamente.
+La propuesta técnica es macOS 14 o posterior, binario arm64/x86_64 y Git instalado separadamente. Las versiones mínimas finales se fijan tras H0. La aplicación comprueba Git al arrancar: ejecutable válido, versión y capacidades necesarias. Si la instalación de Apple requiere Command Line Tools, se explica cómo obtenerlas; EFBY Git Desk no instala ni reemplaza Git silenciosamente.
 
 Distribuir un `.app` en DMG o ZIP firmado con Developer ID, Hardened Runtime y notarización; verificar firmas y ticket del artefacto final. Apple documenta los requisitos de firma, runtime y timestamp para notarización. [Notarización de software macOS](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution).
 
@@ -24,7 +24,7 @@ En un clon nuevo, primero se transfieren objetos sin checkout. La aplicación ex
 
 ## 3. Uso cotidiano
 
-El gestor busca por nombre, ruta y grupo. «Cerrar» cierra una pestaña; «Quitar» elimina una referencia del catálogo local; ninguna de esas acciones elimina la carpeta del repositorio. Favoritos y grupos son locales a EfbyGitDesk.
+El gestor busca por nombre, ruta y grupo. «Cerrar» cierra una pestaña; «Quitar» elimina una referencia del catálogo local; ninguna de esas acciones elimina la carpeta del repositorio. Favoritos y grupos son locales a EFBY Git Desk.
 
 En la vista de trabajo, la cabecera muestra repositorio, rama y remoto. «Obtener cambios (fetch)» actualiza referencias. «Traer cambios (pull)» admite fast-forward; si existe divergencia, muestra las alternativas y requiere resolverla explícitamente por terminal en v1. «Enviar cambios (push)» muestra el destino antes de ejecutarse. El servidor puede rechazar el envío aunque la conexión funcione.
 
@@ -73,7 +73,7 @@ Una exportación de diagnóstico es revisable antes de guardar/compartir y permi
 
 | Problema | Comprobación y siguiente acción |
 |---|---|
-| SSH funciona en Terminal y falla en EfbyGitDesk | Revisar Git ejecutable, SSH_AUTH_SOCK, host alias y herramientas disponibles desde Finder |
+| SSH funciona en Terminal y falla en EFBY Git Desk | Revisar Git ejecutable, SSH_AUTH_SOCK, host alias y herramientas disponibles desde Finder |
 | API funciona, push falla | Revisar transporte, scope de escritura, repositorio y política de rama; API no prueba capacidad Git |
 | Clone por SSH funciona, catálogo vacío | Conectar API token y comprobar workspace/permisos; mantener clonación por URL |
 | Pull no continúa | Mostrar divergencia, upstream ausente o cambios bloqueantes; resolución explícita por terminal |
@@ -85,8 +85,10 @@ Una exportación de diagnóstico es revisable antes de guardar/compartir y permi
 
 La primera versión se actualiza mediante instalación manual de un build firmado. Las notas indican cambios de compatibilidad y migraciones. Antes de reemplazar, esperar operaciones activas y cerrar sesiones terminales. La actualización no relanza comandos ni cambia configuración global Git/SSH.
 
-Desinstalar la app no elimina repositorios. Ofrecer una acción separada para eliminar metadatos y secretos propios de EfbyGitDesk, identificando exactamente su alcance. Esa acción no revoca tokens en Atlassian ni borra claves SSH del usuario. Mantener instrucciones de revocación y respaldo en el manual final.
+Desinstalar la app no elimina repositorios. Ofrecer una acción separada para eliminar metadatos y secretos propios de EFBY Git Desk, identificando exactamente su alcance. Esa acción no revoca tokens en Atlassian ni borra claves SSH del usuario. Mantener instrucciones de revocación y respaldo en el manual final.
 
 ## 9. Lista de release
 
 Comprobar matriz RF/QA, límites y notas; versiones/dependencias fijadas; ausencia de credenciales en bundle/logs; firma de app/helpers; notarización y ticket; instalación limpia desde Finder; terminal/Git/agente/Keychain; actualización con preferencias anteriores; VoiceOver/teclado; prueba de lease fallida y recuperación. El informe adjunta resultados reales y excepciones. Esta lista es un plan y no certifica un producto aún no construido.
+
+El bundle de desarrollo se genera como `dist/EFBY Git Desk.app`. Abrir carpeta busca Git en todos los descendientes y registra el árbol de proyectos; seleccionar un resultado abre únicamente ese repositorio. La búsqueda es cancelable. Los datos existentes y credenciales conservan sus identificadores internos para evitar migraciones por el cambio del nombre visible.
