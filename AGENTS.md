@@ -101,6 +101,8 @@ Abrir una carpeta busca repositorios Git en todos sus descendientes, sin límite
 
 Pendientes, Preparados e Historial son pestañas sobre el contenido, con contadores y una sola selección. No restaurar el panel lateral de área de trabajo/ramas. Mantener ramas locales y remotas en el menú compacto Ramas, conservando las acciones de checkout y borrado de ramas integradas y las restricciones de confianza. Cambiar de pestaña mantiene el repositorio y sus sesiones, separa HEAD→índice de índice→working tree y cierra comparaciones de otro contexto.
 
+Los paneles usan separadores nativos redimensionables: comparación A→B inicialmente a su mínimo de 340 puntos y carpetas a su máximo de 340 (mínimo 210). Guardar los anchos elegidos y restaurarlos en siguientes sesiones y al cambiar de repositorio; reducir temporalmente la ventana no sobrescribe la preferencia. Cerrar el visor mediante botón **Cerrar** con fondo rojo visible también en ventana inactiva y mediante Esc.
+
 ## Arquitectura y responsabilidades de código
 
 - Separar dominio, aplicación, infraestructura, presentación y composición mediante

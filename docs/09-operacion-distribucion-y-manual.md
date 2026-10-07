@@ -92,3 +92,8 @@ Desinstalar la app no elimina repositorios. Ofrecer una acción separada para el
 Comprobar matriz RF/QA, límites y notas; versiones/dependencias fijadas; ausencia de credenciales en bundle/logs; firma de app/helpers; notarización y ticket; instalación limpia desde Finder; terminal/Git/agente/Keychain; actualización con preferencias anteriores; VoiceOver/teclado; prueba de lease fallida y recuperación. El informe adjunta resultados reales y excepciones. Esta lista es un plan y no certifica un producto aún no construido.
 
 El bundle de desarrollo se genera como `dist/EFBY Git Desk.app`. Abrir carpeta busca Git en todos los descendientes y registra el árbol de proyectos; seleccionar un resultado abre únicamente ese repositorio. La búsqueda es cancelable. Los datos existentes y credenciales conservan sus identificadores internos para evitar migraciones por el cambio del nombre visible.
+
+
+### Tamaños de paneles y cierre del compare
+
+El botón **Cerrar**, con fondo rojo, vuelve al repositorio; Esc mantiene la misma acción. La comparación A→B comienza en 340 puntos (mínimo actual) y carpetas en 340 (máximo actual, reducible hasta 210). Arrastrar sus separadores permite ajustar los anchos. La app guarda los tamaños elegidos y los restaura al cambiar de repositorio o iniciar otra sesión. Una ventana más pequeña limita temporalmente el espacio sin reemplazar la preferencia. Restablecer distribución recupera esos valores iniciales.

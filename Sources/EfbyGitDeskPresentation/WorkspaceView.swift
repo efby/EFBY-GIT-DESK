@@ -13,10 +13,9 @@ public struct WorkspaceView: View {
     public init(model: DeskModel) { self.model = model }
     public var body: some View {
         ComparisonWorkspaceLayer(model: model) {
-            NavigationSplitView {
+            PersistentSplitView(width: $model.sidebarWidth, anchoredLeading: true, minimum: 210, maximum: 340, otherMinimum: 710) {
                 RepositorySidebar(model: model)
-                    .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 340)
-            } detail: {
+            } second: {
                 VStack(spacing: 0) {
                     RepositoryTabs(model: model)
                     topBar
@@ -76,6 +75,7 @@ public struct WorkspaceView: View {
                 if !model.busy && model.repository?.trusted == true && phase == .active { model.refresh() }
             }
         }
+        .onChange(of: model.sidebarWidth) { _, _ in model.persistLayout() }
         .onChange(of: model.selectedID) { _, value in if let value { model.select(value) } }
         .onChange(of: phase) { _, value in if value == .active && !model.busy { model.refresh() } }
         .onChange(of: model.remote) { _, _ in if !model.busy { model.refresh() } }

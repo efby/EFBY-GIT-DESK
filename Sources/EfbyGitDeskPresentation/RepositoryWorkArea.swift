@@ -7,12 +7,13 @@ struct RepositoryWorkArea: View {
         VStack(spacing: 0) {
             WorkspaceTabs(model: model)
             Divider()
-            HSplitView {
-                HistoryPane(model: model).frame(minWidth: 370)
-                DiffPane(model: model).frame(minWidth: 340, idealWidth: model.detailWidth)
-                    .background(PanelWidthObserver { model.detailWidth = $0; model.persistLayout() })
+            PersistentSplitView(width: $model.detailWidth, anchoredLeading: false, minimum: 340, maximum: .greatestFiniteMagnitude, otherMinimum: 370) {
+                HistoryPane(model: model)
+            } second: {
+                DiffPane(model: model)
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(nsColor: .windowBackgroundColor))
+            .onChange(of: model.detailWidth) { _, _ in model.persistLayout() }
     }
 }

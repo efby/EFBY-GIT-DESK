@@ -41,9 +41,9 @@
     "architecture": "arm64",
     "signature": "ad-hoc",
     "signatureVerified": true,
-    "binarySHA256": "6e38ee43618a5befc6824a327bfeaee5d700882425f87e446e9c9069addaa6d6",
+    "binarySHA256": "582c9d3ffb3fcd89164d43077eefaeaa56a6d957505a76cd9e7cb591d22a0ced",
     "credentialHelperSHA256": "ba966d0bae89eb55f0172eb7e3764fd204cd22bc3effb5d6da094217b4635b6f",
-    "zipSHA256": "edd2bd5fd31e6a1733956cef23f43643a90efc5a9352d6b555f7fbcb2b67e7b2",
+    "zipSHA256": "a5e86b3e41a4699865f8ff97216b086f4aa2448919d1194bf2a606238d2942a1",
     "bundleName": "EFBY Git Desk.app"
   },
   "regressionAfterDiffSelection": {
@@ -222,5 +222,23 @@
     "catalogAndCredentialIdentifiersUnchanged": true,
     "visualSyntheticFixtureReviewed": true,
     "interactivePersonalFolderQA": false
+  },
+  "regressionAfterPersistentPanels": {
+    "passed": 71,
+    "skippedOptional": 2,
+    "suites": 17,
+    "seconds": 5.931,
+    "initialComparisonWidth": 340,
+    "initialSidebarWidth": 340,
+    "sidebarMinimum": 210,
+    "nativeSizesVerified": true,
+    "savedWidthsRestoredOnNextSession": true,
+    "windowResizePreservesPreference": true,
+    "hostedPanelsRetained": true,
+    "invalidSizesValidated": true,
+    "closeLabel": "Cerrar",
+    "redBackgroundVisualReviewed": true,
+    "workspaceVisualSyntheticFixtureReviewed": true,
+    "interactivePersonalRepositoryQA": false
   }
 }

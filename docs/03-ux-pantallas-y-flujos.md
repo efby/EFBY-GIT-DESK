@@ -109,3 +109,8 @@ El nombre visible es EFBY Git Desk. Abrir carpeta o Agregar carpeta admite la ra
 El sidebar muestra Proyectos como árbol de directorios expandibles, al estilo de una navegación de proyectos. Las carpetas agrupadoras no se activan como repositorios; sus hojas o nodos con Git abren el proyecto elegido. Favoritos y grupos existentes permanecen como accesos. El buscador encuentra coincidencias de nombre, ruta o grupo en todos los repositorios registrados y presenta resultados directos, sin depender de la expansión del árbol. Las raíces agrupadoras se restauran desde el catálogo al iniciar.
 
 La app informa carpetas no legibles, enlaces a directorios fuera de la raíz elegida y candidatos no compatibles. Evita bucles y duplicados de enlaces y no recorre los objetos internos de .git. Un fallo individual no oculta los proyectos encontrados en otras carpetas.
+
+
+### Tamaños de paneles y cierre del compare
+
+El botón **Cerrar**, con fondo rojo, vuelve al repositorio; Esc mantiene la misma acción. La comparación A→B comienza en 340 puntos (mínimo actual) y carpetas en 340 (máximo actual, reducible hasta 210). Arrastrar sus separadores permite ajustar los anchos. La app guarda los tamaños elegidos y los restaura al cambiar de repositorio o iniciar otra sesión. Una ventana más pequeña limita temporalmente el espacio sin reemplazar la preferencia. Restablecer distribución recupera esos valores iniciales.

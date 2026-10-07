@@ -48,7 +48,8 @@ import EfbyGitDeskDomain
     public var terminalVisible = false
     public var terminalHeight: Double = 230
     public var branchWidth: Double = 180
-    public var detailWidth: Double = 470
+    public var detailWidth: Double = 340
+    public var sidebarWidth: Double = 340
     public var terminals: [String: [TerminalTab]] = [:]
     public var selectedTerminal: UUID?
     public var plan: AmendPlan?
@@ -140,7 +141,8 @@ import EfbyGitDeskDomain
                 openIDs = (try? JSONDecoder().decode([String].self, from: data))?.filter { id in repositories.contains { $0.id == id } } ?? []
             }
             branchWidth = Double(try await service.registry.preference("panel.branches") ?? "") ?? 180
-            detailWidth = Double(try await service.registry.preference("panel.detail") ?? "") ?? 470
+            detailWidth = Self.panelWidth(try await service.registry.preference("workspace.detailWidth"), default: 340, minimum: 340)
+            sidebarWidth = Self.panelWidth(try await service.registry.preference("workspace.sidebarWidth"), default: 340, minimum: 210, maximum: 340)
             let savedSelection = try await service.registry.preference("repository.selected")
             if let savedSelection, repositories.contains(where: { $0.id == savedSelection }) {
                 _ = try await service.open(path: savedSelection)
@@ -447,17 +449,22 @@ import EfbyGitDeskDomain
         selectedTerminal = currentTerminals.first?.id; refresh()
     }
     public func closeAllTerminals() { terminals.values.flatMap { $0 }.forEach { $0.driver.close() } }
+    static func panelWidth(_ saved: String?, default fallback: Double, minimum: Double, maximum: Double = .greatestFiniteMagnitude) -> Double {
+        guard let saved, let value = Double(saved), value.isFinite else { return fallback }
+        return min(maximum, max(minimum, value))
+    }
     public func persistLayout() {
         layoutSave?.cancel()
         let visible = terminalVisible; let height = terminalHeight
-        let branches = branchWidth; let detail = detailWidth
+        let branches = branchWidth; let detail = detailWidth; let sidebar = sidebarWidth
         layoutSave = Task {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
             try? await service.registry.setPreference("terminal.visible", value: String(visible))
             try? await service.registry.setPreference("terminal.height", value: String(height))
             try? await service.registry.setPreference("panel.branches", value: String(branches))
-            try? await service.registry.setPreference("panel.detail", value: String(detail))
+            try? await service.registry.setPreference("workspace.detailWidth", value: String(detail))
+            try? await service.registry.setPreference("workspace.sidebarWidth", value: String(sidebar))
         }
     }
 }
