@@ -10,8 +10,8 @@ struct FileDiffView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                Button("Cerrar comparación", systemImage: "xmark", action: model.closeDiff)
-                    .buttonStyle(.borderedProminent).controlSize(.large).tint(.teal)
+                Button("Cerrar", systemImage: "xmark", action: model.closeDiff)
+                    .buttonStyle(CloseComparisonButtonStyle()).controlSize(.large)
                     .fixedSize().layoutPriority(1)
                     .keyboardShortcut(.escape, modifiers: [])
                     .accessibilityIdentifier("closeComparison")

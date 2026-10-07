@@ -88,6 +88,8 @@ struct CodeHighlightingTests {
         model.diffBlocks = layout.blocks; model.diffMap = layout.map; model.diffInline = layout.inline
         let probe = NSView()
         let hosting = NSHostingView(rootView: ComparisonWorkspaceLayer(model: model) { WorkspaceRetentionProbe(view: probe) })
+        source.appearance = NSAppearance(named: .darkAqua)
+        hosting.appearance = source.appearance
         hosting.sizingOptions = []
         source.contentView = hosting
         hosting.layoutSubtreeIfNeeded()

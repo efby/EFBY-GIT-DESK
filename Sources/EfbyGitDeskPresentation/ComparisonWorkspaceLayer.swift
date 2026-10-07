@@ -13,8 +13,13 @@ struct ComparisonWorkspaceLayer<Content: View>: View {
             content.opacity(file == nil ? 1 : 0)
                 .disabled(file != nil).allowsHitTesting(file == nil).accessibilityHidden(file != nil)
             if let file {
-                FileDiffView(model: model, file: file).id(file.id)
-                    .background(ComparisonFocusAnchor()).zIndex(1)
+                PersistentSplitView(width: $model.detailWidth, anchoredLeading: false,
+                                    minimum: 340, maximum: .greatestFiniteMagnitude, otherMinimum: 640) {
+                    FileDiffView(model: model, file: file).id(file.id)
+                } second: {
+                    DiffPane(model: model)
+                }.background(ComparisonFocusAnchor()).zIndex(1)
+                    .onChange(of: model.detailWidth) { _, _ in model.persistLayout() }
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }

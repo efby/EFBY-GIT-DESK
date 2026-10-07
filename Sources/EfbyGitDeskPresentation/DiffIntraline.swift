@@ -7,7 +7,7 @@ public enum DiffIntraline {
         return rows.map { row in
             guard row.before != row.after else { return DiffInlineRow() }
             guard let before = row.before else {
-                return DiffInlineRow(after: fullRange(row.after))
+                return DiffInlineRow()
             }
             guard let after = row.after else {
                 return DiffInlineRow(before: fullRange(before))

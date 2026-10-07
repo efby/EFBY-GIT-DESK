@@ -64,3 +64,8 @@ Repositorio de desarrollo: [efby/EFBY-GIT-DESK](https://github.com/efby/EFBY-GIT
 El icono reutiliza el logotipo y el diseño de EFBY_POSTMAN, con la etiqueta inferior **#GitDesk**. El vector está en `Resources/Brand/EfbyLogo.ai`; `scripts/generate-icon.sh` regenera el PNG y el icono macOS `.icns`, que el empaquetado incorpora al bundle.
 
 El selector **Formato de código** detecta Python, JavaScript/JSX, TypeScript/TSX, Swift, Java/Kotlin, C/C++, C#, Go, Rust, Ruby, Shell, SQL, JSON, YAML/TOML, HTML/XML, CSS y Markdown. Permite elegir manualmente el lenguaje o texto plano. El resaltado léxico distingue cadenas, comentarios, palabras clave, números y llamadas; los fondos y signos de diff se conservan. Es una ayuda de lectura básica, sin ejecutar código ni ofrecer análisis de compilador.
+
+
+## Instalador DMG
+
+Generar el paquete local universal con `scripts/build-dmg.sh --universal`. El instalador se guarda en `dist/EFBY-Git-Desk-dev.dmg`. El flujo firmado/notarizado y los secretos de GitHub están descritos en [DMG y GitHub Actions](docs/12-dmg-y-github-actions.md). CI genera builds de pruebas; tags `vX.Y.Z` generan borradores de versión notarizados cuando la configuración Apple está completa.

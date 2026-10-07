@@ -138,3 +138,45 @@ Se incorpora un puerto de descubrimiento de carpetas y un adaptador de recorrido
 Las raíces del árbol se guardan en preferencias del catálogo y se normalizan las rutas para conservar la misma identidad que Git. El sidebar muestra carpetas expandibles y proyectos, junto a accesos de favoritos y grupos. Su árbol se construye en segundo plano. La búsqueda usa todos los repositorios registrados por nombre, ruta o grupo, independientemente de carpetas contraídas. Seleccionar una carpeta agrupadora no activa una ruta sin Git.
 
 Validación: 67 pruebas aprobadas, 2 optativas omitidas (69 registradas, 16 suites, 5,879 s). Nuevas pruebas cubren profundidad, ocultos, paquetes, anidados, .git archivo, worktree real, ciclos/alias, enlaces externos, cancelación, candidatos inválidos/bare, persistencia, deduplicación, conservación de confianza/favoritos/grupos y estructura jerárquica. Se revisaron capturas sintéticas del sidebar y búsqueda de un proyecto con el árbol contraído. La interacción con carpetas personales no se automatizó.
+
+
+### Paneles persistentes y cierre rojo
+
+El visor muestra **Cerrar** sobre fondo rojo explícito, conservando Esc y el repositorio montado. El workspace utiliza dos separadores NSSplitView: carpetas 340 puntos inicialmente (210–340) y comparación A→B 340 inicialmente (mínimo 340), con historial mínimo de 370. Los anchos se aplican realmente al layout y se guardan en `workspace.sidebarWidth` y `workspace.detailWidth`; el antiguo ancho ideal `panel.detail` deja de determinar la distribución inicial. Preferencias recupera esos valores al restablecer distribución. El resize de ventana limita el ancho temporalmente sin sobrescribir lo elegido; las vistas nativas se conservan al cambiar medidas.
+
+Validación: 73 pruebas registradas en 17 suites, 71 aprobadas y 2 optativas omitidas, 5,931 segundos. Cuatro pruebas nuevas verifican anchos nativos, restauración con SQLite en otra instancia del modelo, límites/valores inválidos y hosting real de WorkspaceView sin recrear paneles. Capturas sintéticas revisadas del workspace con medidas personalizadas y del visor con botón rojo. No se operaron repositorios personales ni se ensayó arrastre interactivo en la ventana del usuario.
+
+
+### Líneas nuevas sin resaltado
+
+Las filas con documento anterior ausente y documento nuevo presente no tienen fondo tenue de fila ni resaltado fuerte de fragmentos. Se conservan el signo +, números, sintaxis y mapas verdes para navegación. Una línea vacía existente que recibe texto sigue considerándose modificada. Eliminaciones y modificaciones sobre líneas existentes conservan el comportamiento anterior. Pruebas de rangos y texto nativo verifican la excepción y preservación de selección. Regresión completa: 71 aprobadas, 2 optativas omitidas, 73 registradas en 17 suites, 6,012 segundos.
+
+
+### Navegación de archivos dentro del visor
+
+La capa de comparación incorpora un PersistentSplitView con FileDiffView a la izquierda y el DiffPane existente a la derecha. Reutiliza inventario, selección y encabezados de contexto; mantiene el panel nativo mientras cambia el archivo, reiniciando solo el estado del documento elegido. Comparte `detailWidth` persistente con el workspace, mínimo derecho 340 y reserva izquierda de 640 cuando haya espacio. Loading/error/resúmenes conservan el navegador. Cerrar/Esc mantiene el workspace subyacente y su selección.
+
+Validación: 74 pruebas registradas en 17 suites, 72 aprobadas y 2 optativas omitidas, 5,872 segundos. Nueva integración con Git real temporal compara dos commits y cambia entre README.md y script.py; verifica documentos nuevos, par/contexto intactos, panel derecho en la misma ventana y misma instancia, workspace conservado y cierre. Captura sintética del visor con el navegador derecho revisada. No se operó la ventana ni repositorios personales del usuario.
+
+
+### Fondo verde en líneas nuevas
+
+Ajuste posterior: las líneas totalmente nuevas conservan la ausencia de marcas fuertes por fragmentos, pero ahora reciben fondo verde tenue en B (alpha 0,13), incluidos prefijo/número/signo y salto de línea. El hueco de A queda neutro. Sintaxis, selección, modificaciones existentes y mapas se conservan. Este comportamiento reemplaza la decisión anterior de fondo neutro para adiciones completas.
+
+Validación del ajuste: 74 pruebas registradas en 17 suites, 72 aprobadas y 2 optativas omitidas, 6,027 segundos. Prueba nativa verifica fondo verde tenue en texto y prefijo de la línea nueva, sin perder las marcas fuertes de las modificaciones existentes. Captura sintética revisada del navegador A→B con archivo totalmente nuevo.
+
+
+### DMG universal y preparación de CI/release
+
+Se agregó scripts/build-dmg.sh basado en el flujo de EFBY_POSTMAN y scripts/select-xcode.sh. Build-app permite EFBY_UNIVERSAL=1 y APP_VERSION; producto y auxiliar verificados con lipo como arm64/x86_64. El DMG local incluye la app, enlace Applications e instrucciones; hdiutil verify y montaje readonly verificaron imagen, firma ad hoc de la app contenida y enlace de instalación. Se añade checksum comprobado. Firma Developer ID y notarización son modos explícitos separados. Los flujos de CI y release generan universal; release exige secretos, valida Accepted/tickets/Gatekeeper y prepara borradores por tags. No se creó un tag ni se publicó una versión.
+
+Validación: 74 pruebas registradas en 17 suites, 72 aprobadas y 2 optativas omitidas, 7,018 segundos; scripts revisados con bash -n y YAML con parser Ruby. Un fixture efímero verificó importación .p12 por pipe con contraseña por entorno y registro notarytool con contraseña por stdin, sin secretos en argumentos; fue eliminado. Certificado Developer ID real detectado; perfil notary local devolvió HTTP 401, por lo que no se intentó envío ni se afirma notarización. Navegador integrado bloqueado al no poder verificar política; no se modificaron secretos ni se ensayó Actions remoto. Intel y macOS 14 solo cubiertos en compilación/deployment target, sin runtime validado. Ver docs/12-dmg-y-github-actions.md.
+
+
+### Alineación de líneas desplazadas
+
+La alineación anterior emparejaba por posición las eliminaciones/adiciones de cada hunk, permitiendo que contexto vacío elegido por Git separara dos condiciones iguales. DiffAlignment conserva la validación del patch/documentos y luego realinea completos con DiffLineAlignment: anclas de contenido único no vacío y secuencia creciente; entre ellas, matching exacto Myers acotado para líneas repetidas. Nunca cruza el orden de los documentos. Solo los intervalos sin correspondencias exactas se emparejan como modificaciones; adiciones/eliminaciones incluyen huecos. Líneas idénticas desplazadas no reciben marcas de cambio. Se conservan CRLF y números originales.
+
+Límites: 50.000 líneas combinadas, presupuesto de 2.000.000 operaciones de recorrido/matching y 250.000 entradas de trazas. Exceso produce aviso y diff original de Git, sin afirmar una alineación completa. Continúa ejecutándose en Task.detached mediante el pipeline existente. No pretende equivalencia semántica de código ni ignora cambios de indentación.
+
+Validación: 80 pruebas registradas en 18 suites, 78 aprobadas y 2 optativas omitidas, 6,193 segundos. Seis pruebas nuevas: ejemplo de condiciones DE/QA/PR con tres líneas nuevas en ambos sentidos, repetición de 3.000 líneas con desplazamiento, bloques cruzados, límite de complejidad, 1.600 pares de secuencias pequeñas y Git real con líneas vacías en contexto. Preservación de texto/números completa comprobada. Captura sintética revisada: if alineados sin marcas y líneas bucket nuevas con fondo verde; documentos personales no operados. App/DMG universal regenerados, notarización pendiente como antes.

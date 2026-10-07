@@ -101,6 +101,8 @@ Abrir una carpeta busca repositorios Git en todos sus descendientes, sin límite
 
 Pendientes, Preparados e Historial son pestañas sobre el contenido, con contadores y una sola selección. No restaurar el panel lateral de área de trabajo/ramas. Mantener ramas locales y remotas en el menú compacto Ramas, conservando las acciones de checkout y borrado de ramas integradas y las restricciones de confianza. Cambiar de pestaña mantiene el repositorio y sus sesiones, separa HEAD→índice de índice→working tree y cierra comparaciones de otro contexto.
 
+Los paneles usan separadores nativos redimensionables: comparación A→B inicialmente a su mínimo de 340 puntos y carpetas a su máximo de 340 (mínimo 210). Guardar los anchos elegidos y restaurarlos en siguientes sesiones y al cambiar de repositorio; reducir temporalmente la ventana no sobrescribe la preferencia. Mantener el panel A→B y su inventario de archivos a la derecha también dentro del visor de diferencias; seleccionar otro archivo sustituye los documentos sin cerrar la capa ni cambiar el par de commits. Compartir el ancho persistente de este panel con la pantalla principal, reservando al menos 640 puntos para los documentos cuando haya espacio. Cerrar el visor mediante botón **Cerrar** con fondo rojo visible también en ventana inactiva y mediante Esc.
+
 ## Arquitectura y responsabilidades de código
 
 - Separar dominio, aplicación, infraestructura, presentación y composición mediante
@@ -144,8 +146,8 @@ Pendientes, Preparados e Historial son pestañas sobre el contenido, con contado
   configuración, temporales ordinarios, logs, PTY o historial. Validar destinos,
   redirecciones/paginación sin propagar Authorization a otro origen. Mantener TLS
   y verificación SSH; cambios de huella requieren decisión visible.
-- Abrir el compare como capa sobre toda el área de contenido de la misma ventana de la app, manteniendo montada la vista anterior y sus sesiones; no activar el fullscreen de macOS ni crear otra ventana. Resaltado léxico de código automático por extensión, seleccionable manualmente, acotado y calculado fuera de MainActor; conservar los signos/fondos del diff y no ejecutar código. Resaltar los fragmentos modificados en ambos documentos, rojo para eliminaciones y verde para adiciones; líneas idénticas no reciben marcas de texto. Preservar selección manual y calcular el detalle fuera de MainActor con trabajo acotado.
-- Visor: dos documentos completos en paralelo, líneas alineadas y scroll horizontal y vertical sincronizados; incluir mapas verticales detrás de los indicadores de scroll de ambas columnas (rojo: eliminado; verde: agregado), distancia dinámica desde el borde inferior visible al próximo cambio y navegación entre bloques; abrir solo tras elegir un archivo. A siempre es el commit inferior y B el superior en el historial, sin inversión manual ni dependencia del orden de clics.
+- Abrir el compare como capa sobre toda el área de contenido de la misma ventana de la app, manteniendo montada la vista anterior y sus sesiones; no activar el fullscreen de macOS ni crear otra ventana. Resaltado léxico de código automático por extensión, seleccionable manualmente, acotado y calculado fuera de MainActor; conservar los signos/fondos del diff y no ejecutar código. Resaltar los fragmentos modificados en ambos documentos, rojo para eliminaciones y verde para adiciones; líneas idénticas no reciben marcas de texto. Las líneas totalmente nuevas sin equivalente en A reciben fondo verde tenue en B, sin resaltado fuerte de fragmentos; conservar el signo +, sintaxis y mapas verdes de navegación. Preservar selección manual y calcular el detalle fuera de MainActor con trabajo acotado.
+- Visor: realinear por contenido idéntico aunque cambie el número de línea, insertando huecos frente a adiciones/eliminaciones. No confiar en el emparejamiento posicional de hunks ni en líneas vacías como únicas anclas; conservar el orden de cada documento ante bloques cruzados. Trabajo acotado fuera de MainActor; si supera el límite, mostrar el diff original y un aviso explícito, sin una alineación falsa. Dos documentos completos en paralelo, líneas alineadas y scroll horizontal y vertical sincronizados; incluir mapas verticales detrás de los indicadores de scroll de ambas columnas (rojo: eliminado; verde: agregado), distancia dinámica desde el borde inferior visible al próximo cambio y navegación entre bloques; abrir solo tras elegir un archivo. A siempre es el commit inferior y B el superior en el historial, sin inversión manual ni dependencia del orden de clics.
 - Comparación: exactamente dos commits distintos, árboles A→B, también merges o
   ramas sin relación de ancestro. Nunca merge-base/A...B. Un tercer clic conserva
   el par. Separar comparación de commits, índice frente a HEAD y worktree frente a índice.
@@ -221,3 +223,8 @@ registrar como pendiente cualquier comprobación que no pueda ejecutarse.
   pérdida de datos, ejecución sin confianza, secretos expuestos o publicación
   incorrecta. Conservar versiones/licencias, resultados, límites, notas, hashes
   y recuperación ensayada según 08 y 09.
+
+
+## DMG y automatización de distribución
+
+Usar scripts/build-dmg.sh y docs/12-dmg-y-github-actions.md. Mantener separados el DMG local ad hoc, el firmado sin ticket y el notarizado. Release no degrada a unsigned ante secretos ausentes. Reutilizar los nombres de secretos de POSTMAN; no copiar ni versionar claves, certificados o valores. App y auxiliar universales, Developer ID/Hardened Runtime/timestamp al firmar; notarizar app antes del DMG, adjuntar tickets y validar el artefacto montado. Tags generan borradores; no publicar una versión sin autorización. Un fallo de credenciales o del navegador no prueba configuración completada.

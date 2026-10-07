@@ -9,7 +9,7 @@ public struct PreferencesView: View {
                 Toggle("Mostrar terminal inferior", isOn: $model.terminalVisible)
                 Slider(value: $model.terminalHeight, in: 140...500) { Text("Altura del terminal") }
                 Button("Restablecer distribución") {
-                    model.branchWidth = 180; model.detailWidth = 470; model.terminalHeight = 230
+                    model.branchWidth = 180; model.detailWidth = 340; model.sidebarWidth = 340; model.terminalHeight = 230
                     model.persistLayout()
                 }
                 Text("Las pestañas, el repositorio seleccionado y los anchos de paneles se guardan localmente. Las shells se inician por una acción tuya.")

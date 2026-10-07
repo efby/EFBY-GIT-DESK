@@ -25,7 +25,8 @@ struct DiffIntralineTests {
         let removed = marks(b, a)
         #expect(segments(b, removed.before) == [" * 2"])
         #expect(removed.after.isEmpty)
-        #expect(segments("added", marks(nil, "added").after) == ["added"])
+        #expect(marks(nil, "added") == DiffInlineRow())
+        #expect(!marks("", "added").after.isEmpty) // An existing empty line still changed.
         #expect(segments("deleted", marks("deleted", nil).before) == ["deleted"])
         #expect(marks(nil, "").after.isEmpty)
     }
@@ -69,6 +70,12 @@ struct DiffIntralineTests {
             let equal = (storage.string as NSString).range(of: "same").location
             #expect(storage.attribute(.backgroundColor, at: equal, effectiveRange: nil) as? NSColor == .clear)
         }
+        let addedStorage = try #require(views[1].textStorage)
+        let added = (addedStorage.string as NSString).range(of: "add").location
+        #expect(addedStorage.attribute(.backgroundColor, at: added, effectiveRange: nil) as? NSColor == NSColor.systemGreen.withAlphaComponent(0.13))
+        let addedPrefix = (addedStorage.string as NSString).range(of: "    3 +").location
+        #expect(addedPrefix != NSNotFound)
+        #expect(addedStorage.attribute(.backgroundColor, at: addedPrefix, effectiveRange: nil) as? NSColor == NSColor.systemGreen.withAlphaComponent(0.13))
         #expect(views[0].selectedRange() == NSRange(location: 12, length: 5))
     }
 }

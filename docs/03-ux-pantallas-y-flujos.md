@@ -109,3 +109,17 @@ El nombre visible es EFBY Git Desk. Abrir carpeta o Agregar carpeta admite la ra
 El sidebar muestra Proyectos como árbol de directorios expandibles, al estilo de una navegación de proyectos. Las carpetas agrupadoras no se activan como repositorios; sus hojas o nodos con Git abren el proyecto elegido. Favoritos y grupos existentes permanecen como accesos. El buscador encuentra coincidencias de nombre, ruta o grupo en todos los repositorios registrados y presenta resultados directos, sin depender de la expansión del árbol. Las raíces agrupadoras se restauran desde el catálogo al iniciar.
 
 La app informa carpetas no legibles, enlaces a directorios fuera de la raíz elegida y candidatos no compatibles. Evita bucles y duplicados de enlaces y no recorre los objetos internos de .git. Un fallo individual no oculta los proyectos encontrados en otras carpetas.
+
+
+### Tamaños de paneles y cierre del compare
+
+El botón **Cerrar**, con fondo rojo, vuelve al repositorio; Esc mantiene la misma acción. La comparación A→B comienza en 340 puntos (mínimo actual) y carpetas en 340 (máximo actual, reducible hasta 210). Arrastrar sus separadores permite ajustar los anchos. La app guarda los tamaños elegidos y los restaura al cambiar de repositorio o iniciar otra sesión. Una ventana más pequeña limita temporalmente el espacio sin reemplazar la preferencia. Restablecer distribución recupera esos valores iniciales.
+
+
+Las líneas completamente nuevas sin línea equivalente en el commit anterior se muestran con fondo verde tenue y sin resaltado fuerte de fragmentos. Se conservan la sintaxis, el signo + y los mapas verdes. Las modificaciones de líneas existentes y las eliminaciones mantienen sus marcas.
+
+
+El visor de diferencias mantiene **Comparación A→B** a la derecha, con sus commits y lista de archivos. Haz clic en otro archivo para sustituir los documentos sin cerrar la comparación. El archivo actual queda marcado y el separador permite adaptar el ancho, compartido con el panel de la pantalla principal y guardado entre sesiones. **Cerrar** o Esc vuelve al workspace con la selección de commits conservada. También funciona con el detalle de un commit y las comparaciones del índice/working tree.
+
+
+El compare realinea líneas por su contenido, aunque se desplacen hacia arriba o abajo al insertar/eliminar otras líneas. Las coincidencias conservan sus números originales y quedan enfrentadas sin marcas. Las adiciones o eliminaciones ocupan filas con un hueco en la otra columna. Se preserva siempre el orden de ambos documentos; bloques intercambiados se representan como cambios sin reorganizar el código. Si se excede el límite de realineación se conserva el diff original con aviso, en lugar de presentar correspondencias incorrectas.
