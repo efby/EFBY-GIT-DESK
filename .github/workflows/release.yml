@@ -27,6 +27,7 @@ jobs:
             if [[ -z "${!field}" ]]; then echo "Falta el secreto $field" >&2; exit 1; fi
           done
       - name: Tests
+        timeout-minutes: 10
         run: scripts/test.sh
       - name: Import Developer ID and configure notarization
         env:
