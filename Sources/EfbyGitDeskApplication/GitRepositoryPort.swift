@@ -2,6 +2,8 @@ import Foundation
 import EfbyGitDeskDomain
 
 public protocol GitRepositoryPort: Sendable {
+    func executablePath() async throws -> String
+    func configureExecutable(path: String?) async throws
     func version() async throws -> String
     func discover(path: String) async throws -> Repository
     func snapshot(_ repository: Repository) async throws -> RepositorySnapshot

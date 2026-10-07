@@ -6,7 +6,7 @@ Incluye repositorios en pestañas, favoritos/grupos, confianza persistida, ramas
 
 ## Compilar y abrir
 
-Requisitos: Xcode con Swift 6.2 o posterior y Git 2.40 o posterior. El entorno verificado utiliza Swift 6.4, Git 2.51 y macOS 26.6.2 en arm64. El mínimo de compilación es macOS 14; su ejecución e Intel están pendientes de validar.
+Para desarrollar y compilar: Xcode con Swift 6.2 o posterior y Git 2.40 o posterior. Para usar el DMG instalado no se requiere Xcode: se utiliza una instalación independiente de Git accesible para la cuenta del usuario, detectable por PATH/rutas habituales o seleccionable en Ajustes → Git. No se invoca el Git de Apple ni se acepta su licencia. El entorno verificado utiliza Swift 6.4, Git 2.51 y macOS 26.6.2 en arm64. El mínimo de compilación es macOS 14; su ejecución e Intel están pendientes de validar.
 
 ```sh
 bash scripts/test.sh

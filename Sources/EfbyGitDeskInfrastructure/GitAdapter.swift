@@ -3,27 +3,30 @@ import EfbyGitDeskApplication
 import EfbyGitDeskDomain
 
 public actor GitAdapter: GitRepositoryPort {
-    private let executable: String
+    private var executable: String?
     private let runner = ProcessRunner()
     private let vault: KeychainVault
     private let helper: String
     private let allowLocalRemotes: Bool
-    public init(executable: String, vault: KeychainVault, credentialHelper: String,
+    public init(executable: String? = nil, vault: KeychainVault, credentialHelper: String,
                 allowLocalRemotes: Bool = false) {
         self.executable = executable; self.vault = vault
         self.helper = credentialHelper; self.allowLocalRemotes = allowLocalRemotes
     }
     public func version() async throws -> String {
-        let result = try await runner.run(executable: executable, arguments: ["--version"], directory: NSTemporaryDirectory(), timeout: 10)
-        let fields = result.text.split(separator: " ")
-        guard result.status == 0, fields.count >= 3, fields[0] == "git", fields[1] == "version" else {
-            throw DeskError("El ejecutable encontrado no es Git.")
-        }
-        let numbers = fields[2].split(separator: ".").compactMap { Int($0) }
-        guard numbers.count >= 2, numbers[0] > 2 || (numbers[0] == 2 && numbers[1] >= 40) else {
-            throw DeskError("EFBY Git Desk requiere Git 2.40 o posterior. Instálalo antes de continuar.")
-        }
-        return result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        try await GitExecutableResolver().version(at: executablePath())
+    }
+    public func executablePath() async throws -> String {
+        if let executable { return executable }
+        let found = try await GitExecutableResolver().resolve()
+        try Task.checkCancellation()
+        executable = found
+        return found
+    }
+    public func configureExecutable(path: String?) async throws {
+        let found = try await GitExecutableResolver().resolve(preferred: path)
+        try Task.checkCancellation()
+        executable = found
     }
     private func run(_ arguments: [String], directory: String, trusted: Bool = false,
                      input: Data? = nil, environment: [String: String] = [:],
@@ -37,7 +40,8 @@ public actor GitAdapter: GitRepositoryPort {
                    "GIT_LITERAL_PATHSPECS": "1", "LC_ALL": "en_US.UTF-8"]
         if !trusted { env["GIT_CONFIG_NOSYSTEM"] = "1"; env["GIT_CONFIG_GLOBAL"] = "/dev/null" }
         environment.forEach { env[$0] = $1 }
-        let result = try await runner.run(executable: executable, arguments: base + safe + arguments,
+        let path = try await executablePath()
+        let result = try await runner.run(executable: path, arguments: base + safe + arguments,
                                           directory: directory, input: input, environment: env, limit: limit, timeout: timeout)
         if result.status != 0 && !allowFailure {
             var text = String(decoding: result.error, as: UTF8.self)

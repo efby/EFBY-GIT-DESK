@@ -77,6 +77,18 @@ requiere tip remoto coincidente y lease con ref/OID esperado; sin force push gen
 ni rollback automático. La recuperación permanece ante fallos. La matriz RF-01…RF-16
 y sus límites están en [11](11-estado-mvp.md); implementación no equivale a QA completo.
 
+El Git de ejecución se detecta entre instalaciones existentes del usuario (PATH,
+`~/.local/bin`, `~/bin`, perfiles Nix/Homebrew y rutas habituales Homebrew,
+MacPorts y `/usr/local/git/bin`). No se ejecutan `/usr/bin/git`, sus enlaces ni
+rutas de herramientas de Apple durante la detección/configuración. Ajustes → Git
+permite elegir o escribir una ruta absoluta y conservarla para siguientes sesiones;
+se aplica antes de reabrir repositorios guardados. No exige Xcode, su licencia ni
+permisos de administrador para usar la app distribuida. Git ≥2.40 es necesario
+para leer y operar repositorios, aunque ya estén descargados. No se instala,
+actualiza ni reemplaza Git; un fallo deja accesible el catálogo y los ajustes.
+Una ruta incorrecta no sustituye una instalación ya validada. No se ejecutan
+perfiles de shell para descubrir Git ni se buscan ejecutables dentro de repositorios.
+
 El terminal inferior conserva sesiones al ocultarse; admite directorio, resize,
 Unicode y Ctrl+C. Refresca cambios al recuperar foco y periódicamente. No restaura
 procesos vivos al reiniciar ni persiste su salida. Quitar registros conserva repositorios.
