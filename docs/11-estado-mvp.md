@@ -247,3 +247,30 @@ de carpetas de 2 a 0 y entre filas raíz de 4 a 1. Menos margen alrededor de
 Expandir todo y del texto de ayuda; se conserva tamaño de texto, selección,
 indentación y navegación. Dos pruebas existentes del panel aprobadas, captura
 nativa revisada y app de desarrollo recompilada.
+
+
+## Historial: búsqueda y selección — 7 de octubre de 2026
+
+- Buscar por SHA completo o prefijo hexadecimal de cuatro o más caracteres,
+  incluyendo SHA-256 y mayúsculas. Las otras consultas filtran mensajes.
+  Resolver solo commits alcanzables desde las referencias del historial;
+  rechazar blobs/árboles y no interpretar expresiones u opciones Git.
+- Cambiar o borrar filtros conserva selección, tarjetas, inventario y dirección
+  A→B. Los seleccionados fuera de la página/filtro quedan visibles como selección
+  conservada sin alterar offset ni contador de paginación.
+- Elegir commits desde filtros distintos consulta su orden topológico fuera de
+  MainActor, con límite de salida y aviso ante fallo. Sin ordenar, no compara.
+- Tercer clic sobre otro commit abre confirmación. Cancelar conserva el par;
+  aceptar selecciona solo el último pulsado para iniciar otra comparación.
+- Regresión Git detectada durante implementación: `log --no-walk --skip=0`
+  vuelve a recorrer ancestros. La consulta SHA no utiliza `--skip`; los candidatos
+  están acotados a 64 y caben en una página. Pruebas verifican también SHA de HEAD.
+- Evidencia: `scripts/test.sh`, 88 tests registrados en 20 suites, 86 aprobados,
+  2 opcionales omitidos (Keychain y benchmark), 6,947 s; compilación debug incluida.
+  Suite completa secuencial: 25,850 s. Una ejecución paralela previa detectó dos
+  aserciones de layout transitorias y el defecto de búsqueda de HEAD ya corregido;
+  la última ejecución habitual pasó completa. No se generó un DMG de esta rama.
+- Nuevos casos: SHA-1/SHA-256, prefijos/completo/case, mensajes, objetos no commit,
+  objetos inalcanzables, paginación, selección anterior a los primeros 100 commits,
+  búsqueda vacía/sin resultados, dirección con filtros separados en ambos órdenes,
+  confirmación aceptada y cancelada. Mantener pendientes de aceptación H6.

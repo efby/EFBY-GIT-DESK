@@ -54,7 +54,21 @@ reserva espacio para documentos y el navegador de archivos según tamaño dispon
 
 Se implementaron ramas, staging por archivo, commit del índice, fetch, pull solo
 fast-forward y push con destino explícito. Historial paginado, grafo, búsqueda y SHA
-completo. Clonación sin checkout, seguida de confianza antes de materializar archivos.
+completo. La búsqueda acepta SHA completo o prefijo hexadecimal de al menos cuatro
+caracteres (sin distinguir mayúsculas), además de mensajes para las consultas no
+hexadecimales. Busca objetos commit alcanzables desde las referencias del historial,
+no solamente la página cargada; admite SHA-1 y SHA-256. Prefijos con más de 64 objetos
+solicitan más caracteres. No interpreta expresiones como `HEAD~1` ni opciones Git.
+
+Cambiar o borrar la búsqueda conserva los commits seleccionados, sus datos y el
+contexto de comparación. Si un seleccionado queda fuera del filtro o de la página,
+se muestra una selección conservada que permite quitarlo. La paginación mantiene
+su propio contador y no incorpora esos commits artificialmente. La dirección A→B
+se conserva al filtrar; si el par se elige desde búsquedas diferentes, se consulta
+el orden topológico de Git antes de comparar. Esa consulta está acotada a 16 MB;
+un límite o fallo bloquea la comparación con aviso, sin inventar el orden.
+
+Clonación sin checkout, seguida de confianza antes de materializar archivos.
 Tokens en Keychain y transporte SSH/helpers heredados, separados del catálogo REST.
 
 Editar el mensaje de HEAD crea recuperación y un plan de un solo uso que caduca a
@@ -70,7 +84,10 @@ procesos vivos al reiniciar ni persiste su salida. Quitar registros conserva rep
 ## Comparación y lectura de código
 
 1. Seleccionar exactamente dos commits distintos. A es el inferior del historial y
-   B el superior, independientemente del orden de clic. Un tercer clic conserva el par.
+   B el superior, independientemente del orden de clic. Un tercer clic sobre otro
+   commit pregunta si se quiere limpiar el par anterior. Cancelar conserva ambos;
+   aceptar deja seleccionado el último commit pulsado para elegir su compañero.
+   Pulsar uno de los dos seleccionados continúa quitándolo sin pedir confirmación.
 2. Comparar directamente sus árboles A→B, también entre ramas sin ancestro común;
    nunca sustituir por merge-base o triple punto.
 3. Mostrar inventario; el diff se abre **solo al hacer clic en un archivo**.

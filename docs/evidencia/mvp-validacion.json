@@ -378,5 +378,23 @@
     "intelRuntimeVerified": false,
     "macOS14RuntimeVerified": false,
     "h6AcceptanceComplete": false
+  },
+  "historySearchAndReplacement_2026_10_07": {
+    "registered": 88,
+    "passed": 86,
+    "skippedOptional": 2,
+    "suites": 20,
+    "seconds": 6.947,
+    "sequentialSeconds": 25.85,
+    "command": "scripts/test.sh",
+    "debugBuildPassed": true,
+    "signedDMGGeneratedForThisChange": false,
+    "coverage": [
+      "SHA-1/SHA-256 and uppercase prefixes",
+      "reachable commits only; no revision expressions",
+      "retained selection after clearing filter, including beyond first page",
+      "stable A-to-B topology across separate searches",
+      "third click confirmation accept/cancel"
+    ]
   }
 }

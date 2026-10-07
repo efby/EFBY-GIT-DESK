@@ -153,8 +153,11 @@ Los paneles usan separadores nativos redimensionables: comparación A→B inicia
 - Abrir el compare como capa sobre toda el área de contenido de la misma ventana de la app, manteniendo montada la vista anterior y sus sesiones; no activar el fullscreen de macOS ni crear otra ventana. Resaltado léxico de código automático por extensión, seleccionable manualmente, acotado y calculado fuera de MainActor; conservar los signos/fondos del diff y no ejecutar código. Resaltar los fragmentos modificados en ambos documentos, rojo para eliminaciones y verde para adiciones; líneas idénticas no reciben marcas de texto. Las líneas totalmente nuevas sin equivalente en A reciben fondo verde tenue en B, sin resaltado fuerte de fragmentos; conservar el signo +, sintaxis y mapas verdes de navegación. Preservar selección manual y calcular el detalle fuera de MainActor con trabajo acotado.
 - Visor: realinear por contenido idéntico aunque cambie el número de línea, insertando huecos frente a adiciones/eliminaciones. No confiar en el emparejamiento posicional de hunks ni en líneas vacías como únicas anclas; conservar el orden de cada documento ante bloques cruzados. Trabajo acotado fuera de MainActor; si supera el límite, mostrar el diff original y un aviso explícito, sin una alineación falsa. Dos documentos completos en paralelo, líneas alineadas y scroll horizontal y vertical sincronizados; incluir mapas verticales detrás de los indicadores de scroll de ambas columnas (rojo: eliminado; verde: agregado), distancia dinámica desde el borde inferior visible al próximo cambio y navegación entre bloques; abrir solo tras elegir un archivo. A siempre es el commit inferior y B el superior en el historial, sin inversión manual ni dependencia del orden de clics.
 - Comparación: exactamente dos commits distintos, árboles A→B, también merges o
-  ramas sin relación de ancestro. Nunca merge-base/A...B. Un tercer clic conserva
-  el par. Separar comparación de commits, índice frente a HEAD y worktree frente a índice.
+  ramas sin relación de ancestro. Nunca merge-base/A...B. Un tercer clic sobre
+  otro commit pide confirmación para limpiar el par: cancelar conserva ambos;
+  aceptar selecciona solo el último commit pulsado. Filtrar o borrar la búsqueda
+  del historial conserva selección, metadatos y dirección A→B. Buscar SHA completo
+  o abreviado hexadecimal (mínimo cuatro caracteres), además de mensajes. Separar comparación de commits, índice frente a HEAD y worktree frente a índice.
 - Conservar todas las rutas cambiadas. Binarios, LFS, submódulos, modos, enlaces y
   archivos grandes muestran resumen/límite; declarar completitud y paginación.
   No convertir un límite del visor en omisión de archivos.

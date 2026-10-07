@@ -14,7 +14,21 @@ import EfbyGitDeskDomain
     public var snapshot = RepositorySnapshot()
     public var branches: [Branch] = []
     public var commits: [Commit] = []
+    public var showReplaceComparison = false
+    public private(set) var pendingComparisonCommit: Commit?
     public var selectedOIDs: [String] = []
+    public private(set) var retainedCommits: [Commit] = []
+    public private(set) var comparisonOrdering = false
+    public private(set) var comparisonOrderFailed = false
+    @ObservationIgnored private var selectionQuery: Task<Void, Never>?
+    @ObservationIgnored private var loadedSearch = ""
+    private var retainedOrder: [String] = []
+    public func commitDetails(_ oid: String) -> Commit? {
+        commits.first { $0.oid == oid } ?? retainedCommits.first { $0.oid == oid }
+    }
+    public var hiddenSelectedCommits: [Commit] {
+        retainedCommits.filter { retained in selectedOIDs.contains(retained.oid) && !commits.contains { $0.oid == retained.oid } }
+    }
     public var files: [FileChange] = []
     public var selectedFile: String?
     public var diffText = ""
@@ -94,6 +108,7 @@ import EfbyGitDeskDomain
     }
     public var context: DiffContext? {
         if workingView { return stagedView ? .staged : .working }
+        if comparisonOrdering || comparisonOrderFailed { return nil }
         if selectedOIDs.count == 2, let pair = try? ComparisonPair(base: orderedComparison[0], target: orderedComparison[1]) {
             return .commits(pair)
         }
@@ -102,7 +117,8 @@ import EfbyGitDeskDomain
     }
     /// The displayed topological order, rather than click order or commit timestamps.
     public var orderedComparison: [String] {
-        selectedOIDs.sorted { lhs, rhs in
+        if retainedOrder.count == 2, Set(retainedOrder) == Set(selectedOIDs) { return retainedOrder }
+        return selectedOIDs.sorted { lhs, rhs in
             (commits.firstIndex { $0.oid == lhs } ?? -1) > (commits.firstIndex { $0.oid == rhs } ?? -1)
         }
     }
@@ -182,8 +198,9 @@ import EfbyGitDeskDomain
     public func select(_ id: String) {
         guard repositories.contains(where: { $0.id == id }) else { return }
         if !openIDs.contains(id) { openIDs.append(id); persistTabs() }
-        generation += 1; query?.cancel(); fileQuery?.cancel(); closeDiff(); filesLoading = false
-        selectedID = id; selectedOIDs = []; commits = []; files = []; diffText = ""
+        generation += 1; query?.cancel(); searchQuery?.cancel(); selectionQuery?.cancel(); comparisonOrdering = false; comparisonOrderFailed = false; fileQuery?.cancel(); closeDiff(); filesLoading = false
+        pendingComparisonCommit = nil; showReplaceComparison = false
+        selectedID = id; selectedOIDs = []; retainedCommits = []; retainedOrder = []; commits = []; files = []; diffText = ""
         workingView = false; tips = []; parentIndex = 0; selectedTerminal = nil
         snapshot = RepositorySnapshot(); branches = []; remoteNames = []; remote = ""; remoteSupported = false; loadedContext = nil
         Task { try? await service.registry.setPreference("repository.selected", value: id) }
@@ -254,12 +271,11 @@ import EfbyGitDeskDomain
                 let supported = repository.trusted && !selectedRemote.isEmpty ? await service.git.remoteSupported(repository, remote: selectedRemote) : false
                 let changed = newTips != tips || forceHistory || commits.isEmpty
                 let history = changed ? try await service.git.history(repository, tips: newTips, offset: 0, search: search) : commits
-                guard !Task.isCancelled, version == generation, repository.id == selectedID else { return }
+                guard !Task.isCancelled, version == generation, repository.id == selectedID, search == self.search else { return }
                 snapshot = newState; branches = newBranches; remoteNames = newRemotes
                 remote = selectedRemote; remoteSupported = supported
                 if changed {
-                    commits = history; hasMore = history.count == 100; tips = newTips
-                    selectedOIDs.removeAll { oid in !history.contains { $0.oid == oid } }
+                    commits = history; hasMore = history.count == 100; tips = newTips; loadedSearch = search
                 }
                 if let plan, plan.oldHead != newState.head || newState.files.contains(where: \.staged) { cancelPlan() }
                 loadFiles()
@@ -278,23 +294,55 @@ import EfbyGitDeskDomain
         }
     }
     public func loadMore() {
-        guard let repository, hasMore, !busy else { return }
+        guard let repository, hasMore, !busy, !loading, search == loadedSearch else { return }
         let offset = commits.count; let tips = tips; let search = search; let version = generation
         perform("Cargando más historial…", refreshAfter: false) {
             let page = try await self.service.git.history(repository, tips: tips, offset: offset, search: search)
-            guard version == self.generation else { return }
+            guard version == self.generation, search == self.search, repository.id == self.selectedID else { return }
             self.commits += page; self.hasMore = page.count == 100
         }
     }
     public func chooseCommit(_ commit: Commit) {
+        if selectedOIDs.count == 2, !selectedOIDs.contains(commit.oid) {
+            pendingComparisonCommit = commit; showReplaceComparison = true
+            return
+        }
         workingView = false; parentIndex = 0
         if selectedOIDs.contains(commit.oid) { selectedOIDs.removeAll { $0 == commit.oid } }
         else if selectedOIDs.count < 2 { selectedOIDs.append(commit.oid) }
-        else { status = "La comparación admite dos commits. Quita uno antes de seleccionar otro."; return }
+        selectionQuery?.cancel(); comparisonOrdering = false; comparisonOrderFailed = false
+        retainedOrder = orderedComparison
+        retainedCommits = selectedOIDs.compactMap { oid in oid == commit.oid ? commit : commitDetails(oid) }
+        if selectedOIDs.count == 2, !selectedOIDs.allSatisfy({ oid in commits.contains { $0.oid == oid } }), let repository {
+            let selected = selectedOIDs, tips = tips
+            comparisonOrdering = true; loadFiles()
+            selectionQuery = Task {
+                do {
+                    let order = try await service.git.comparisonOrder(repository, tips: tips, selected: selected)
+                    guard !Task.isCancelled, repository.id == selectedID, selected == selectedOIDs else { return }
+                    retainedOrder = order; comparisonOrdering = false; loadFiles()
+                } catch {
+                    guard !Task.isCancelled, repository.id == selectedID, selected == selectedOIDs else { return }
+                    comparisonOrdering = false; comparisonOrderFailed = true
+                    self.error = error.localizedDescription
+                    // Leave the comparison blocked rather than inventing its direction.
+                }
+            }
+            return
+        }
         loadFiles()
     }
+    public func resolveComparisonReplacement(accept: Bool) {
+        let commit = pendingComparisonCommit
+        pendingComparisonCommit = nil; showReplaceComparison = false
+        guard accept, let commit else { return }
+        selectedOIDs = []; retainedCommits = []; retainedOrder = []
+        chooseCommit(commit)
+    }
     public func showWorking(staged: Bool) {
-        workingView = true; stagedView = staged; selectedOIDs = []; loadFiles()
+        selectionQuery?.cancel(); comparisonOrdering = false; comparisonOrderFailed = false
+        pendingComparisonCommit = nil; showReplaceComparison = false
+        workingView = true; stagedView = staged; selectedOIDs = []; retainedCommits = []; retainedOrder = []; loadFiles()
     }
     public func loadFiles() {
         fileQuery?.cancel()
