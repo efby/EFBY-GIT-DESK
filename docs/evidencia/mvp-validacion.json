@@ -41,9 +41,9 @@
     "architecture": "universal arm64/x86_64",
     "signature": "ad-hoc",
     "signatureVerified": true,
-    "binarySHA256": "59705d5e94f81179f11bb14d85579115a7ea58c0889400443916eacff0382589",
+    "binarySHA256": "6a0bebbb012fd5db6acecda6bb251e0423ff5a6f159dbb81acd707d57a9d75ea",
     "credentialHelperSHA256": "27c197ef9755d2267162cd919bd2657afd75af761f76d4216bff3a029aebc5f5",
-    "zipSHA256": "39cf662a7a0c38e4297f1961d94159431dafbff6648e20d875d6b871c6cdbca9",
+    "zipSHA256": "27bee32aad42d49d236e252388d98dfe499388dd773468b86299da8e5d8e7bdc",
     "bundleName": "EFBY Git Desk.app",
     "zipName": "EFBY-Git-Desk-0.1.0-universal-dev.zip"
   },
@@ -301,5 +301,24 @@
     "integratedBrowserAccess": "blocked: policy check unavailable",
     "intelRuntimeVerified": false,
     "macOS14RuntimeVerified": false
+  },
+  "regressionAfterShiftedLineAlignment": {
+    "passed": 78,
+    "skippedOptional": 2,
+    "suites": 18,
+    "seconds": 6.193,
+    "shiftedConditionsAlignedUnmarked": true,
+    "insertionsAndDeletionsInBothDirections": true,
+    "repeatedLinesVerified": 3000,
+    "crossingBlocksPreserveDocumentOrder": true,
+    "exhaustiveSmallSequencePairs": 1600,
+    "realGitBlankContextVerified": true,
+    "originalTextAndNumbersPreserved": true,
+    "complexityLimitVerified": true,
+    "workBudget": 2000000,
+    "traceEntryLimit": 250000,
+    "syntheticVisualReviewed": true,
+    "universalDMGRegeneratedAndVerified": true,
+    "dmgSHA256": "ee9282f4051861f266e6216f191a71b688bb08f66028d5510d56c0d000877807"
   }
 }

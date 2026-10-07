@@ -120,3 +120,6 @@ Las líneas completamente nuevas sin línea equivalente en el commit anterior se
 
 
 El visor de diferencias mantiene **Comparación A→B** a la derecha, con sus commits y lista de archivos. Haz clic en otro archivo para sustituir los documentos sin cerrar la comparación. El archivo actual queda marcado y el separador permite adaptar el ancho, compartido con el panel de la pantalla principal y guardado entre sesiones. **Cerrar** o Esc vuelve al workspace con la selección de commits conservada. También funciona con el detalle de un commit y las comparaciones del índice/working tree.
+
+
+El compare realinea líneas por su contenido, aunque se desplacen hacia arriba o abajo al insertar/eliminar otras líneas. Las coincidencias conservan sus números originales y quedan enfrentadas sin marcas. Las adiciones o eliminaciones ocupan filas con un hueco en la otra columna. Se preserva siempre el orden de ambos documentos; bloques intercambiados se representan como cambios sin reorganizar el código. Si se excede el límite de realineación se conserva el diff original con aviso, en lugar de presentar correspondencias incorrectas.

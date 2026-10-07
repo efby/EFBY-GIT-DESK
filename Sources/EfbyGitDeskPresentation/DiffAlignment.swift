@@ -1,7 +1,7 @@
 import Foundation
 import EfbyGitDeskDomain
 
-/// Uses Git's hunks to align complete documents without an expensive UI-thread LCS.
+/// Validate Git hunks, then realign full documents by exact content off the UI thread.
 public enum DiffAlignment {
     public static func make(_ comparison: FileComparison) throws -> [DiffRow] {
         guard let before = comparison.before, let after = comparison.after,
@@ -67,6 +67,7 @@ public enum DiffAlignment {
         try flush()
         guard remainingA == 0, remainingB == 0 else { throw DeskError("Diff incompleto.") }
         while a < left.count || b < right.count { try append(a < left.count, b < right.count) }
+        rows = try DiffLineAlignment.make(left, right)
         if (before.utf8.last == 10) != (after.utf8.last == 10), !rows.isEmpty {
             rows[rows.count - 1].differentEnding = true
         }
