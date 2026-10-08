@@ -33,6 +33,11 @@ import EfbyGitDeskDomain
     public var showAllFiles = false
     public private(set) var visibleFiles: [FileChange] = []
     public private(set) var fileInventoryRevision = 0
+    var expandedSymbolFiles: Set<String> = []
+    var codeSymbols: [String: [CodeSymbol]] = [:]
+    var symbolsLoading: Set<String> = []
+    var symbolErrors: [String: String] = [:]
+    var symbolJump: DiffJumpTarget?
     public var selectedFile: String?
     public var diffText = ""
     public var comparison: FileComparison?
@@ -82,6 +87,8 @@ import EfbyGitDeskDomain
     @ObservationIgnored private var fileQuery: Task<Void, Never>?
     @ObservationIgnored private var highlightQuery: Task<Void, Never>?
     @ObservationIgnored private var diffQuery: Task<Void, Never>?
+    @ObservationIgnored private var symbolQueries: [String: Task<Void, Never>] = [:]
+    @ObservationIgnored private var pendingSymbol: (fileID: String, symbol: CodeSymbol)?
     @ObservationIgnored private var layoutSave: Task<Void, Never>?
     @ObservationIgnored private var searchQuery: Task<Void, Never>?
 
@@ -373,11 +380,13 @@ import EfbyGitDeskDomain
     }
     public func loadFiles() {
         fileQuery?.cancel()
+        symbolQueries.values.forEach { $0.cancel() }
+        symbolQueries = [:]; codeSymbols = [:]; symbolsLoading = []; symbolErrors = [:]
         guard let repository, let context else {
-            files = []; visibleFiles = []; fileInventoryRevision += 1; closeDiff(); loadedContext = nil; filesLoading = false; return
+            files = []; visibleFiles = []; expandedSymbolFiles = []; fileInventoryRevision += 1; closeDiff(); loadedContext = nil; filesLoading = false; return
         }
         if loadedContext != context {
-            files = []; visibleFiles = []; fileInventoryRevision += 1; closeDiff(); loadedContext = context
+            files = []; visibleFiles = []; expandedSymbolFiles = []; fileInventoryRevision += 1; closeDiff(); loadedContext = context
         }
         let version = generation; filesLoading = true
         fileQuery = Task {
@@ -409,15 +418,66 @@ import EfbyGitDeskDomain
         showAllFiles = value
         loadFiles()
     }
+    func toggleSymbols(for id: String) {
+        if !expandedSymbolFiles.insert(id).inserted { expandedSymbolFiles.remove(id) }
+        if expandedSymbolFiles.contains(id) { loadSymbols(for: id) }
+    }
+    func loadSymbols(for id: String) {
+        guard showAllFiles, expandedSymbolFiles.contains(id), codeSymbols[id] == nil,
+              !symbolsLoading.contains(id), let repository, let context,
+              let file = visibleFiles.first(where: { $0.id == id }),
+              CodeSymbolIndex.supports(CodeLanguage.detect(path: file.name)) else { return }
+        let version = generation
+        let inventoryRevision = fileInventoryRevision
+        symbolsLoading.insert(id); symbolErrors[id] = nil
+        symbolQueries[id] = Task {
+            defer {
+                if fileInventoryRevision == inventoryRevision {
+                    symbolsLoading.remove(id); symbolQueries[id] = nil
+                }
+            }
+            do {
+                let result: FileComparison
+                if selectedFile == id, let comparison { result = comparison }
+                else { result = try await service.git.fileComparison(repository, context: context, file: file) }
+                let source = result.after ?? result.before ?? ""
+                let before = result.after == nil
+                let language = CodeLanguage.detect(path: file.name)
+                let symbols = await Task.detached {
+                    CodeSymbolIndex.make(text: source, language: language, before: before)
+                }.value
+                guard !Task.isCancelled, version == generation, self.context == context,
+                      selectedID == repository.id, showAllFiles else { return }
+                codeSymbols[id] = symbols
+            } catch is CancellationError {} catch {
+                if !Task.isCancelled, version == generation, self.context == context {
+                    symbolErrors[id] = error.localizedDescription
+                }
+            }
+        }
+    }
+    func navigateToSymbol(fileID: String, symbol: CodeSymbol) {
+        pendingSymbol = (fileID, symbol)
+        if selectedFile == fileID, comparison != nil, !diffRows.isEmpty { applySymbolJump() }
+        else { loadDiff(id: fileID) }
+    }
+    private func applySymbolJump() {
+        guard let pendingSymbol, selectedFile == pendingSymbol.fileID else { return }
+        let line = pendingSymbol.symbol.line
+        guard let row = diffRows.firstIndex(where: { pendingSymbol.symbol.before ? $0.beforeNumber == line : $0.afterNumber == line }) else { return }
+        symbolJump = DiffJumpTarget(row: row)
+        self.pendingSymbol = nil
+    }
     public func closeDiff() {
         diffQuery?.cancel(); highlightQuery?.cancel()
-        selectedFile = nil; diffText = ""; diffSyntax = nil
+        selectedFile = nil; diffText = ""; diffSyntax = nil; symbolJump = nil; pendingSymbol = nil
         comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffLoading = false; diffAligned = false; diffNotice = ""
     }
     public func loadDiff(id: String) {
         diffQuery?.cancel()
         guard let repository, let context, let file = visibleFiles.first(where: { $0.id == id }) else { return }
         let preserveView = selectedFile == id && comparison != nil
+        if selectedFile != id { symbolJump = nil }
         selectedFile = id
         if !preserveView {
             diffText = ""; comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffSyntax = nil
@@ -439,6 +499,7 @@ import EfbyGitDeskDomain
                     if layout.inline.contains(where: \.limited) { diffNotice += "\nEn líneas extensas o complejas, se destaca el tramo modificado entre el prefijo y sufijo comunes." }
                 case .failure(let error): diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffSyntax = nil; diffAligned = false; diffNotice += "\n" + error.localizedDescription
                 }
+                applySymbolJump()
                 diffLoading = false
                 refreshHighlighting()
                 diffText = result.patch.isEmpty

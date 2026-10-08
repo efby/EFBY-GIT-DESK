@@ -60,7 +60,7 @@ struct CodeLexer {
                 add(position, units.count, .tag); position = units.count; continue
             }
             if unit == 34 || unit == 39 || (unit == 96 && [.javascript, .typescript, .markdown, .shell].contains(language)) {
-                let triple = language == .python && matches([unit, unit, unit], at: position)
+                let triple = [.python, .dart].contains(language) && matches([unit, unit, unit], at: position)
                 let end = triple ? [unit, unit, unit] : [unit]
                 multilineString = triple || unit == 96 || [.ruby, .shell].contains(language)
                 stringEnd = end; position += end.count

@@ -5,6 +5,9 @@ struct DiffPane: View {
     @Bindable var model: DeskModel
     @State private var collapsed: Set<String> = []
     @State private var treeNodes: [ComparisonFileNode] = []
+    @State private var restoredRepositoryID: String?
+    @State private var expansionVersion = 0
+    @State private var expansionSave: Task<Void, Never>?
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 9) {
@@ -53,7 +56,8 @@ struct DiffPane: View {
                     if model.visibleFiles.isEmpty && !model.filesLoading {
                         ContentUnavailableView("Sin archivos", systemImage: "doc", description: Text("No hay archivos en esta selección."))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else { fileList }
+                    } else if restoredRepositoryID == model.selectedID { fileList }
+                    else { ProgressView("Restaurando carpetas…").frame(maxWidth: .infinity, maxHeight: .infinity) }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -63,15 +67,49 @@ struct DiffPane: View {
                 let nodes = await Task.detached { ComparisonFileNode.make(files) }.value
                 if !Task.isCancelled { treeNodes = nodes }
             }
+            .task(id: model.selectedID) {
+                collapsed = []; restoredRepositoryID = nil
+                let version = expansionVersion
+                guard let id = model.selectedID else { return }
+                let key = FolderExpansionPreference.key(scope: "comparison", repositoryID: id)
+                let saved = try? await model.service.registry.preference(key)
+                guard !Task.isCancelled, model.selectedID == id, expansionVersion == version else { return }
+                collapsed = FolderExpansionPreference.decode(saved)
+                restoredRepositoryID = id
+            }
     }
     private var fileList: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 1) {
-                Button("Expandir todo") { collapsed.removeAll() }
-                    .buttonStyle(.plain).padding(.bottom, 3)
-                ComparisonTreeRows(model: model, nodes: treeNodes, collapsed: $collapsed)
+                Button(allFoldersExpanded ? "Colapsar todo" : "Expandir todo") {
+                    updateCollapsed(FolderExpansionPreference.toggleAll(collapsed: collapsed, visible: visibleFolderIDs))
+                }
+                .disabled(visibleFolderIDs.isEmpty)
+                .buttonStyle(.plain).padding(.bottom, 3)
+                ComparisonTreeRows(model: model, nodes: treeNodes, collapsed: collapsed, toggleFolder: toggleFolder)
             }.padding(.horizontal, 12).padding(.vertical, 6).frame(maxWidth: .infinity, alignment: .leading)
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var visibleFolderIDs: Set<String> { treeNodes.reduce(into: Set<String>()) { $0.formUnion($1.folderIDs) } }
+    private var allFoldersExpanded: Bool { FolderExpansionPreference.allExpanded(collapsed: collapsed, visible: visibleFolderIDs) }
+    private func toggleFolder(_ id: String) {
+        var updated = collapsed
+        if !updated.insert(id).inserted { updated.remove(id) }
+        updateCollapsed(updated)
+    }
+    private func updateCollapsed(_ updated: Set<String>) {
+        guard let id = model.selectedID, updated != collapsed else { return }
+        collapsed = updated; expansionVersion += 1
+        guard let value = FolderExpansionPreference.encode(updated) else { return }
+        let previous = expansionSave
+        let service = model.service
+        let key = FolderExpansionPreference.key(scope: "comparison", repositoryID: id)
+        expansionSave = Task {
+            await previous?.value
+            let registry = await service.registry
+            try? await registry.setPreference(key, value: value)
+        }
     }
 
     private var title: String {

@@ -1,7 +1,7 @@
 import Foundation
 
 public enum CodeLanguage: String, CaseIterable, Identifiable, Sendable {
-    case automatic = "Automático", plain = "Texto plano", python = "Python", javascript = "JavaScript", typescript = "TypeScript"
+    case automatic = "Automático", plain = "Texto plano", python = "Python", javascript = "JavaScript", typescript = "TypeScript", dart = "Dart"
     case swift = "Swift", java = "Java", kotlin = "Kotlin", c = "C / C++", csharp = "C#", go = "Go", rust = "Rust"
     case ruby = "Ruby", shell = "Shell", sql = "SQL", json = "JSON", yaml = "YAML / TOML", html = "HTML / XML", css = "CSS", markdown = "Markdown"
     public var id: Self { self }
@@ -11,6 +11,7 @@ public enum CodeLanguage: String, CaseIterable, Identifiable, Sendable {
         case "py", "pyi", "pyw": return .python
         case "js", "jsx", "mjs", "cjs": return .javascript
         case "ts", "tsx", "mts", "cts": return .typescript
+        case "dart": return .dart
         case "swift": return .swift
         case "java": return .java
         case "kt", "kts": return .kotlin
@@ -35,6 +36,7 @@ public enum CodeLanguage: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .python: words = "and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield True False None"
         case .javascript, .typescript: words = "async await break case catch class const continue debugger default delete do else export extends finally for from function if import in instanceof let new of return static super switch this throw try typeof var void while with yield true false null undefined interface type enum implements declare namespace public private protected readonly abstract as satisfies keyof infer unknown never any string number boolean"
+        case .dart: words = "abstract as async await break case catch class const continue covariant default deferred do dynamic else enum export extends extension external factory false final finally for Function get hide if implements import in interface is late library mixin new null on operator part required rethrow return sealed set show static super switch sync this throw true try typedef var void when while with yield"
         case .swift: words = "actor as associatedtype async await break case catch class continue default defer deinit do else enum extension fallthrough fileprivate for func guard if import in init inout internal is let nonisolated open operator private protocol public repeat rethrows return self some static struct subscript super switch throws throw try typealias var where while true false nil"
         case .sql: words = "select from where join inner left right outer on as insert into values update set delete create alter drop table index view distinct group by having order asc desc limit offset union all null not and or exists case when then else end primary key foreign references constraint count sum max min avg begin commit rollback"
         case .shell: words = "if then else elif fi for in do done while until case esac function return export local readonly break continue source"
@@ -48,5 +50,5 @@ public enum CodeLanguage: String, CaseIterable, Identifiable, Sendable {
         return Set(words.split(separator: " ").map(String.init))
     }
     var hashComments: Bool { [.python, .ruby, .shell, .yaml].contains(self) }
-    var slashComments: Bool { [.javascript, .typescript, .swift, .java, .kotlin, .c, .csharp, .go, .rust, .json, .css].contains(self) }
+    var slashComments: Bool { [.javascript, .typescript, .dart, .swift, .java, .kotlin, .c, .csharp, .go, .rust, .json, .css].contains(self) }
 }

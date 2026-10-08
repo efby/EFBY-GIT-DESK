@@ -53,6 +53,8 @@ struct FileDiffView: View {
             .background(Color(nsColor: .windowBackgroundColor))
             .preferredColorScheme(.dark)
             .onChange(of: model.syntaxLanguage) { _, _ in model.refreshHighlighting() }
+            .onChange(of: model.symbolJump) { _, target in jump = target }
+            .onAppear { if let target = model.symbolJump { jump = target } }
     }
 
     private func missingFinalNewline(_ comparison: FileComparison) -> String {
