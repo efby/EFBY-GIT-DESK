@@ -30,7 +30,6 @@ import AppKit
             text.isAutomaticLinkDetectionEnabled = false
             text.delegate = self
             text.linkTextAttributes = [
-                .foregroundColor: NSColor.controlAccentColor,
                 .underlineStyle: NSUnderlineStyle.single.rawValue,
                 .cursor: NSCursor.pointingHand
             ]
@@ -125,7 +124,6 @@ import AppKit
                     value.addAttributes([
                         .link: url,
                         .underlineStyle: NSUnderlineStyle.single.rawValue,
-                        .foregroundColor: NSColor.controlAccentColor,
                         .toolTip: "Ir a \(link.name) en \(link.path), línea \(link.line)"
                     ], range: painted)
                 }
