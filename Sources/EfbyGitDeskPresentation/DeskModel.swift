@@ -97,7 +97,7 @@ private struct ReviewedSymbols {
     @ObservationIgnored private var highlightQuery: Task<Void, Never>?
     @ObservationIgnored private var diffQuery: Task<Void, Never>?
     @ObservationIgnored private var declarationQuery: Task<Void, Never>?
-    @ObservationIgnored private var pendingReview: String?
+    @ObservationIgnored private var pendingReview: UUID?
     @ObservationIgnored private var reviewed: [String: ReviewedSymbols] = [:]
     @ObservationIgnored private var reviewedOrder: [String] = []
     @ObservationIgnored private var pendingSymbol: (fileID: String, symbol: CodeSymbol)?
@@ -397,6 +397,8 @@ private struct ReviewedSymbols {
     public func loadFiles() {
         fileQuery?.cancel()
         declarationQuery?.cancel()
+        pendingReview = nil
+        if context == .working || context == .staged { callLinks = nil }
         guard let repository, let context else {
             files = []; visibleFiles = []; knownFiles = [:]; fileInventoryRevision += 1; closeDiff(); loadedContext = nil; filesLoading = false; return
         }
@@ -441,10 +443,11 @@ private struct ReviewedSymbols {
         guard diffAligned, let repository, let context,
               let file = openDocument, file.id == selectedFile else { return }
         let source = comparison?.after ?? comparison?.before ?? ""
-        let key = reviewKey(context: context, fileID: file.id)
-        if pendingReview == key { return }
+        let key = reviewKey(repositoryID: repository.id, context: context, fileID: file.id)
+        let cacheable = context != .working && context != .staged
         declarationQuery?.cancel()
-        pendingReview = key
+        let requestID = UUID()
+        pendingReview = requestID
         let oldName = file.oldPath.flatMap { String(data: $0, encoding: .utf8) } ?? file.name
         let beforeLanguage = syntaxLanguage == .automatic ? CodeLanguage.detect(path: oldName) : syntaxLanguage
         let afterLanguage = syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.name) : syntaxLanguage
@@ -454,25 +457,25 @@ private struct ReviewedSymbols {
         let fileID = file.id
         let visible = visibleFiles
         declarationQuery = Task {
-            defer { if pendingReview == key { pendingReview = nil } }
+            defer { if pendingReview == requestID { pendingReview = nil } }
             let prepared = await Task.detached {
                 (CodeCallIndex.fingerprint(source), CodeImportIndex.scope(in: source, language: afterLanguage, filePath: file.name), CodeSymbolIndex.classSpans(text: source, language: afterLanguage))
             }.value
             let fingerprint = prepared.0
             let scope = prepared.1
             let classes = prepared.2
-            if let saved = reviewed[key], saved.fingerprint == fingerprint {
+            if cacheable, let saved = reviewed[key], saved.fingerprint == fingerprint {
                 guard !Task.isCancelled, version == generation, selectedFile == fileID else { return }
-                await publish(saved.declarations, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, scope: scope, classes: classes)
+                await publish(saved.declarations, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, scope: scope, classes: classes, requestID: requestID, repositoryID: repository.id, context: context, version: version)
                 return
             }
             let names = await Task.detached {
                 CodeCallIndex.callNames(rows: rows, beforeLanguage: beforeLanguage, afterLanguage: afterLanguage)
             }.value
-            if let saved = reviewed[key], saved.names == names {
+            if cacheable, let saved = reviewed[key], saved.names == names {
                 remember(key, ReviewedSymbols(fingerprint: fingerprint, names: names, declarations: saved.declarations))
                 guard !Task.isCancelled, version == generation, selectedFile == fileID else { return }
-                await publish(saved.declarations, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, scope: scope, classes: classes)
+                await publish(saved.declarations, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, scope: scope, classes: classes, requestID: requestID, repositoryID: repository.id, context: context, version: version)
                 return
             }
             let own = await Task.detached {
@@ -490,7 +493,7 @@ private struct ReviewedSymbols {
                         let language = CodeLanguage.detect(path: hit.path)
                         let parsed = CodeSymbolIndex.make(text: hit.text, language: language)
                         let symbols = parsed.map(\.name).filter { wanted.contains($0) }
-                        let names = symbols.isEmpty ? wanted.filter { CodeCallIndex.isDeclarationLine(hit.text, name: $0) } : symbols
+                        let names = symbols.isEmpty ? wanted.filter { CodeCallIndex.isDeclarationLine(hit.text, name: $0, language: language) } : symbols
                         return names.map { name in
                             CodeDeclaration(fileID: candidate.id, path: hit.path, name: name, line: hit.line, before: false, owner: parsed.first { $0.name == name }?.owner, isType: parsed.first { $0.name == name }?.isType ?? false)
                         }
@@ -499,11 +502,11 @@ private struct ReviewedSymbols {
                 found.append(contentsOf: remote)
             }
             guard !Task.isCancelled, version == generation, selectedFile == fileID else { return }
-            remember(key, ReviewedSymbols(fingerprint: fingerprint, names: names, declarations: found))
-            await publish(found, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, scope: scope, classes: classes)
+            if cacheable { remember(key, ReviewedSymbols(fingerprint: fingerprint, names: names, declarations: found)) }
+            await publish(found, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, scope: scope, classes: classes, requestID: requestID, repositoryID: repository.id, context: context, version: version)
         }
     }
-    private func reviewKey(context: DiffContext, fileID: String) -> String {
+    private func reviewKey(repositoryID: String, context: DiffContext, fileID: String) -> String {
         let scope: String
         switch context {
         case .commits(let pair): scope = pair.base + ".." + pair.target
@@ -511,7 +514,7 @@ private struct ReviewedSymbols {
         case .staged: scope = "staged"
         case .working: scope = "working"
         }
-        return scope + "\n" + fileID
+        return repositoryID + "\n" + scope + "\n" + fileID
     }
     private func remember(_ key: String, _ value: ReviewedSymbols) {
         if reviewed[key] == nil { reviewedOrder.append(key) }
@@ -520,16 +523,18 @@ private struct ReviewedSymbols {
             reviewed.removeValue(forKey: reviewedOrder.removeFirst())
         }
     }
-    private func publish(_ found: [CodeDeclaration], fileID: String, rows: [DiffRow], before: CodeLanguage, after: CodeLanguage, scope: CodeFileScope, classes: [CodeClassSpan]) async {
+    private func publish(_ found: [CodeDeclaration], fileID: String, rows: [DiffRow], before: CodeLanguage, after: CodeLanguage, scope: CodeFileScope, classes: [CodeClassSpan], requestID: UUID, repositoryID: String, context: DiffContext, version: Int) async {
+        let links = await Task.detached {
+            CodeCallIndex.links(rows: rows, beforeLanguage: before, afterLanguage: after, declarations: found, currentFileID: fileID, imports: scope.imports, receivers: scope.receivers, libraries: scope.libraries, classes: classes)
+        }.value
+        guard !Task.isCancelled, pendingReview == requestID, generation == version,
+              selectedID == repositoryID, self.context == context,
+              selectedFile == fileID, diffRows == rows else { return }
         for declaration in found {
             guard knownFiles[declaration.fileID] == nil, let data = declaration.path.data(using: .utf8) else { continue }
             let candidate = visibleFiles.first { $0.id == declaration.fileID } ?? FileChange(path: data, status: "=")
             if candidate.id == declaration.fileID { knownFiles[declaration.fileID] = candidate }
         }
-        let links = await Task.detached {
-            CodeCallIndex.links(rows: rows, beforeLanguage: before, afterLanguage: after, declarations: found, currentFileID: fileID, imports: scope.imports, receivers: scope.receivers, libraries: scope.libraries, classes: classes)
-        }.value
-        guard selectedFile == fileID, diffRows == rows else { return }
         declarations = found
         if callLinks != links { callLinks = links }
     }

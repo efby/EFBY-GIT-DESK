@@ -32,6 +32,9 @@ import AppKit
             text.owner = self
             text.isEditable = false; text.isSelectable = true
             text.isAutomaticLinkDetectionEnabled = false
+            text.linkTextAttributes = [.underlineStyle: NSUnderlineStyle.single.rawValue]
+            text.setAccessibilityHelp("Selecciona un enlace del documento y pulsa Retorno para abrirlo.")
+            text.delegate = self
             text.isHorizontallyResizable = true; text.isVerticallyResizable = true
             text.textContainer?.widthTracksTextView = false
             text.textContainerInset = NSSize(width: 8, height: 12)
@@ -129,6 +132,7 @@ import AppKit
                     guard let url = CodeCallIndex.url(for: link) else { continue }
                     let painted = NSRange(location: offset + prefixLength + link.range.location, length: link.range.length)
                     value.addAttributes([
+                        .link: url,
                         .callTarget: url,
                         .underlineStyle: NSUnderlineStyle.single.rawValue,
                         .toolTip: "Ir a \(link.name) en \(link.path), línea \(link.line)"
@@ -161,6 +165,7 @@ import AppKit
         }
         storage.beginEditing()
         for range in existing {
+            storage.removeAttribute(.link, range: range)
             storage.removeAttribute(.callTarget, range: range)
             storage.removeAttribute(.underlineStyle, range: range)
             storage.removeAttribute(.toolTip, range: range)
@@ -181,6 +186,7 @@ import AppKit
                     let painted = NSRange(location: offset + prefix + link.range.location, length: link.range.length)
                     guard NSMaxRange(painted) <= storage.length else { continue }
                     storage.addAttributes([
+                        .link: url,
                         .callTarget: url,
                         .underlineStyle: NSUnderlineStyle.single.rawValue,
                         .toolTip: "Ir a \(link.name) en \(link.path), línea \(link.line)"
@@ -351,9 +357,23 @@ final class DiffTextView: NSTextView {
         }
         super.mouseDown(with: event)
     }
+    override func keyDown(with event: NSEvent) {
+        if (event.keyCode == 36 || event.keyCode == 76),
+           let storage = textStorage, selectedRange().location < storage.length,
+           let link = storage.attribute(.callTarget, at: selectedRange().location, effectiveRange: nil) {
+            owner?.follow(link, from: self)
+            return
+        }
+        super.keyDown(with: event)
+    }
 }
 
-extension ParallelDiffContainer {
+extension ParallelDiffContainer: NSTextViewDelegate {
+    func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+        follow(link, from: textView)
+        return true
+    }
+
     func follow(_ link: Any, from text: NSTextView) {
         guard let target = CodeCallIndex.target(from: link) else { return }
         let origin = (text.enclosingScrollView ?? right).contentView.bounds.origin

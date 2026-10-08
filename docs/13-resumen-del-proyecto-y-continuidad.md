@@ -1,7 +1,8 @@
 # EFBY Git Desk — resumen del proyecto y continuidad
 
-Corte documental: **8 de octubre de 2026**, código integrado hasta `a5dbee4`
-(merge del PR #21, tag local `v0.1.12`). Este documento permite retomar el proyecto
+Corte documental: **8 de octubre de 2026**, base `f75d7c7` (merge documental
+del PR #22), con la app distribuida de `a5dbee4` (`v0.1.12`) y las correcciones
+de navegación descritas más abajo. Este documento permite retomar el proyecto
 sin reconstruir conversaciones. La evidencia de Releases que figura más abajo
 corresponde a su verificación histórica hasta v0.1.2; no se ha comprobado aquí
 el DMG de v0.1.12 en un equipo de destino.
@@ -198,7 +199,9 @@ ni modifica archivos del repositorio.
 Límites observados en código: 2 MB para indexar el texto abierto, 20.000 líneas y
 500 símbolos por archivo; hasta 80 nombres de llamada y 400 coincidencias de
 búsqueda Git por consulta, con salida acotada a 2 MB. La caché en memoria conserva
-hasta 48 revisiones de archivos y el historial de **Volver** hasta 64 saltos. Git
+hasta 48 revisiones inmutables de archivos, separadas por repositorio; los contextos
+de índice y working tree se vuelven a consultar para no conservar declaraciones
+obsoletas. El historial de **Volver** conserva hasta 64 saltos. Git
 excluye carpetas típicas de dependencias y compilación (`node_modules`, `dist`,
 `.next`, `build`, `coverage`, `vendor`). Ningún límite convierte una búsqueda
 heurística de símbolos en prueba de ausencia de una declaración.
@@ -214,6 +217,24 @@ aprobadas y 2 opcionales omitidas**, en 22 suites. Registro local:
 saltos entre archivos y persistencia con fixtures; quedan pendientes la
 verificación visual de la app distribuida, el DMG descargado y pruebas sobre
 repositorios reales grandes.
+
+### Corrección de enlaces tras la auditoría del 8 de octubre
+
+La revisión de los PR #14–#21 detectó que el índice podía reutilizar destinos de otro
+repositorio o de archivos locales modificados, aceptar líneas comentadas como
+declaraciones y escoger la primera sobrecarga cuando había varias coincidencias.
+La corrección incorpora el repositorio a la clave de caché, no reutiliza los
+resultados en índice/working tree, descarta comentarios reconocibles en la línea
+declarada y deja sin enlace los
+destinos ambiguos. Las respuestas asíncronas comprueban también la solicitud,
+el repositorio y el contexto antes de publicarse.
+
+Los enlaces del visor derecho usan ahora el atributo estándar de AppKit y se
+activan con Retorno al seleccionarlos. La suite comprueba ese atributo y la
+activación por teclado; la aceptación manual con VoiceOver sigue pendiente.
+Validación local: **102 pruebas registradas, 100 aprobadas y 2 opcionales
+omitidas** en 22 suites; bundle de desarrollo construido con firma ad hoc y
+verificación `codesign` correcta. No se ha verificado un nuevo DMG distribuido.
 
 ## Distribución y reglas del repositorio
 
