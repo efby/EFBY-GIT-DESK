@@ -37,6 +37,7 @@ import EfbyGitDeskDomain
     var callLinks: CodeCallLinks?
     var symbolJump: DiffJumpTarget?
     public var selectedFile: String?
+    var openDocument: FileChange?
     public var diffText = ""
     public var comparison: FileComparison?
     public var diffRows: [DiffRow] = []
@@ -86,6 +87,7 @@ import EfbyGitDeskDomain
     @ObservationIgnored private var highlightQuery: Task<Void, Never>?
     @ObservationIgnored private var diffQuery: Task<Void, Never>?
     @ObservationIgnored private var declarationQuery: Task<Void, Never>?
+    @ObservationIgnored private var declarationCache: [String: [CodeDeclaration]] = [:]
     @ObservationIgnored private var pendingSymbol: (fileID: String, symbol: CodeSymbol)?
     @ObservationIgnored private var layoutSave: Task<Void, Never>?
     @ObservationIgnored private var searchQuery: Task<Void, Never>?
@@ -136,7 +138,7 @@ import EfbyGitDeskDomain
         return (syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.name) : syntaxLanguage).rawValue
     }
     public func refreshHighlighting() {
-        refreshCallLinks()
+        scheduleCallResolution()
         highlightQuery?.cancel()
         guard let file = visibleFiles.first(where: { $0.id == selectedFile }), diffAligned else { return }
         let rows = diffRows; let language = syntaxLanguage; let version = generation; let currentContext = context
@@ -379,12 +381,12 @@ import EfbyGitDeskDomain
     }
     public func loadFiles() {
         fileQuery?.cancel()
-        declarationQuery?.cancel(); declarations = []; callLinks = nil
+        declarationQuery?.cancel()
         guard let repository, let context else {
             files = []; visibleFiles = []; fileInventoryRevision += 1; closeDiff(); loadedContext = nil; filesLoading = false; return
         }
         if loadedContext != context {
-            files = []; visibleFiles = []; fileInventoryRevision += 1; closeDiff(); loadedContext = context
+            files = []; visibleFiles = []; declarationCache = [:]; fileInventoryRevision += 1; closeDiff(); loadedContext = context
         }
         let version = generation; filesLoading = true
         fileQuery = Task {
@@ -401,9 +403,12 @@ import EfbyGitDeskDomain
                         .sorted { $0.path.lexicographicallyPrecedes($1.path) }
                 } else { visibleFiles = newFiles }
                 fileInventoryRevision += 1
-                scheduleDeclarationIndex()
-                if let selectedFile, visibleFiles.contains(where: { $0.id == selectedFile }) { loadDiff(id: selectedFile) }
-                else { closeDiff() }
+                if let selectedFile, visibleFiles.contains(where: { $0.id == selectedFile }) {
+                    if comparison == nil || openDocument?.id != selectedFile { loadDiff(id: selectedFile) }
+                    else { scheduleCallResolution() }
+                } else if openDocument?.id == selectedFile, comparison != nil {
+                    declarations = []; callLinks = nil
+                } else { closeDiff() }
             } catch is CancellationError {} catch {
                 if version == generation && self.context == context {
                     visibleFiles = []; fileInventoryRevision += 1; closeDiff()
@@ -417,25 +422,43 @@ import EfbyGitDeskDomain
         showAllFiles = value
         loadFiles()
     }
-    private func scheduleDeclarationIndex() {
+    private func scheduleCallResolution() {
         declarationQuery?.cancel()
-        guard showAllFiles, let repository, let context else { declarations = []; callLinks = nil; return }
-        let files = Array(visibleFiles.filter { CodeSymbolIndex.supports(CodeLanguage.detect(path: $0.name)) }.prefix(200))
+        guard showAllFiles, diffAligned, let repository, let context,
+              let file = openDocument, file.id == selectedFile else {
+            if !showAllFiles { declarations = []; callLinks = nil }
+            return
+        }
+        let oldName = file.oldPath.flatMap { String(data: $0, encoding: .utf8) } ?? file.name
+        let before = syntaxLanguage == .automatic ? CodeLanguage.detect(path: oldName) : syntaxLanguage
+        let after = syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.name) : syntaxLanguage
+        let names = CodeCallIndex.callNames(rows: diffRows, beforeLanguage: before, afterLanguage: after)
+        guard !names.isEmpty else { declarations = []; callLinks = nil; return }
         let version = generation
         let revision = fileInventoryRevision
+        let fileID = file.id
         declarationQuery = Task {
+            let paths = (try? await service.git.declarationPaths(repository, context: context, names: names)) ?? []
             var found: [CodeDeclaration] = []
-            for file in files {
-                if Task.isCancelled || found.count >= 2_000 { break }
+            for path in paths {
+                if Task.isCancelled { return }
+                guard let candidate = visibleFiles.first(where: { $0.name == path }) else { continue }
+                if let cached = declarationCache[candidate.id] {
+                    found.append(contentsOf: cached)
+                    continue
+                }
                 let result: FileComparison
-                do { result = try await service.git.fileComparison(repository, context: context, file: file) }
+                do { result = try await service.git.fileComparison(repository, context: context, file: candidate) }
                 catch { continue }
                 let source = result.after ?? result.before ?? ""
-                let before = result.after == nil
-                let symbols = await Task.detached { CodeCallIndex.declarations(file: file, text: source, before: before) }.value
+                let symbols = await Task.detached {
+                    CodeCallIndex.declarations(file: candidate, text: source, before: result.after == nil)
+                }.value
+                declarationCache[candidate.id] = symbols
                 found.append(contentsOf: symbols)
             }
-            guard !Task.isCancelled, version == generation, revision == fileInventoryRevision, showAllFiles else { return }
+            guard !Task.isCancelled, version == generation, revision == fileInventoryRevision,
+                  showAllFiles, selectedFile == fileID else { return }
             declarations = found
             refreshCallLinks()
         }
@@ -456,7 +479,7 @@ import EfbyGitDeskDomain
         self.pendingSymbol = nil
     }
     private func refreshCallLinks() {
-        guard showAllFiles, diffAligned, let file = visibleFiles.first(where: { $0.id == selectedFile }) else {
+        guard showAllFiles, diffAligned, let file = openDocument, file.id == selectedFile else {
             callLinks = nil
             return
         }
@@ -467,7 +490,7 @@ import EfbyGitDeskDomain
     }
     public func closeDiff() {
         diffQuery?.cancel(); highlightQuery?.cancel()
-        selectedFile = nil; diffText = ""; diffSyntax = nil; symbolJump = nil; pendingSymbol = nil; callLinks = nil
+        selectedFile = nil; openDocument = nil; diffText = ""; diffSyntax = nil; symbolJump = nil; pendingSymbol = nil; callLinks = nil
         comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffLoading = false; diffAligned = false; diffNotice = ""
     }
     public func loadDiff(id: String) {
@@ -476,6 +499,7 @@ import EfbyGitDeskDomain
         let preserveView = selectedFile == id && comparison != nil
         if selectedFile != id { symbolJump = nil; callLinks = nil }
         selectedFile = id
+        openDocument = file
         if !preserveView {
             diffText = ""; comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffSyntax = nil
             diffLoading = true; diffAligned = false; diffNotice = ""
@@ -498,7 +522,6 @@ import EfbyGitDeskDomain
                 }
                 applySymbolJump()
                 diffLoading = false
-                refreshCallLinks()
                 refreshHighlighting()
                 diffText = result.patch.isEmpty
                     ? (file.status == "=" ? "Sin cambios; se muestran ambos documentos completos." : "Cambio de metadatos o modo; los documentos se muestran completos.")

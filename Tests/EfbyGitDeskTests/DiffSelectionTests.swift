@@ -46,7 +46,8 @@ import EfbyGitDeskInfrastructure
         #expect(model.diffBlocks.isEmpty)
         model.setShowAllFiles(false)
         try await waitUntil { !model.filesLoading && model.visibleFiles.count == 2 }
-        #expect(model.selectedFile == nil)
+        #expect(model.selectedFile == unchanged.id)
+        #expect(model.comparison?.after == "print('same')\n")
     }
 
     @Test func functionLinksOpenTheirFileAndJumpToTheMatchingLine() async throws {
@@ -67,7 +68,7 @@ import EfbyGitDeskInfrastructure
         model.chooseCommit(model.commits[0]); model.chooseCommit(model.commits[1])
         try await waitUntil { !model.filesLoading && model.files.count == 1 }
         model.setShowAllFiles(true)
-        try await waitUntil { !model.filesLoading && model.declarations.contains { $0.name == "query_objects" } && model.declarations.contains { $0.name == "run" } }
+        try await waitUntil { !model.filesLoading && model.visibleFiles.contains { $0.name == "src/caller.py" } }
         let caller = try #require(model.visibleFiles.first { $0.name == "src/caller.py" })
         model.loadDiff(id: caller.id)
         try await waitUntil { !model.diffLoading && model.callLinks?.after.contains { $0.contains { $0.name == "query_objects" } } == true }
@@ -80,7 +81,7 @@ import EfbyGitDeskInfrastructure
         let jump = try #require(model.symbolJump)
         #expect(model.diffRows[jump.row].afterNumber == query.line)
         model.setShowAllFiles(false)
-        try await waitUntil { !model.filesLoading && model.callLinks == nil }
+        try await waitUntil { !model.filesLoading && model.callLinks == nil && model.selectedFile == query.fileID && model.comparison != nil }
         if let path = ProcessInfo.processInfo.environment["EFBY_SYMBOL_NAV_PREVIEW_PATH"] {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1440, height: 800),
                                   styleMask: .borderless, backing: .buffered, defer: false)

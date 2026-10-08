@@ -182,6 +182,49 @@ public actor GitAdapter: GitRepositoryPort {
         return Array(Set(paths)).sorted { $0.lexicographicallyPrecedes($1) }
             .map { FileChange(path: $0, status: "=") }
     }
+    public func declarationPaths(_ repository: Repository, context: DiffContext, names: [String]) async throws -> [String] {
+        let names = Array(names.filter { $0.range(of: #"^[A-Za-z_$][A-Za-z0-9_$]*$"#, options: .regularExpression) != nil }.prefix(40))
+        guard !names.isEmpty else { return [] }
+        let pattern = "(^|[^A-Za-z0-9_$])(" + names.joined(separator: "|") + ")[[:space:]]*\\("
+        var arguments = ["grep", "-z", "-n", "-I", "--no-textconv", "--no-color", "--max-count=8", "-E", pattern]
+        let prefix: String
+        switch context {
+        case .commits(let pair):
+            try await verify(pair.target, repository: repository)
+            arguments.append(pair.target)
+            prefix = pair.target + ":"
+        case .commit(let oid, _):
+            try await verify(oid, repository: repository)
+            arguments.append(oid)
+            prefix = oid + ":"
+        case .staged:
+            try requireTrust(repository)
+            arguments.append("--cached")
+            prefix = ""
+        case .working:
+            try requireTrust(repository)
+            prefix = ""
+        }
+        arguments.append("--")
+        let result = try await run(arguments, directory: repository.path, trusted: repository.trusted, limit: 512 * 1024, allowFailure: true)
+        if result.truncated || (result.status != 0 && result.status != 1) { return [] }
+        return Self.grepPaths(result.output, prefix: prefix)
+    }
+    private static func grepPaths(_ data: Data, prefix: String) -> [String] {
+        var paths: [String] = []
+        var seen = Set<String>()
+        let records: [Data.SubSequence] = data.split(separator: 10, omittingEmptySubsequences: true)
+        for record in records {
+            let fields: [Data.SubSequence] = record.split(separator: 0, omittingEmptySubsequences: false)
+            guard let raw = fields.first.flatMap({ String(data: Data($0), encoding: .utf8) }) else { continue }
+            let path = prefix.isEmpty || !raw.hasPrefix(prefix) ? raw : String(raw.dropFirst(prefix.count))
+            let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
+            guard ["py", "pyi", "pyw", "ts", "tsx", "mts", "cts", "dart"].contains(ext), seen.insert(path).inserted else { continue }
+            paths.append(path)
+            if paths.count >= 24 { break }
+        }
+        return paths
+    }
     public func diff(_ repository: Repository, context: DiffContext, file: FileChange) async throws -> String {
         guard let path = file.utf8Path else {
             return "La ruta conserva sus bytes originales. Este visor no representa texto para nombres no UTF-8."
