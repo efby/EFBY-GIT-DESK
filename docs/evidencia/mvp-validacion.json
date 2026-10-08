@@ -428,5 +428,21 @@
       "Miniforge detection without Terminal PATH",
       "preferred path and PATH keep priority"
     ]
+  },
+  "allFilesAndSidebarLogo_2026_10_07": {
+    "registered": 96,
+    "passed": 94,
+    "skippedOptional": 2,
+    "suites": 21,
+    "seconds": 7.498,
+    "command": "scripts/test.sh",
+    "debugBuildPassed": true,
+    "packagedVisualReviewComplete": false,
+    "coverage": [
+      "all files include unchanged code from target tree",
+      "changed inventory preserves deleted paths",
+      "unchanged Python content opens equally in both columns",
+      "switching back closes a file absent from changed inventory"
+    ]
   }
 }

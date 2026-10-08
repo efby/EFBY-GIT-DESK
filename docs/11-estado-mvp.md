@@ -311,3 +311,20 @@ La prueba cubre PATH limitado a rutas del sistema y prioridad del Git elegido.
 Validación: suite completa, 95 pruebas registradas, 93 aprobadas y 2 opcionales
 omitidas en 25,211 s, con compilación debug correcta. Pendiente validar el DMG
 en el equipo con Miniforge del reporte.
+
+
+## Logo lateral y exploración de archivos — 7 de octubre de 2026
+
+La cabecera lateral sustituye «EF» por el icono del bundle de EFBY Git Desk,
+con el logotipo y la etiqueta #GitDesk. La casilla «Todos los archivos» amplía
+el árbol de comparación con archivos sin cambios del commit de destino o del
+índice. El inventario de cambios conserva eliminaciones y renombres, y sigue
+siendo la vista inicial. Un archivo igual en ambos lados muestra el código
+completo sin marcas. La lectura usa objetos Git originales; en contextos de
+índice/working tree se exige confianza. Un inventario truncado se rechaza.
+
+Validación: suite completa con 96 pruebas registradas, 94 aprobadas y 2
+opcionales omitidas, 7,498 s; compilación debug correcta. La nueva prueba
+integra Git real, un archivo Python sin cambios, uno nuevo y uno eliminado,
+comprueba el contenido de ambos documentos y el regreso al filtro de cambios.
+La nueva presentación aún requiere revisión visual del DMG empaquetado.

@@ -8,6 +8,47 @@ import EfbyGitDeskInfrastructure
 @testable import EfbyGitDeskPresentation
 
 @MainActor struct DiffSelectionTests {
+    @Test func allFilesModeIncludesUnchangedCodeAndPreservesDeletedChanges() async throws {
+        let fixture = try await GitFixture.make(); defer { fixture.cleanup() }
+        try FileManager.default.createDirectory(at: fixture.folder.appendingPathComponent("src"), withIntermediateDirectories: true)
+        try fixture.write("src/unchanged.py", "print('same')\n")
+        _ = try await fixture.git(["add", "--", "src/unchanged.py"])
+        _ = try await fixture.git(["commit", "-m", "Add source"])
+        let base = try await fixture.git(["rev-parse", "HEAD"])
+        _ = try await fixture.git(["rm", "--", "README.md"])
+        try fixture.write("src/new.py", "print('new')\n")
+        _ = try await fixture.git(["add", "--", "src/new.py"])
+        _ = try await fixture.git(["commit", "-m", "Replace file"])
+        let target = try await fixture.git(["rev-parse", "HEAD"])
+        let pair = try ComparisonPair(base: base, target: target)
+        let listed = try await fixture.adapter.allFiles(fixture.repository, context: .commits(pair))
+        #expect(Set(listed.map(\.name)) == ["src/unchanged.py", "src/new.py"])
+
+        let registry = try SQLiteRegistry(path: fixture.folder.appendingPathComponent("catalog.sqlite").path)
+        let service = DeskService(git: fixture.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
+        let repository = try await service.open(path: fixture.folder.path)
+        let model = DeskModel(service: service, terminalFactory: { PTYTerminal(shell: "/bin/sh", login: false) })
+        model.repositories = [repository]; model.select(repository.id)
+        try await waitUntil { !model.loading && model.commits.count == 3 }
+        model.chooseCommit(model.commits[0]); model.chooseCommit(model.commits[1])
+        try await waitUntil { !model.filesLoading && model.files.count == 2 }
+        #expect(Set(model.visibleFiles.map(\.name)) == ["README.md", "src/new.py"])
+
+        model.setShowAllFiles(true)
+        try await waitUntil { !model.filesLoading && model.visibleFiles.count == 3 }
+        #expect(Set(model.visibleFiles.map(\.name)) == ["README.md", "src/new.py", "src/unchanged.py"])
+        let unchanged = try #require(model.visibleFiles.first { $0.name == "src/unchanged.py" })
+        #expect(unchanged.status == "=")
+        model.loadDiff(id: unchanged.id)
+        try await waitUntil { !model.diffLoading && model.comparison != nil }
+        #expect(model.comparison?.before == "print('same')\n")
+        #expect(model.comparison?.after == "print('same')\n")
+        #expect(model.diffBlocks.isEmpty)
+        model.setShowAllFiles(false)
+        try await waitUntil { !model.filesLoading && model.visibleFiles.count == 2 }
+        #expect(model.selectedFile == nil)
+    }
+
     @Test func diffRequiresFileSelectionAndStaysClosedAfterRefresh() async throws {
         let fixture = try await GitFixture.make()
         defer { fixture.cleanup() }

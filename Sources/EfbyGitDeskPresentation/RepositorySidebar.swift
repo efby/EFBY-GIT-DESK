@@ -16,7 +16,9 @@ struct RepositorySidebar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("EF").font(.title3.bold()).padding(9).background(.teal.opacity(0.2), in: RoundedRectangle(cornerRadius: 9))
+                Image(nsImage: NSApplication.shared.applicationIconImage)
+                    .resizable().scaledToFit().frame(width: 52, height: 52)
+                    .accessibilityLabel("Logo de EFBY Git Desk")
                 VStack(alignment: .leading) {
                     Text("EFBY Git Desk").font(.headline)
                     Text("BITBUCKET CLOUD").font(.caption2).foregroundStyle(.secondary)
