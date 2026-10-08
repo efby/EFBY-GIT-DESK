@@ -1,6 +1,6 @@
 # EfbyGitDesk — documentación para construir el programa
 
-**Actualización:** 7 de octubre de 2026 · **Estado:** MVP implementado y distribución firmada/notarizada publicada; aceptación completa H6 pendiente. Los documentos 01–10 conservan la especificación base. **Nombre confirmado por el usuario:** EfbyGitDesk.
+**Actualización:** 8 de octubre de 2026 · **Estado:** MVP implementado y distribución firmada/notarizada publicada en ejecuciones verificadas; aceptación completa H6 pendiente. Los documentos 01–10 conservan la especificación base. **Nombre confirmado por el usuario:** EfbyGitDesk.
 
 Para retomar el trabajo, comenzar por [13 — Resumen del proyecto y continuidad](13-resumen-del-proyecto-y-continuidad.md). El [registro 11](11-estado-mvp.md) conserva la evolución y evidencia histórica; [12](12-dmg-y-github-actions.md) describe el empaquetado y la automatización.
 

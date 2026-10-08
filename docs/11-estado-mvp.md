@@ -1,6 +1,6 @@
 # EFBY Git Desk — registro de implementación y validación
 
-Registro iniciado el 6 de octubre de 2026, actualizado el 7 de octubre. Las secciones conservan resultados y decisiones de cada etapa; las entradas posteriores pueden sustituir decisiones previas. Para el comportamiento vigente consultar [13 — Resumen y continuidad](13-resumen-del-proyecto-y-continuidad.md). Releases publicadas no equivalen a aceptación completa H6.
+Registro iniciado el 6 de octubre de 2026, actualizado el 8 de octubre. Las secciones conservan resultados y decisiones de cada etapa; las entradas posteriores pueden sustituir decisiones previas. Para el comportamiento vigente consultar [13 — Resumen y continuidad](13-resumen-del-proyecto-y-continuidad.md). Releases publicadas no equivalen a aceptación completa H6.
 
 ## Decisiones adoptadas en la implementación
 
@@ -328,3 +328,21 @@ opcionales omitidas, 7,498 s; compilación debug correcta. La nueva prueba
 integra Git real, un archivo Python sin cambios, uno nuevo y uno eliminado,
 comprueba el contenido de ambos documentos y el regreso al filtro de cambios.
 La nueva presentación aún requiere revisión visual del DMG empaquetado.
+
+## Persistencia de carpetas y navegación de código — 8 de octubre de 2026
+
+Los PR #14–#21, integrados hasta `a5dbee4` (`v0.1.12` en el repositorio local),
+añadieron la memoria de carpetas abiertas/cerradas en los árboles de proyectos y
+comparación, el control reversible **Expandir todo / Colapsar todo**, el índice
+de declaraciones de Python, JavaScript, TypeScript y Dart, enlaces dentro del
+documento derecho, navegación entre archivos y **Volver** con restauración de
+posición. La primera versión colocaba funciones bajo cada archivo; la versión
+vigente las enlaza en el código y deja el árbol como lista de archivos. Los enlaces
+no dependen de la casilla **Todos los archivos**. Se priorizan imports y tipos
+de receptor; las coincidencias ambiguas no se convierten en enlace.
+
+Validación local del SHA `a5dbee4`: compilación limpia correcta (20,21 s),
+Swift Testing con **100 pruebas registradas, 98 aprobadas y 2 opcionales omitidas**
+en 22 suites (8,003 s). Los límites, casos cubiertos y pendientes figuran en
+[13 — Resumen y continuidad](13-resumen-del-proyecto-y-continuidad.md). Esto no
+verifica notarización ni ejecución del DMG descargado de v0.1.12.

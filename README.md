@@ -35,6 +35,8 @@ El repositorio ocupa todo el espacio disponible incluso sin seleccionar commits.
 
 En el panel de archivos, **Todos los archivos** muestra también los archivos sin cambios del árbol seleccionado para revisar código. Desmarcado, vuelve al inventario de modificaciones. Los archivos eliminados siguen visibles al mostrar todos; un archivo sin cambios abre sus dos documentos completos al hacer clic. La cabecera lateral usa el logo de la app.
 
+Los árboles de proyectos y comparación recuerdan las carpetas contraídas. En la comparación, el botón cambia entre **Expandir todo** y **Colapsar todo**. En el documento derecho, algunas llamadas y referencias a tipos de Python, JavaScript, TypeScript y Dart se convierten en enlaces a su declaración, incluso si el archivo de destino no está en la lista filtrada. **Volver** o Comando + [ recupera el archivo y la posición de lectura anteriores. Es una búsqueda acotada y heurística: si el destino es ambiguo, no se muestra enlace. Los detalles y límites están en el [resumen de continuidad](docs/13-resumen-del-proyecto-y-continuidad.md).
+
 Ambos documentos sincronizan el desplazamiento horizontal y vertical. El texto modificado dentro de cada línea tiene un fondo más intenso: rojo en lo eliminado y verde en lo agregado. Las líneas idénticas no se marcan; el resaltado conserva el formato de código y tu selección manual. **Modificaciones** indica cuántas líneas faltan, desde el borde inferior visible, para llegar al próximo cambio al bajar. El mapa vertical está detrás del indicador de scroll de cada columna: rojo indica líneas eliminadas y verde, agregadas. Arrastra el indicador o usa anterior/siguiente para navegar.
 
 Las preferencias guardan distribución de paneles, terminal, registro y pestañas; al reiniciar no se restauran procesos vivos. Quitar un registro conserva los archivos del repositorio. Los remotos de otros proveedores mantienen disponibles las funciones locales; la integración de red del MVP se limita a Bitbucket Cloud.
@@ -66,7 +68,7 @@ Repositorio de desarrollo: [efby/EFBY-GIT-DESK](https://github.com/efby/EFBY-GIT
 
 El icono reutiliza el logotipo y el diseño de EFBY_POSTMAN, con la etiqueta inferior **#GitDesk**. El vector está en `Resources/Brand/EfbyLogo.ai`; `scripts/generate-icon.sh` regenera el PNG y el icono macOS `.icns`, que el empaquetado incorpora al bundle.
 
-El selector **Formato de código** detecta Python, JavaScript/JSX, TypeScript/TSX, Swift, Java/Kotlin, C/C++, C#, Go, Rust, Ruby, Shell, SQL, JSON, YAML/TOML, HTML/XML, CSS y Markdown. Permite elegir manualmente el lenguaje o texto plano. El resaltado léxico distingue cadenas, comentarios, palabras clave, números y llamadas; los fondos y signos de diff se conservan. Es una ayuda de lectura básica, sin ejecutar código ni ofrecer análisis de compilador.
+El selector **Formato de código** detecta Python, JavaScript/JSX, TypeScript/TSX, Dart, Swift, Java/Kotlin, C/C++, C#, Go, Rust, Ruby, Shell, SQL, JSON, YAML/TOML, HTML/XML, CSS y Markdown. Permite elegir manualmente el lenguaje o texto plano. El resaltado léxico distingue cadenas, comentarios, palabras clave, números y llamadas; los fondos y signos de diff se conservan. Es una ayuda de lectura básica, sin ejecutar código ni ofrecer análisis de compilador.
 
 
 ## Instalador DMG

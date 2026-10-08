@@ -1,9 +1,10 @@
 # EFBY Git Desk — resumen del proyecto y continuidad
 
-Corte documental: **7 de octubre de 2026**, código integrado hasta `5e26fd3`
-(merge del PR #7). Este documento consolida el comportamiento vigente y permite
-retomar el proyecto sin reconstruir conversaciones. Los estados remotos son
-los observados durante esta actualización; pueden cambiar después.
+Corte documental: **8 de octubre de 2026**, código integrado hasta `a5dbee4`
+(merge del PR #21, tag local `v0.1.12`). Este documento permite retomar el proyecto
+sin reconstruir conversaciones. La evidencia de Releases que figura más abajo
+corresponde a su verificación histórica hasta v0.1.2; no se ha comprobado aquí
+el DMG de v0.1.12 en un equipo de destino.
 
 ## Identidad, alcance y fuentes
 
@@ -113,8 +114,9 @@ Hay URL opcional para avatar, pero el adaptador local no obtiene fotos: actualme
 se usan iniciales. La integración de perfiles del proveedor sigue pendiente; no se
 consulta Gravatar ni se envían correos a servicios externos para obtener imágenes.
 
-Los archivos aparecen en árbol con carpetas desplegables, conteos, **Expandir todo**,
-selección e iconos/color de añadido, eliminado, modificado o renombrado. Se conservan
+Los archivos aparecen en árbol con carpetas desplegables, conteos, selección,
+iconos/color por tipo de cambio y un control que alterna **Expandir todo** y
+**Colapsar todo** según su estado. Se conservan
 bytes e identidades de rutas, incluso no UTF-8 y sustituciones archivo/directorio.
 La casilla **Todos los archivos** consulta el árbol del commit de destino o el índice
 para incluir archivos sin cambios; la lista de modificaciones conserva los eliminados.
@@ -146,7 +148,7 @@ Una línea totalmente nueva tiene fondo verde tenue y signo +, sin resaltado int
 por fragmentos. El hueco del otro lado queda neutro. Una línea vacía existente que
 recibe texto es una modificación. Se preservan sintaxis y selección manual.
 
-El selector de formato detecta Python, JS/JSX, TS/TSX, Swift y otros lenguajes conocidos;
+El selector de formato detecta Python, JS/JSX, TS/TSX, Dart, Swift y otros lenguajes conocidos;
 permite elección manual o texto plano. Es resaltado léxico, sin ejecutar código.
 Binarios, LFS, enlaces, submódulos y contenido grande muestran resumen/límite; el
 límite textual de 2 MB no debe convertirse en omisión silenciosa del inventario.
@@ -159,6 +161,59 @@ Capturas sintéticas revisadas, no sesiones de repositorios personales:
 
 El icono conserva el logotipo y estilo de EFBY_POSTMAN, con etiqueta **#GitDesk**.
 Fuentes y generación: `Resources/Brand/EfbyLogo.ai` y `scripts/generate-icon.sh`.
+
+## Carpetas persistentes y enlaces de código — PR #14 a #21
+
+El PR #14 guardó en SQLite las carpetas contraídas del árbol de proyectos y del
+árbol de comparación (este último por repositorio). El control de comparación
+alterna **Expandir todo** y **Colapsar todo** según las carpetas visibles; cambiar
+el filtro de archivos conserva el estado de las carpetas ocultas por ese filtro.
+Las filas del inventario se materializan con `LazyVStack`, evitando crear de
+entrada todas las vistas de archivos. La búsqueda de proyectos sigue encontrando
+repositorios dentro de carpetas contraídas.
+
+La navegación por funciones evolucionó después de ese PR. **Estado actual:** el
+árbol lista archivos, sin sublistas de funciones. En el documento derecho del
+visor, las llamadas, nombres de clase y ciertas referencias de tipos se subrayan
+cuando el índice encuentra una declaración suficientemente determinada. Pulsar
+un enlace abre el archivo de destino en el mismo visor y salta a su línea; el
+nombre de una clase y el de su método pueden ser enlaces separados. Esto funciona
+con el filtro **Todos los archivos** activo o inactivo, pues el salto puede abrir
+un archivo ausente de la lista filtrada. **Volver** o Comando + [ retrocede por
+los archivos visitados y restaura el desplazamiento horizontal y vertical.
+Los enlaces se ofrecen en comparaciones textuales alineadas con documento A y B;
+los cambios binarios, truncados o sin uno de los documentos siguen usando el
+resumen/visor anterior.
+
+El índice reconoce patrones comunes de Python, JavaScript, TypeScript y Dart,
+incluidos imports relativos y varias formas de declaración, métodos, constructores
+y campos tipados. Usa el archivo abierto para extraer nombres, imports y tipos de
+receptor; una consulta Git acotada busca declaraciones candidatas en la revisión
+comparada. Prefiere el módulo importado o la clase receptora y omite el enlace
+cuando no logra desambiguar. Es **navegación heurística**, no un servidor de
+lenguaje: no resuelve todas las importaciones dinámicas, sobrecargas, sintaxis
+multilínea o nombres generados, y puede omitir enlaces válidos. No ejecuta código
+ni modifica archivos del repositorio.
+
+Límites observados en código: 2 MB para indexar el texto abierto, 20.000 líneas y
+500 símbolos por archivo; hasta 80 nombres de llamada y 400 coincidencias de
+búsqueda Git por consulta, con salida acotada a 2 MB. La caché en memoria conserva
+hasta 48 revisiones de archivos y el historial de **Volver** hasta 64 saltos. Git
+excluye carpetas típicas de dependencias y compilación (`node_modules`, `dist`,
+`.next`, `build`, `coverage`, `vendor`). Ningún límite convierte una búsqueda
+heurística de símbolos en prueba de ausencia de una declaración.
+
+Secuencia integrada: PR #14 persistencia e índice inicial; #15 estabilización
+del test de panel; #16–#19 enlaces en el visor, importaciones, navegación entre
+archivos y restauración de posición; #20 ajuste de compilación del test en CI;
+#21 campos tipados y resolución de métodos por tipo. Los tags locales recorren
+v0.1.6 a v0.1.12. En este corte, una compilación limpia de `origin/main` y la
+suite Swift Testing terminaron correctamente: **100 pruebas registradas, 98
+aprobadas y 2 opcionales omitidas**, en 22 suites. Registro local:
+`/private/tmp/gitdesk-review-tests.log`. Se comprobaron parsers, ambigüedad,
+saltos entre archivos y persistencia con fixtures; quedan pendientes la
+verificación visual de la app distribuida, el DMG descargado y pruebas sobre
+repositorios reales grandes.
 
 ## Distribución y reglas del repositorio
 
@@ -222,7 +277,8 @@ conservan en Actions y el registro 12, separados de las verificaciones exitosas.
 - [v0.1.2](https://github.com/efby/EFBY-GIT-DESK/releases/tag/v0.1.2): `5e26fd3`,
   PR #7; [run 37567560580](https://github.com/efby/EFBY-GIT-DESK/actions/runs/37567560580)
   terminó correctamente en 3m 10s. Generación 2m 50s y publicación 9s. DMG de
-  3,43 MB y checksum presentes; última Release observada en este corte.
+  3,43 MB y checksum presentes; última Release cuya publicación se verificó en
+  esta documentación histórica.
 
 Resultados estructurados: [mvp-validacion.json](evidencia/mvp-validacion.json).
 Los valores antiguos son snapshots de su etapa; las decisiones posteriores pueden
