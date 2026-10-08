@@ -9,7 +9,7 @@ struct CodeSymbol: Identifiable, Equatable, Sendable {
 
 /// Lightweight navigation index. It never executes code or claims to be a full language parser.
 enum CodeSymbolIndex {
-    static func supports(_ language: CodeLanguage) -> Bool { [.python, .typescript, .dart].contains(language) }
+    static func supports(_ language: CodeLanguage) -> Bool { [.python, .javascript, .typescript, .dart].contains(language) }
 
     static func make(text: String, language: CodeLanguage, before: Bool = false) -> [CodeSymbol] {
         guard supports(language), text.utf8.count <= 2_000_000 else { return [] }
@@ -17,11 +17,12 @@ enum CodeSymbolIndex {
         switch language {
         case .python:
             patterns = [#"^\s*(?:async\s+)?(?:def|class)\s+([A-Za-z_]\w*)\b"#]
-        case .typescript:
+        case .javascript, .typescript:
             patterns = [
-                #"^\s*(?:(?:export|default|declare|async|public|private|protected|static|override|abstract)\s+)*(?:function\s*\*?|class\s+|interface\s+)([A-Za-z_$][\w$]*)\b"#,
-                #"^\s*(?:(?:export|declare)\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>"#,
-                #"^\s*(?:(?:public|private|protected|static|override|abstract|async|get|set)\s+)*([A-Za-z_$][\w$]*)\s*(?:<[^>]+>)?\s*\([^;]*\)\s*(?::[^{=]+)?(?:\{|=>)"#
+                #"^\s*(?:(?:export|default|declare|async|public|private|protected|static|override|abstract|readonly)\s+)*(?:function\s*\*?|class\s+|interface\s+|type\s+|enum\s+)([A-Za-z_$][\w$]*)\b"#,
+                #"^\s*(?:export\s+)?(?:declare\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\b(?:(?!=).)*=\s*(?:async\s*)?(?:<[^=>]*>\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*(?::(?:(?!=>)[^=])+)?\s*=>"#,
+                #"^\s*(?:(?:public|private|protected|static|override|abstract|async|readonly|get|set)\s+)*([A-Za-z_$][\w$]*)\s*(?:<[^;>]*>)?\s*\([^;]*\)\s*(?::[^{=]+)?(?:\{|=>|$)"#,
+                #"^\s*(?:(?:public|private|protected|static|override|abstract|async|readonly|get|set)\s+)*([A-Za-z_$][\w$]*)\s*(?:<[^;>]*>)?\s*\(\s*$"#
             ]
         case .dart:
             patterns = [#"^\s*(?:(?:external|static|abstract|factory)\s+)*(?:(?:[A-Za-z_]\w*(?:<[^>]+>)?[?]?)\s+)?([A-Za-z_]\w*)\s*\([^;]*\)\s*(?:async\*?|sync\*?)?\s*(?:\{|=>)"#,
@@ -29,7 +30,7 @@ enum CodeSymbolIndex {
         default: return []
         }
         let expressions = patterns.compactMap { try? NSRegularExpression(pattern: $0) }
-        let excluded: Set<String> = ["if", "for", "while", "switch", "catch", "return", "assert", "function"]
+        let excluded: Set<String> = ["if", "for", "while", "switch", "catch", "return", "assert", "function", "await", "new", "throw", "yield", "typeof", "void", "delete"]
         var lexer = CodeLexer(language: language)
         var result: [CodeSymbol] = []
         for (offset, part) in text.split(separator: "\n", omittingEmptySubsequences: false).prefix(20_000).enumerated() {

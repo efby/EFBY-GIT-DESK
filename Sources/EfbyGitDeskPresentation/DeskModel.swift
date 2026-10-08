@@ -4,6 +4,12 @@ import Observation
 import EfbyGitDeskApplication
 import EfbyGitDeskDomain
 
+private struct ReviewedSymbols {
+    var fingerprint: Int
+    var names: [String]
+    var declarations: [CodeDeclaration]
+}
+
 @MainActor @Observable public final class DeskModel {
     public let service: DeskService
     @ObservationIgnored private let terminalFactory: @MainActor () -> any TerminalPort
@@ -34,20 +40,23 @@ import EfbyGitDeskDomain
     public private(set) var visibleFiles: [FileChange] = []
     public private(set) var fileInventoryRevision = 0
     var declarations: [CodeDeclaration] = []
-    var callLinks: CodeCallLinks?
+    var callLinks: CodeCallLinks? { didSet { noteDocumentChange(callLinks != oldValue) } }
     var symbolJump: DiffJumpTarget?
+    var linkTrail: [LinkReturn] = []
+    @ObservationIgnored private var pendingRestore: CGPoint?
     public var selectedFile: String?
     var openDocument: FileChange?
     public var diffText = ""
     public var comparison: FileComparison?
-    public var diffRows: [DiffRow] = []
+    public private(set) var diffDocumentRevision = 0
+    public var diffRows: [DiffRow] = [] { didSet { noteDocumentChange(diffRows != oldValue) } }
     public var diffBlocks: [DiffChangeBlock] = []
     public var diffInline: [DiffInlineRow] = []
     public var diffMap: [DiffMapMark] = []
     public var diffLoading = false
     public var diffAligned = false
     public var syntaxLanguage: CodeLanguage = .automatic
-    public var diffSyntax: DiffSyntax?
+    public var diffSyntax: DiffSyntax? { didSet { noteDocumentChange(diffSyntax != oldValue) } }
     public var diffNotice = ""
     public var search = ""
     public var repositorySearch = ""
@@ -87,7 +96,9 @@ import EfbyGitDeskDomain
     @ObservationIgnored private var highlightQuery: Task<Void, Never>?
     @ObservationIgnored private var diffQuery: Task<Void, Never>?
     @ObservationIgnored private var declarationQuery: Task<Void, Never>?
-    @ObservationIgnored private var declarationCache: [String: [CodeDeclaration]] = [:]
+    @ObservationIgnored private var pendingReview: String?
+    @ObservationIgnored private var reviewed: [String: ReviewedSymbols] = [:]
+    @ObservationIgnored private var reviewedOrder: [String] = []
     @ObservationIgnored private var pendingSymbol: (fileID: String, symbol: CodeSymbol)?
     @ObservationIgnored private var layoutSave: Task<Void, Never>?
     @ObservationIgnored private var searchQuery: Task<Void, Never>?
@@ -136,6 +147,9 @@ import EfbyGitDeskDomain
     public var detectedLanguageLabel: String {
         guard let file = visibleFiles.first(where: { $0.id == selectedFile }) else { return "" }
         return (syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.name) : syntaxLanguage).rawValue
+    }
+    private func noteDocumentChange(_ changed: Bool) {
+        if changed { diffDocumentRevision &+= 1 }
     }
     public func refreshHighlighting() {
         scheduleCallResolution()
@@ -386,7 +400,7 @@ import EfbyGitDeskDomain
             files = []; visibleFiles = []; fileInventoryRevision += 1; closeDiff(); loadedContext = nil; filesLoading = false; return
         }
         if loadedContext != context {
-            files = []; visibleFiles = []; declarationCache = [:]; fileInventoryRevision += 1; closeDiff(); loadedContext = context
+            files = []; visibleFiles = []; declarations = []; fileInventoryRevision += 1; closeDiff(); loadedContext = context
         }
         let version = generation; filesLoading = true
         fileQuery = Task {
@@ -407,7 +421,7 @@ import EfbyGitDeskDomain
                     if comparison == nil || openDocument?.id != selectedFile { loadDiff(id: selectedFile) }
                     else { scheduleCallResolution() }
                 } else if openDocument?.id == selectedFile, comparison != nil {
-                    declarations = []; callLinks = nil
+                    callLinks = nil
                 } else { closeDiff() }
             } catch is CancellationError {} catch {
                 if version == generation && self.context == context {
@@ -423,77 +437,123 @@ import EfbyGitDeskDomain
         loadFiles()
     }
     private func scheduleCallResolution() {
-        declarationQuery?.cancel()
         guard showAllFiles, diffAligned, let repository, let context,
               let file = openDocument, file.id == selectedFile else {
-            if !showAllFiles { declarations = []; callLinks = nil }
+            if !showAllFiles { callLinks = nil }
             return
         }
+        let source = comparison?.after ?? comparison?.before ?? ""
+        let key = reviewKey(context: context, fileID: file.id)
+        if pendingReview == key { return }
+        declarationQuery?.cancel()
+        pendingReview = key
         let oldName = file.oldPath.flatMap { String(data: $0, encoding: .utf8) } ?? file.name
-        let before = syntaxLanguage == .automatic ? CodeLanguage.detect(path: oldName) : syntaxLanguage
-        let after = syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.name) : syntaxLanguage
-        let names = CodeCallIndex.callNames(rows: diffRows, beforeLanguage: before, afterLanguage: after)
-        guard !names.isEmpty else { declarations = []; callLinks = nil; return }
+        let beforeLanguage = syntaxLanguage == .automatic ? CodeLanguage.detect(path: oldName) : syntaxLanguage
+        let afterLanguage = syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.name) : syntaxLanguage
+        let rows = diffRows
+        let beforeSide = comparison?.after == nil
         let version = generation
-        let revision = fileInventoryRevision
         let fileID = file.id
+        let visible = visibleFiles
         declarationQuery = Task {
-            let paths = (try? await service.git.declarationPaths(repository, context: context, names: names)) ?? []
-            var found: [CodeDeclaration] = []
-            for path in paths {
-                if Task.isCancelled { return }
-                guard let candidate = visibleFiles.first(where: { $0.name == path }) else { continue }
-                if let cached = declarationCache[candidate.id] {
-                    found.append(contentsOf: cached)
-                    continue
-                }
-                let result: FileComparison
-                do { result = try await service.git.fileComparison(repository, context: context, file: candidate) }
-                catch { continue }
-                let source = result.after ?? result.before ?? ""
-                let symbols = await Task.detached {
-                    CodeCallIndex.declarations(file: candidate, text: source, before: result.after == nil)
-                }.value
-                declarationCache[candidate.id] = symbols
-                found.append(contentsOf: symbols)
+            defer { if pendingReview == key { pendingReview = nil } }
+            let fingerprint = await Task.detached { CodeCallIndex.fingerprint(source) }.value
+            let imports = await Task.detached { CodeImportIndex.bindings(in: source, language: afterLanguage, filePath: file.name) }.value
+            if let saved = reviewed[key], saved.fingerprint == fingerprint {
+                guard !Task.isCancelled, version == generation, showAllFiles, selectedFile == fileID else { return }
+                await publish(saved.declarations, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, imports: imports)
+                return
             }
-            guard !Task.isCancelled, version == generation, revision == fileInventoryRevision,
-                  showAllFiles, selectedFile == fileID else { return }
-            declarations = found
-            refreshCallLinks()
+            let names = await Task.detached {
+                CodeCallIndex.callNames(rows: rows, beforeLanguage: beforeLanguage, afterLanguage: afterLanguage)
+            }.value
+            if let saved = reviewed[key], saved.names == names {
+                remember(key, ReviewedSymbols(fingerprint: fingerprint, names: names, declarations: saved.declarations))
+                guard !Task.isCancelled, version == generation, showAllFiles, selectedFile == fileID else { return }
+                await publish(saved.declarations, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, imports: imports)
+                return
+            }
+            let own = await Task.detached {
+                CodeCallIndex.declarations(file: file, text: source, before: beforeSide)
+            }.value
+            var found = own
+            if !names.isEmpty {
+                let hits = (try? await service.git.declarationHits(repository, context: context, names: names)) ?? []
+                let wanted = Set(names)
+                let byPath = Dictionary(visible.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
+                let remote = await Task.detached {
+                    hits.flatMap { hit -> [CodeDeclaration] in
+                        guard hit.path != file.name, let candidate = byPath[hit.path] else { return [] }
+                        let language = CodeLanguage.detect(path: hit.path)
+                        let symbols = CodeSymbolIndex.make(text: hit.text, language: language).map(\.name).filter { wanted.contains($0) }
+                        let names = symbols.isEmpty ? wanted.filter { CodeCallIndex.isDeclarationLine(hit.text, name: $0) } : symbols
+                        return names.map { CodeDeclaration(fileID: candidate.id, path: hit.path, name: $0, line: hit.line, before: false) }
+                    }
+                }.value
+                found.append(contentsOf: remote)
+            }
+            guard !Task.isCancelled, version == generation, showAllFiles, selectedFile == fileID else { return }
+            remember(key, ReviewedSymbols(fingerprint: fingerprint, names: names, declarations: found))
+            await publish(found, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, imports: imports)
         }
     }
-    func followDeclaration(fileID: String, line: Int, before: Bool, name: String) {
-        navigateToSymbol(fileID: fileID, symbol: CodeSymbol(name: name, line: line, before: before))
+    private func reviewKey(context: DiffContext, fileID: String) -> String {
+        let scope: String
+        switch context {
+        case .commits(let pair): scope = pair.base + ".." + pair.target
+        case .commit(let oid, let parent): scope = oid + "#" + String(parent)
+        case .staged: scope = "staged"
+        case .working: scope = "working"
+        }
+        return scope + "\n" + fileID
     }
-    func navigateToSymbol(fileID: String, symbol: CodeSymbol) {
+    private func remember(_ key: String, _ value: ReviewedSymbols) {
+        if reviewed[key] == nil { reviewedOrder.append(key) }
+        reviewed[key] = value
+        while reviewedOrder.count > 48 {
+            reviewed.removeValue(forKey: reviewedOrder.removeFirst())
+        }
+    }
+    private func publish(_ found: [CodeDeclaration], fileID: String, rows: [DiffRow], before: CodeLanguage, after: CodeLanguage, imports: [String: String]) async {
+        let links = await Task.detached {
+            CodeCallIndex.links(rows: rows, beforeLanguage: before, afterLanguage: after, declarations: found, currentFileID: fileID, imports: imports)
+        }.value
+        guard selectedFile == fileID, diffRows == rows, showAllFiles else { return }
+        declarations = found
+        if callLinks != links { callLinks = links }
+    }
+    func followDeclaration(fileID: String, line: Int, before: Bool, name: String, callLine: Int, scrollX: CGFloat = 0, scrollY: CGFloat = 0) {
+        if let current = selectedFile, current != fileID {
+            linkTrail.append(LinkReturn(fileID: current, line: max(callLine, 1), name: openDocument?.name ?? "", offsetX: scrollX, offsetY: scrollY))
+            if linkTrail.count > 64 { linkTrail.removeFirst(linkTrail.count - 64) }
+        }
+        navigateToSymbol(fileID: fileID, symbol: CodeSymbol(name: name, line: line, before: before), preserveTrail: true)
+    }
+    func returnAlongLink() {
+        guard let previous = linkTrail.popLast() else { return }
+        navigateToSymbol(fileID: previous.fileID, symbol: CodeSymbol(name: "", line: previous.line, before: false), preserveTrail: true, restoreOffset: CGPoint(x: previous.offsetX, y: previous.offsetY))
+    }
+    func navigateToSymbol(fileID: String, symbol: CodeSymbol, preserveTrail: Bool = false, restoreOffset: CGPoint? = nil) {
         pendingSymbol = (fileID, symbol)
+        pendingRestore = restoreOffset
         if selectedFile == fileID, comparison != nil, !diffRows.isEmpty { applySymbolJump() }
-        else { loadDiff(id: fileID) }
+        else { loadDiff(id: fileID, preserveTrail: preserveTrail) }
     }
     private func applySymbolJump() {
         guard let pendingSymbol, selectedFile == pendingSymbol.fileID else { return }
         let line = pendingSymbol.symbol.line
         guard let row = diffRows.firstIndex(where: { pendingSymbol.symbol.before ? $0.beforeNumber == line : $0.afterNumber == line }) else { return }
-        symbolJump = DiffJumpTarget(row: row)
+        symbolJump = DiffJumpTarget(row: row, restoreOffset: pendingRestore)
         self.pendingSymbol = nil
-    }
-    private func refreshCallLinks() {
-        guard showAllFiles, diffAligned, let file = openDocument, file.id == selectedFile else {
-            callLinks = nil
-            return
-        }
-        let before = syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.oldPath.flatMap { String(data: $0, encoding: .utf8) } ?? file.name) : syntaxLanguage
-        let after = syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.name) : syntaxLanguage
-        callLinks = CodeCallIndex.links(rows: diffRows, beforeLanguage: before, afterLanguage: after,
-                                        declarations: declarations, currentFileID: file.id)
+        pendingRestore = nil
     }
     public func closeDiff() {
         diffQuery?.cancel(); highlightQuery?.cancel()
-        selectedFile = nil; openDocument = nil; diffText = ""; diffSyntax = nil; symbolJump = nil; pendingSymbol = nil; callLinks = nil
+        selectedFile = nil; openDocument = nil; diffText = ""; diffSyntax = nil; symbolJump = nil; pendingSymbol = nil; callLinks = nil; linkTrail = []
         comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffLoading = false; diffAligned = false; diffNotice = ""
     }
-    public func loadDiff(id: String) {
+    public func loadDiff(id: String, preserveTrail: Bool = false) {
+        if !preserveTrail { linkTrail = [] }
         diffQuery?.cancel()
         guard let repository, let context, let file = visibleFiles.first(where: { $0.id == id }) else { return }
         let preserveView = selectedFile == id && comparison != nil

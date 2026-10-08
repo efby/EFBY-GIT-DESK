@@ -43,6 +43,22 @@ struct TreeNavigationTests {
         }
         """
         #expect(CodeSymbolIndex.make(text: typescript, language: .typescript).map(\.name) == ["loadData", "refresh", "Client", "save"])
+        let typed = """
+        export const loadRows = async (id: string): Promise<string> => id;
+        class Api {
+          async query<T>(
+            input: string
+          ): Promise<T> {
+            return input as T;
+          }
+        }
+        """
+        #expect(CodeSymbolIndex.make(text: typed, language: .typescript).map(\.name) == ["loadRows", "Api", "query"])
+        let calls = [DiffRow(before: nil, after: "    api?.query<User>(", beforeNumber: nil, afterNumber: 4)]
+        let declaration = CodeDeclaration(fileID: "api", path: "src/api.ts", name: "query", line: 3, before: false)
+        let links = CodeCallIndex.links(rows: calls, beforeLanguage: .typescript, afterLanguage: .typescript,
+                                        declarations: [declaration], currentFileID: "caller")
+        #expect(links.after[0].map(\.name) == ["query"])
         let dart = """
         /* void hidden() {} */
         Future<String> fetch() async {
@@ -68,6 +84,7 @@ struct TreeNavigationTests {
         ]
         let links = CodeCallIndex.links(rows: rows, beforeLanguage: .python, afterLanguage: .python,
                                         declarations: [query, run], currentFileID: "caller")
+        #expect(links.before == [[], [], []])
         #expect(links.after[0].map(\.fileID) == ["db"])
         #expect(links.after[1].map(\.fileID) == ["worker"])
         #expect(links.after[2].isEmpty)
@@ -78,5 +95,33 @@ struct TreeNavigationTests {
         let sameLine = CodeCallIndex.links(rows: definition, beforeLanguage: .python, afterLanguage: .python,
                                            declarations: [query], currentFileID: "db")
         #expect(sameLine.after[0].isEmpty)
+        let service = CodeDeclaration(fileID: "pago", path: "src/app/services/pago-click.service.ts", name: "postLiberar", line: 20, before: false)
+        let duplicate = CodeDeclaration(fileID: "otro", path: "src/app/services/otro.service.ts", name: "postLiberar", line: 8, before: false)
+        let member = [DiffRow(before: nil, after: "    this.pagoClickService.postLiberar(", beforeNumber: nil, afterNumber: 4)]
+        let memberLinks = CodeCallIndex.links(rows: member, beforeLanguage: .typescript, afterLanguage: .typescript,
+                                              declarations: [service, duplicate], currentFileID: "component")
+        #expect(memberLinks.after[0].map(\.fileID) == ["pago"])
+        #expect(CodeCallIndex.callNames(rows: member, beforeLanguage: .typescript, afterLanguage: .typescript) == ["postLiberar"])
+        let classFile = CodeDeclaration(fileID: "class", path: "src/PagoClickService.ts", name: "postLiberar", line: 3, before: false)
+        let classLinks = CodeCallIndex.links(rows: member, beforeLanguage: .javascript, afterLanguage: .javascript,
+                                             declarations: [classFile, duplicate], currentFileID: "component")
+        #expect(classLinks.after[0].map(\.fileID) == ["class"])
+        let source = """
+        import { PagoClickService } from '../services/pago-click.service';
+        import { postLiberar } from './otro';
+        """
+        let imports = CodeImportIndex.bindings(in: source, language: .typescript, filePath: "src/app/component.ts")
+        let imported = CodeDeclaration(fileID: "pago", path: "src/services/pago-click.service.ts", name: "postLiberar", line: 12, before: false)
+        let elsewhere = CodeDeclaration(fileID: "otro", path: "src/app/otro.ts", name: "postLiberar", line: 2, before: false)
+        let call = [DiffRow(before: nil, after: "    this.pagoClickService.postLiberar(", beforeNumber: nil, afterNumber: 8)]
+        let resolved = CodeCallIndex.links(rows: call, beforeLanguage: .typescript, afterLanguage: .typescript,
+                                           declarations: [imported, elsewhere], currentFileID: "component", imports: imports)
+        #expect(resolved.after[0].map(\.fileID) == ["pago"])
+        let named = [DiffRow(before: nil, after: "    postLiberar(", beforeNumber: nil, afterNumber: 9)]
+        let alias = CodeCallIndex.links(rows: named, beforeLanguage: .typescript, afterLanguage: .typescript,
+                                        declarations: [imported, elsewhere], currentFileID: "component", imports: imports)
+        #expect(alias.after[0].map(\.fileID) == ["otro"])
+        let python = CodeImportIndex.bindings(in: "from . import dynamodb\n", language: .python, filePath: "src/caller.py")
+        #expect(CodeImportIndex.moduleMatches(file: "src/dynamodb.py", module: python["dynamodb"] ?? ""))
     }
 }

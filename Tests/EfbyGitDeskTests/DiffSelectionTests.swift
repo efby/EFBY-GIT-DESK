@@ -53,7 +53,7 @@ import EfbyGitDeskInfrastructure
     @Test func functionLinksOpenTheirFileAndJumpToTheMatchingLine() async throws {
         let fixture = try await GitFixture.make(); defer { fixture.cleanup() }
         try FileManager.default.createDirectory(at: fixture.folder.appendingPathComponent("src"), withIntermediateDirectories: true)
-        try fixture.write("src/dynamodb.py", "def query_objects(table):\n    return table\n")
+        try fixture.write("src/dynamodb.py", "def query_objects(table):\n    return worker.run(\n")
         try fixture.write("src/worker.py", "def run():\n    return 1\n")
         try fixture.write("src/caller.py", "def main():\n    dynamodb.query_objects(\n    run(\n")
         _ = try await fixture.git(["add", "--", "src/dynamodb.py", "src/worker.py", "src/caller.py"])
@@ -76,12 +76,22 @@ import EfbyGitDeskInfrastructure
         let run = try #require(model.callLinks?.after.flatMap { $0 }.first { $0.name == "run" })
         #expect(query.path == "src/dynamodb.py")
         #expect(run.path == "src/worker.py")
-        model.followDeclaration(fileID: query.fileID, line: query.line, before: query.before, name: query.name)
+        model.followDeclaration(fileID: query.fileID, line: query.line, before: query.before, name: query.name, callLine: query.callLine)
+        #expect(model.linkTrail.map(\.fileID) == [caller.id])
         try await waitUntil { model.selectedFile == query.fileID && !model.diffLoading && model.symbolJump != nil }
         let jump = try #require(model.symbolJump)
         #expect(model.diffRows[jump.row].afterNumber == query.line)
+        #expect(model.declarations.contains { $0.name == "query_objects" && $0.path == "src/dynamodb.py" })
+        try await waitUntil { model.callLinks?.after.contains { $0.contains { $0.name == "run" && $0.path == "src/worker.py" } } == true }
+        let worker = try #require(model.callLinks?.after.flatMap { $0 }.first { $0.name == "run" && $0.path == "src/worker.py" })
+        model.followDeclaration(fileID: worker.fileID, line: worker.line, before: worker.before, name: worker.name, callLine: worker.callLine)
+        #expect(model.linkTrail.map(\.fileID) == [caller.id, query.fileID])
+        model.returnAlongLink()
+        try await waitUntil { model.selectedFile == query.fileID && !model.diffLoading }
+        model.returnAlongLink()
+        try await waitUntil { model.selectedFile == caller.id && !model.diffLoading && model.linkTrail.isEmpty }
         model.setShowAllFiles(false)
-        try await waitUntil { !model.filesLoading && model.callLinks == nil && model.selectedFile == query.fileID && model.comparison != nil }
+        try await waitUntil { !model.filesLoading && model.callLinks == nil && model.selectedFile == caller.id && model.comparison != nil }
         if let path = ProcessInfo.processInfo.environment["EFBY_SYMBOL_NAV_PREVIEW_PATH"] {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1440, height: 800),
                                   styleMask: .borderless, backing: .buffered, defer: false)

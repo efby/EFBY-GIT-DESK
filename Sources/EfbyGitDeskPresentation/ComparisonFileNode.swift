@@ -6,10 +6,8 @@ struct ComparisonFileNode: Identifiable, Sendable {
     let name: String
     let file: FileChange?
     let children: [ComparisonFileNode]
-    var count: Int { file == nil ? children.reduce(0) { $0 + $1.count } : 1 }
-    var folderIDs: Set<String> {
-        children.reduce(into: file == nil ? Set([id]) : Set<String>()) { $0.formUnion($1.folderIDs) }
-    }
+    let count: Int
+    let folderIDs: Set<String>
 
     static func make(_ files: [FileChange], prefix: Data = Data()) -> [ComparisonFileNode] {
         var keys: [Data] = []
@@ -25,12 +23,15 @@ struct ComparisonFileNode: Identifiable, Sendable {
             let members = groups[part] ?? []
             let name = FileChange(path: part, status: "").name
             var nodes = members.filter { $0.path == path }.map {
-                ComparisonFileNode(id: "file:" + $0.id, name: name, file: $0, children: [])
+                ComparisonFileNode(id: "file:" + $0.id, name: name, file: $0, children: [], count: 1, folderIDs: [])
             }
             let nested = members.filter { $0.path != path }
             if !nested.isEmpty {
-                nodes.append(ComparisonFileNode(id: "folder:" + path.base64EncodedString(), name: name,
-                    file: nil, children: make(nested, prefix: path + Data([47]))))
+                let children = make(nested, prefix: path + Data([47]))
+                let folderID = "folder:" + path.base64EncodedString()
+                let count = children.reduce(0) { $0 + $1.count }
+                let folders = children.reduce(into: Set([folderID])) { $0.formUnion($1.folderIDs) }
+                nodes.append(ComparisonFileNode(id: folderID, name: name, file: nil, children: children, count: count, folderIDs: folders))
             }
             return nodes
         }

@@ -10,6 +10,16 @@ struct FileDiffView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
+                Button(action: model.returnAlongLink) {
+                    Label(returnTitle, systemImage: "chevron.backward")
+                }
+                .disabled(model.linkTrail.isEmpty)
+                .buttonStyle(.borderedProminent).controlSize(.large).fixedSize()
+                .keyboardShortcut("[", modifiers: .command)
+                .accessibilityIdentifier("returnAlongLink")
+                .help(model.linkTrail.isEmpty
+                    ? "Sigue un enlace a otro archivo para volver por los archivos visitados. Atajo: Comando + ["
+                    : "Volver al archivo anterior, en el mismo lugar de la pantalla. Quedan \(model.linkTrail.count) \(model.linkTrail.count == 1 ? "paso" : "pasos"). Atajo: Comando + [")
                 Button("Cerrar", systemImage: "xmark", action: model.closeDiff)
                     .buttonStyle(CloseComparisonButtonStyle()).controlSize(.large)
                     .fixedSize().layoutPriority(1)
@@ -23,7 +33,7 @@ struct FileDiffView: View {
                     ForEach(CodeLanguage.allCases) { language in Text(language.rawValue).tag(language) }
                 }.labelsHidden().frame(width: 180).help("Detectar el lenguaje por extensión o elegirlo manualmente")
                 Text(model.detectedLanguageLabel).font(.caption).foregroundStyle(.secondary)
-                Text("Esc para volver").font(.caption).foregroundStyle(.secondary).fixedSize()
+                Text("Esc cierra el visor").font(.caption).foregroundStyle(.secondary).fixedSize()
             }.padding(12)
             Divider()
             if model.diffLoading {
@@ -40,8 +50,8 @@ struct FileDiffView: View {
                 if model.diffAligned && comparison.before != nil && comparison.after != nil && !comparison.patch.contains("[Diff truncado") {
                     DiffChangesSection(blocks: model.diffBlocks, viewport: viewport, jump: $jump)
                     Divider()
-                    ParallelDiffView(rows: model.diffRows, blocks: model.diffBlocks, inline: model.diffInline, marks: model.diffMap, syntax: model.diffSyntax, links: model.callLinks, jump: jump, onFollow: { fileID, line, before, name in
-                        model.followDeclaration(fileID: fileID, line: line, before: before, name: name)
+                    ParallelDiffView(rows: model.diffRows, blocks: model.diffBlocks, inline: model.diffInline, marks: model.diffMap, syntax: model.diffSyntax, links: model.callLinks, documentRevision: model.diffDocumentRevision, jump: jump, onFollow: { fileID, line, before, name, callLine, scrollX, scrollY in
+                        model.followDeclaration(fileID: fileID, line: line, before: before, name: name, callLine: callLine, scrollX: scrollX, scrollY: scrollY)
                     }, viewport: $viewport).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     TextPreview(text: model.diffText).frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -57,6 +67,11 @@ struct FileDiffView: View {
             .onChange(of: model.syntaxLanguage) { _, _ in model.refreshHighlighting() }
             .onChange(of: model.symbolJump) { _, target in jump = target }
             .onAppear { if let target = model.symbolJump { jump = target } }
+    }
+
+    private var returnTitle: String {
+        guard let name = model.linkTrail.last?.name.split(separator: "/").last else { return "Volver" }
+        return "Volver a \(name)"
     }
 
     private func missingFinalNewline(_ comparison: FileComparison) -> String {

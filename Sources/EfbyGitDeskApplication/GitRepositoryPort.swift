@@ -1,6 +1,17 @@
 import Foundation
 import EfbyGitDeskDomain
 
+public struct DeclarationHit: Sendable, Equatable {
+    public let path: String
+    public let line: Int
+    public let text: String
+    public init(path: String, line: Int, text: String) {
+        self.path = path
+        self.line = line
+        self.text = text
+    }
+}
+
 public protocol GitRepositoryPort: Sendable {
     func executablePath() async throws -> String
     func configureExecutable(path: String?) async throws
@@ -12,7 +23,7 @@ public protocol GitRepositoryPort: Sendable {
     func comparisonOrder(_ repository: Repository, tips: [String], selected: [String]) async throws -> [String]
     func changes(_ repository: Repository, context: DiffContext) async throws -> [FileChange]
     func allFiles(_ repository: Repository, context: DiffContext) async throws -> [FileChange]
-    func declarationPaths(_ repository: Repository, context: DiffContext, names: [String]) async throws -> [String]
+    func declarationHits(_ repository: Repository, context: DiffContext, names: [String]) async throws -> [DeclarationHit]
     func diff(_ repository: Repository, context: DiffContext, file: FileChange) async throws -> String
     func fileComparison(_ repository: Repository, context: DiffContext, file: FileChange) async throws -> FileComparison
     func execute(_ action: GitAction, repository: Repository, profile: ConnectionProfile?) async throws -> String
