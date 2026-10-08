@@ -52,10 +52,10 @@ import EfbyGitDeskInfrastructure
     @Test func functionLinksOpenTheirFileAndJumpToTheMatchingLine() async throws {
         let fixture = try await GitFixture.make(); defer { fixture.cleanup() }
         try FileManager.default.createDirectory(at: fixture.folder.appendingPathComponent("src"), withIntermediateDirectories: true)
-        try fixture.write("src/worker.py", "# heading\ndef run():\n    return 1\n")
-        try fixture.write("src/worker.ts", "// heading\nexport function render() { return 1; }\n")
-        try fixture.write("src/worker.dart", "// heading\nvoid start() => print('ok');\n")
-        _ = try await fixture.git(["add", "--", "src/worker.py", "src/worker.ts", "src/worker.dart"])
+        try fixture.write("src/dynamodb.py", "def query_objects(table):\n    return table\n")
+        try fixture.write("src/worker.py", "def run():\n    return 1\n")
+        try fixture.write("src/caller.py", "def main():\n    dynamodb.query_objects(\n    run(\n")
+        _ = try await fixture.git(["add", "--", "src/dynamodb.py", "src/worker.py", "src/caller.py"])
         _ = try await fixture.git(["commit", "-m", "Add code"])
         _ = try await fixture.commit("README.md", "updated\n", message: "Update readme")
         let registry = try SQLiteRegistry(path: fixture.folder.appendingPathComponent("symbols.sqlite").path)
@@ -67,17 +67,20 @@ import EfbyGitDeskInfrastructure
         model.chooseCommit(model.commits[0]); model.chooseCommit(model.commits[1])
         try await waitUntil { !model.filesLoading && model.files.count == 1 }
         model.setShowAllFiles(true)
-        try await waitUntil { !model.filesLoading && model.visibleFiles.count == 4 }
-        for (name, symbolName) in [("worker.py", "run"), ("worker.ts", "render"), ("worker.dart", "start")] {
-            let file = try #require(model.visibleFiles.first { $0.name == "src/" + name })
-            model.toggleSymbols(for: file.id)
-            try await waitUntil { model.codeSymbols[file.id] != nil }
-            let symbol = try #require(model.codeSymbols[file.id]?.first { $0.name == symbolName })
-            model.navigateToSymbol(fileID: file.id, symbol: symbol)
-            try await waitUntil { model.selectedFile == file.id && !model.diffLoading && model.symbolJump != nil }
-            let jump = try #require(model.symbolJump)
-            #expect(model.diffRows[jump.row].afterNumber == symbol.line)
-        }
+        try await waitUntil { !model.filesLoading && model.declarations.contains { $0.name == "query_objects" } && model.declarations.contains { $0.name == "run" } }
+        let caller = try #require(model.visibleFiles.first { $0.name == "src/caller.py" })
+        model.loadDiff(id: caller.id)
+        try await waitUntil { !model.diffLoading && model.callLinks?.after.contains { $0.contains { $0.name == "query_objects" } } == true }
+        let query = try #require(model.callLinks?.after.flatMap { $0 }.first { $0.name == "query_objects" })
+        let run = try #require(model.callLinks?.after.flatMap { $0 }.first { $0.name == "run" })
+        #expect(query.path == "src/dynamodb.py")
+        #expect(run.path == "src/worker.py")
+        model.followDeclaration(fileID: query.fileID, line: query.line, before: query.before, name: query.name)
+        try await waitUntil { model.selectedFile == query.fileID && !model.diffLoading && model.symbolJump != nil }
+        let jump = try #require(model.symbolJump)
+        #expect(model.diffRows[jump.row].afterNumber == query.line)
+        model.setShowAllFiles(false)
+        try await waitUntil { !model.filesLoading && model.callLinks == nil }
         if let path = ProcessInfo.processInfo.environment["EFBY_SYMBOL_NAV_PREVIEW_PATH"] {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1440, height: 800),
                                   styleMask: .borderless, backing: .buffered, defer: false)
