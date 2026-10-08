@@ -33,10 +33,8 @@ import EfbyGitDeskDomain
     public var showAllFiles = false
     public private(set) var visibleFiles: [FileChange] = []
     public private(set) var fileInventoryRevision = 0
-    var expandedSymbolFiles: Set<String> = []
-    var codeSymbols: [String: [CodeSymbol]] = [:]
-    var symbolsLoading: Set<String> = []
-    var symbolErrors: [String: String] = [:]
+    var declarations: [CodeDeclaration] = []
+    var callLinks: CodeCallLinks?
     var symbolJump: DiffJumpTarget?
     public var selectedFile: String?
     public var diffText = ""
@@ -87,7 +85,7 @@ import EfbyGitDeskDomain
     @ObservationIgnored private var fileQuery: Task<Void, Never>?
     @ObservationIgnored private var highlightQuery: Task<Void, Never>?
     @ObservationIgnored private var diffQuery: Task<Void, Never>?
-    @ObservationIgnored private var symbolQueries: [String: Task<Void, Never>] = [:]
+    @ObservationIgnored private var declarationQuery: Task<Void, Never>?
     @ObservationIgnored private var pendingSymbol: (fileID: String, symbol: CodeSymbol)?
     @ObservationIgnored private var layoutSave: Task<Void, Never>?
     @ObservationIgnored private var searchQuery: Task<Void, Never>?
@@ -138,6 +136,7 @@ import EfbyGitDeskDomain
         return (syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.name) : syntaxLanguage).rawValue
     }
     public func refreshHighlighting() {
+        refreshCallLinks()
         highlightQuery?.cancel()
         guard let file = visibleFiles.first(where: { $0.id == selectedFile }), diffAligned else { return }
         let rows = diffRows; let language = syntaxLanguage; let version = generation; let currentContext = context
@@ -380,13 +379,12 @@ import EfbyGitDeskDomain
     }
     public func loadFiles() {
         fileQuery?.cancel()
-        symbolQueries.values.forEach { $0.cancel() }
-        symbolQueries = [:]; codeSymbols = [:]; symbolsLoading = []; symbolErrors = [:]
+        declarationQuery?.cancel(); declarations = []; callLinks = nil
         guard let repository, let context else {
-            files = []; visibleFiles = []; expandedSymbolFiles = []; fileInventoryRevision += 1; closeDiff(); loadedContext = nil; filesLoading = false; return
+            files = []; visibleFiles = []; fileInventoryRevision += 1; closeDiff(); loadedContext = nil; filesLoading = false; return
         }
         if loadedContext != context {
-            files = []; visibleFiles = []; expandedSymbolFiles = []; fileInventoryRevision += 1; closeDiff(); loadedContext = context
+            files = []; visibleFiles = []; fileInventoryRevision += 1; closeDiff(); loadedContext = context
         }
         let version = generation; filesLoading = true
         fileQuery = Task {
@@ -403,6 +401,7 @@ import EfbyGitDeskDomain
                         .sorted { $0.path.lexicographicallyPrecedes($1.path) }
                 } else { visibleFiles = newFiles }
                 fileInventoryRevision += 1
+                scheduleDeclarationIndex()
                 if let selectedFile, visibleFiles.contains(where: { $0.id == selectedFile }) { loadDiff(id: selectedFile) }
                 else { closeDiff() }
             } catch is CancellationError {} catch {
@@ -418,43 +417,31 @@ import EfbyGitDeskDomain
         showAllFiles = value
         loadFiles()
     }
-    func toggleSymbols(for id: String) {
-        if !expandedSymbolFiles.insert(id).inserted { expandedSymbolFiles.remove(id) }
-        if expandedSymbolFiles.contains(id) { loadSymbols(for: id) }
-    }
-    func loadSymbols(for id: String) {
-        guard showAllFiles, expandedSymbolFiles.contains(id), codeSymbols[id] == nil,
-              !symbolsLoading.contains(id), let repository, let context,
-              let file = visibleFiles.first(where: { $0.id == id }),
-              CodeSymbolIndex.supports(CodeLanguage.detect(path: file.name)) else { return }
+    private func scheduleDeclarationIndex() {
+        declarationQuery?.cancel()
+        guard showAllFiles, let repository, let context else { declarations = []; callLinks = nil; return }
+        let files = Array(visibleFiles.filter { CodeSymbolIndex.supports(CodeLanguage.detect(path: $0.name)) }.prefix(200))
         let version = generation
-        let inventoryRevision = fileInventoryRevision
-        symbolsLoading.insert(id); symbolErrors[id] = nil
-        symbolQueries[id] = Task {
-            defer {
-                if fileInventoryRevision == inventoryRevision {
-                    symbolsLoading.remove(id); symbolQueries[id] = nil
-                }
-            }
-            do {
+        let revision = fileInventoryRevision
+        declarationQuery = Task {
+            var found: [CodeDeclaration] = []
+            for file in files {
+                if Task.isCancelled || found.count >= 2_000 { break }
                 let result: FileComparison
-                if selectedFile == id, let comparison { result = comparison }
-                else { result = try await service.git.fileComparison(repository, context: context, file: file) }
+                do { result = try await service.git.fileComparison(repository, context: context, file: file) }
+                catch { continue }
                 let source = result.after ?? result.before ?? ""
                 let before = result.after == nil
-                let language = CodeLanguage.detect(path: file.name)
-                let symbols = await Task.detached {
-                    CodeSymbolIndex.make(text: source, language: language, before: before)
-                }.value
-                guard !Task.isCancelled, version == generation, self.context == context,
-                      selectedID == repository.id, showAllFiles else { return }
-                codeSymbols[id] = symbols
-            } catch is CancellationError {} catch {
-                if !Task.isCancelled, version == generation, self.context == context {
-                    symbolErrors[id] = error.localizedDescription
-                }
+                let symbols = await Task.detached { CodeCallIndex.declarations(file: file, text: source, before: before) }.value
+                found.append(contentsOf: symbols)
             }
+            guard !Task.isCancelled, version == generation, revision == fileInventoryRevision, showAllFiles else { return }
+            declarations = found
+            refreshCallLinks()
         }
+    }
+    func followDeclaration(fileID: String, line: Int, before: Bool, name: String) {
+        navigateToSymbol(fileID: fileID, symbol: CodeSymbol(name: name, line: line, before: before))
     }
     func navigateToSymbol(fileID: String, symbol: CodeSymbol) {
         pendingSymbol = (fileID, symbol)
@@ -468,16 +455,26 @@ import EfbyGitDeskDomain
         symbolJump = DiffJumpTarget(row: row)
         self.pendingSymbol = nil
     }
+    private func refreshCallLinks() {
+        guard showAllFiles, diffAligned, let file = visibleFiles.first(where: { $0.id == selectedFile }) else {
+            callLinks = nil
+            return
+        }
+        let before = syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.oldPath.flatMap { String(data: $0, encoding: .utf8) } ?? file.name) : syntaxLanguage
+        let after = syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.name) : syntaxLanguage
+        callLinks = CodeCallIndex.links(rows: diffRows, beforeLanguage: before, afterLanguage: after,
+                                        declarations: declarations, currentFileID: file.id)
+    }
     public func closeDiff() {
         diffQuery?.cancel(); highlightQuery?.cancel()
-        selectedFile = nil; diffText = ""; diffSyntax = nil; symbolJump = nil; pendingSymbol = nil
+        selectedFile = nil; diffText = ""; diffSyntax = nil; symbolJump = nil; pendingSymbol = nil; callLinks = nil
         comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffLoading = false; diffAligned = false; diffNotice = ""
     }
     public func loadDiff(id: String) {
         diffQuery?.cancel()
         guard let repository, let context, let file = visibleFiles.first(where: { $0.id == id }) else { return }
         let preserveView = selectedFile == id && comparison != nil
-        if selectedFile != id { symbolJump = nil }
+        if selectedFile != id { symbolJump = nil; callLinks = nil }
         selectedFile = id
         if !preserveView {
             diffText = ""; comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffSyntax = nil
@@ -501,6 +498,7 @@ import EfbyGitDeskDomain
                 }
                 applySymbolJump()
                 diffLoading = false
+                refreshCallLinks()
                 refreshHighlighting()
                 diffText = result.patch.isEmpty
                     ? (file.status == "=" ? "Sin cambios; se muestran ambos documentos completos." : "Cambio de metadatos o modo; los documentos se muestran completos.")

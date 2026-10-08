@@ -56,4 +56,27 @@ struct TreeNavigationTests {
         #expect(CodeLanguage.detect(path: "lib/service.dart") == .dart)
         #expect(CodeSymbolIndex.make(text: String(repeating: "x", count: 2_000_001), language: .dart).isEmpty)
     }
+
+    @Test func viewerLinksAQualifiedCallAndLeavesAmbiguousNamesPlain() {
+        let query = CodeDeclaration(fileID: "db", path: "src/dynamodb.py", name: "query_objects", line: 1, before: false)
+        let run = CodeDeclaration(fileID: "worker", path: "src/worker.py", name: "run", line: 1, before: false)
+        let other = CodeDeclaration(fileID: "other", path: "lib/tasks.py", name: "run", line: 4, before: false)
+        let rows = [
+            DiffRow(before: "    dynamodb.query_objects(", after: "    dynamodb.query_objects(", beforeNumber: 2, afterNumber: 2),
+            DiffRow(before: "    run(", after: "    run(", beforeNumber: 3, afterNumber: 3),
+            DiffRow(before: "# dynamodb.query_objects(", after: "# dynamodb.query_objects(", beforeNumber: 4, afterNumber: 4)
+        ]
+        let links = CodeCallIndex.links(rows: rows, beforeLanguage: .python, afterLanguage: .python,
+                                        declarations: [query, run], currentFileID: "caller")
+        #expect(links.after[0].map(\.fileID) == ["db"])
+        #expect(links.after[1].map(\.fileID) == ["worker"])
+        #expect(links.after[2].isEmpty)
+        let ambiguous = CodeCallIndex.links(rows: rows, beforeLanguage: .python, afterLanguage: .python,
+                                            declarations: [query, run, other], currentFileID: "caller")
+        #expect(ambiguous.after[1].isEmpty)
+        let definition = [DiffRow(before: nil, after: "def query_objects(", beforeNumber: nil, afterNumber: 1)]
+        let sameLine = CodeCallIndex.links(rows: definition, beforeLanguage: .python, afterLanguage: .python,
+                                           declarations: [query], currentFileID: "db")
+        #expect(sameLine.after[0].isEmpty)
+    }
 }

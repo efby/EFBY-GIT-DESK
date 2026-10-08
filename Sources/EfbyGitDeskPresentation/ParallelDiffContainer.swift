@@ -6,11 +6,13 @@ import AppKit
     private var rows: [DiffRow]?
     private var inline: [DiffInlineRow] = []
     private var syntax: DiffSyntax?
+    private var callLinks: CodeCallLinks?
     private var synchronizing = false
     private var lastJump: UUID?
     private var blocks: [DiffChangeBlock] = []
     private var lastViewport: DiffViewportStatus?
     var onViewportChange: ((DiffViewportStatus) -> Void)?
+    var onFollow: ((String, Int, Bool, String) -> Void)?
 
     init() {
         super.init(frame: .zero)
@@ -26,6 +28,12 @@ import AppKit
             let text = NSTextView()
             text.isEditable = false; text.isSelectable = true
             text.isAutomaticLinkDetectionEnabled = false
+            text.delegate = self
+            text.linkTextAttributes = [
+                .foregroundColor: NSColor.controlAccentColor,
+                .underlineStyle: NSUnderlineStyle.single.rawValue,
+                .cursor: NSCursor.pointingHand
+            ]
             text.isHorizontallyResizable = true; text.isVerticallyResizable = true
             text.textContainer?.widthTracksTextView = false
             text.textContainerInset = NSSize(width: 8, height: 12)
@@ -47,8 +55,8 @@ import AppKit
     required init?(coder: NSCoder) { nil }
     isolated deinit { NotificationCenter.default.removeObserver(self) }
 
-    func update(_ newRows: [DiffRow], syntax: DiffSyntax? = nil, blocks: [DiffChangeBlock]? = nil, marks: [DiffMapMark]? = nil, inline: [DiffInlineRow]? = nil) {
-        guard rows != newRows || self.syntax != syntax else { return }
+    func update(_ newRows: [DiffRow], syntax: DiffSyntax? = nil, blocks: [DiffChangeBlock]? = nil, marks: [DiffMapMark]? = nil, inline: [DiffInlineRow]? = nil, links: CodeCallLinks? = nil) {
+        guard rows != newRows || self.syntax != syntax || callLinks != links else { return }
         if rows != newRows {
             self.inline = inline ?? DiffIntraline.make(rows: newRows)
             self.blocks = blocks ?? DiffChangeOverview.make(rows: newRows)
@@ -56,7 +64,7 @@ import AppKit
             (left.verticalScroller as? DiffOverviewScroller)?.marks = marks
             (right.verticalScroller as? DiffOverviewScroller)?.marks = marks
         }
-        rows = newRows; self.syntax = syntax
+        rows = newRows; self.syntax = syntax; callLinks = links
         synchronizing = true
         let longest = newRows.reduce(0) { length, row in
             max(length, estimatedColumns(row.before), estimatedColumns(row.after))
@@ -107,6 +115,19 @@ import AppKit
                 for token in spans[index] where token.range.location + token.range.length <= content.utf16.count {
                     value.addAttribute(.foregroundColor, value: token.kind.color,
                         range: NSRange(location: offset + prefixLength + token.range.location, length: token.range.length))
+                }
+            }
+            let rowLinks = before ? callLinks?.before : callLinks?.after
+            if let rowLinks, rowLinks.indices.contains(index) {
+                for link in rowLinks[index] where NSMaxRange(link.range) <= content.utf16.count {
+                    guard let url = CodeCallIndex.url(for: link) else { continue }
+                    let painted = NSRange(location: offset + prefixLength + link.range.location, length: link.range.length)
+                    value.addAttributes([
+                        .link: url,
+                        .underlineStyle: NSUnderlineStyle.single.rawValue,
+                        .foregroundColor: NSColor.controlAccentColor,
+                        .toolTip: "Ir a \(link.name) en \(link.path), línea \(link.line)"
+                    ], range: painted)
                 }
             }
         }
@@ -170,5 +191,13 @@ import AppKit
         target.contentView.scroll(to: origin)
         target.reflectScrolledClipView(target.contentView)
         synchronizing = false
+    }
+}
+
+extension ParallelDiffContainer: NSTextViewDelegate {
+    func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+        guard let target = CodeCallIndex.target(from: link) else { return false }
+        onFollow?(target.fileID, target.line, target.before, target.name)
+        return true
     }
 }
