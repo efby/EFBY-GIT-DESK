@@ -34,6 +34,18 @@ enum CodeCallIndex {
         }
     }
 
+    static func callNames(rows: [DiffRow], beforeLanguage: CodeLanguage, afterLanguage: CodeLanguage) -> [String] {
+        var names: [String] = []
+        var seen = Set<String>()
+        for row in rows {
+            for name in mentionedNames(in: row.before, language: beforeLanguage) + mentionedNames(in: row.after, language: afterLanguage) {
+                if seen.insert(name).inserted { names.append(name) }
+                if names.count >= 40 { return names }
+            }
+        }
+        return names
+    }
+
     static func links(rows: [DiffRow], beforeLanguage: CodeLanguage, afterLanguage: CodeLanguage,
                       declarations: [CodeDeclaration], currentFileID: String) -> CodeCallLinks {
         CodeCallLinks(
@@ -65,9 +77,12 @@ enum CodeCallIndex {
         return (fileID, line, before == "1", name)
     }
 
-    private static func links(in content: String?, line: Int?, language: CodeLanguage,
-                              declarations: [CodeDeclaration], currentFileID: String) -> [CodeCallLink] {
-        guard let content, let line, CodeSymbolIndex.supports(language) else { return [] }
+    private static func mentionedNames(in content: String?, language: CodeLanguage) -> [String] {
+        occurrences(in: content, language: language).map(\.name)
+    }
+
+    private static func occurrences(in content: String?, language: CodeLanguage) -> [(name: String, qualifier: String?, range: NSRange)] {
+        guard let content, CodeSymbolIndex.supports(language) else { return [] }
         var lexer = CodeLexer(language: language)
         let hidden = lexer.tokens(in: content).filter { $0.kind == .comment || $0.kind == .string }.map(\.range)
         let expression = try? NSRegularExpression(pattern: #"([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*\("#)
@@ -81,6 +96,17 @@ enum CodeCallIndex {
             let parts = written.split(separator: ".").map(String.init)
             guard let name = parts.last, !["if", "for", "while", "switch", "catch", "return", "assert", "function"].contains(name) else { return nil }
             let qualifier = parts.count > 1 ? parts.dropLast().joined(separator: ".") : nil
+            return (name, qualifier, nameRange)
+        }
+    }
+
+    private static func links(in content: String?, line: Int?, language: CodeLanguage,
+                              declarations: [CodeDeclaration], currentFileID: String) -> [CodeCallLink] {
+        guard let line else { return [] }
+        return occurrences(in: content, language: language).compactMap { occurrence in
+            let name = occurrence.name
+            let qualifier = occurrence.qualifier
+            let nameRange = occurrence.range
             guard let declaration = resolve(name: name, qualifier: qualifier, declarations: declarations, currentFileID: currentFileID),
                   declaration.fileID != currentFileID || declaration.line != line else { return nil }
             return CodeCallLink(range: nameRange, fileID: declaration.fileID, path: declaration.path,

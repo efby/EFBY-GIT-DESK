@@ -12,6 +12,7 @@ public protocol GitRepositoryPort: Sendable {
     func comparisonOrder(_ repository: Repository, tips: [String], selected: [String]) async throws -> [String]
     func changes(_ repository: Repository, context: DiffContext) async throws -> [FileChange]
     func allFiles(_ repository: Repository, context: DiffContext) async throws -> [FileChange]
+    func declarationPaths(_ repository: Repository, context: DiffContext, names: [String]) async throws -> [String]
     func diff(_ repository: Repository, context: DiffContext, file: FileChange) async throws -> String
     func fileComparison(_ repository: Repository, context: DiffContext, file: FileChange) async throws -> FileComparison
     func execute(_ action: GitAction, repository: Repository, profile: ConnectionProfile?) async throws -> String
