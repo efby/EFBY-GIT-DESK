@@ -175,7 +175,9 @@ public actor GitAdapter: GitRepositoryPort {
         let paths: [Data]
         switch context {
         case .commits, .commit: paths = try GitParsers.treeFiles(data)
-        case .staged, .working: paths = data.split(separator: 0).map(Data.init)
+        case .staged, .working:
+            let records: [Data.SubSequence] = data.split(separator: UInt8(0))
+            paths = records.map { Data($0) }
         }
         return Array(Set(paths)).sorted { $0.lexicographicallyPrecedes($1) }
             .map { FileChange(path: $0, status: "=") }

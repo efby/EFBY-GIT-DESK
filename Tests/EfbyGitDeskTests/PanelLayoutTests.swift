@@ -83,7 +83,16 @@ import EfbyGitDeskInfrastructure
         let first = model()
         #expect(first.detailWidth == 340 && first.sidebarWidth == 340)
         first.detailWidth = 520; first.sidebarWidth = 255; first.persistLayout()
-        try await Task.sleep(for: .milliseconds(450))
+        var persisted = false
+        for _ in 0..<30 {
+            if try await registry.preference("workspace.detailWidth") == "520.0",
+               try await registry.preference("workspace.sidebarWidth") == "255.0" {
+                persisted = true
+                break
+            }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        #expect(persisted)
         let next = model(); await next.load()
         #expect(next.detailWidth == 520 && next.sidebarWidth == 255)
         #expect(next.error == nil)
