@@ -91,7 +91,11 @@ import EfbyGitDeskInfrastructure
         model.returnAlongLink()
         try await waitUntil { model.selectedFile == caller.id && !model.diffLoading && model.linkTrail.isEmpty }
         model.setShowAllFiles(false)
-        try await waitUntil { !model.filesLoading && model.callLinks == nil && model.selectedFile == caller.id && model.comparison != nil }
+        try await waitUntil { !model.filesLoading && callLink(model.callLinks, name: "query_objects") != nil && model.selectedFile == caller.id && model.comparison != nil }
+        #expect(!model.visibleFiles.contains { $0.name == "src/worker.py" })
+        let hidden = try #require(callLink(model.callLinks, name: "run", path: "src/worker.py"))
+        model.followDeclaration(fileID: hidden.fileID, line: hidden.line, before: hidden.before, name: hidden.name, callLine: hidden.callLine)
+        try await waitUntil { model.selectedFile == hidden.fileID && !model.diffLoading && model.comparison != nil && model.diffSyntax != nil }
         if let path = ProcessInfo.processInfo.environment["EFBY_SYMBOL_NAV_PREVIEW_PATH"] {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1440, height: 800),
                                   styleMask: .borderless, backing: .buffered, defer: false)

@@ -11,6 +11,7 @@ import AppKit
     private var lastJump: UUID?
     private var pendingJump: DiffJumpTarget?
     private var pinnedOffset: CGPoint?
+    private var landedOffset: CGPoint?
     private var blocks: [DiffChangeBlock] = []
     private var lastViewport: DiffViewportStatus?
     var onViewportChange: ((DiffViewportStatus) -> Void)?
@@ -136,7 +137,9 @@ import AppKit
             }
         }
         let selection = text.selectedRanges
-        let origin = pinnedOffset.map { NSPoint(x: max(0, $0.x), y: max(0, $0.y)) } ?? scroll.contentView.bounds.origin
+        let origin = pinnedOffset.map { NSPoint(x: max(0, $0.x), y: max(0, $0.y)) }
+            ?? landedOffset.map { NSPoint(x: max(0, $0.x), y: max(0, $0.y)) }
+            ?? scroll.contentView.bounds.origin
         text.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         text.textContainer?.containerSize = NSSize(width: width, height: CGFloat.greatestFiniteMagnitude)
         text.frame = NSRect(x: 0, y: 0, width: width, height: CGFloat(rows.count + 1) * 18 + 24)
@@ -193,10 +196,15 @@ import AppKit
         if let window { window.makeFirstResponder(left.documentView) }
     }
     func jump(to target: DiffJumpTarget?) {
-        guard let target, lastJump != target.id else { return }
+        guard let target else { return }
+        if lastJump == target.id {
+            if pinnedOffset != nil { applyPinnedOffset() }
+            return
+        }
         lastJump = target.id
         if let offset = target.restoreOffset {
             pendingJump = nil
+            landedOffset = nil
             pinnedOffset = offset
             applyPinnedOffset()
         } else {
@@ -212,14 +220,16 @@ import AppKit
         let documentHeight = left.documentView?.frame.height ?? 0
         guard visible.height > 1, documentHeight > 1 else { return }
         let maxY = max(0, documentHeight - visible.height)
+        let x = target.restoreOffset.map { max(0, $0.x) } ?? left.contentView.bounds.origin.x
+        let y = target.restoreOffset.map { min(max(0, $0.y), maxY) } ?? min(CGFloat(row) * 18, maxY)
+        if target.restoreOffset == nil, row > 0, y < 1, maxY < 1 { return }
         synchronizing = true
         for scroll in [left, right] {
-            let x = target.restoreOffset.map { max(0, $0.x) } ?? scroll.contentView.bounds.origin.x
-            let y = target.restoreOffset.map { min(max(0, $0.y), maxY) } ?? min(CGFloat(row) * 18, maxY)
             scroll.contentView.scroll(to: NSPoint(x: x, y: y))
             scroll.reflectScrolledClipView(scroll.contentView)
         }
         synchronizing = false
+        if target.restoreOffset == nil { landedOffset = CGPoint(x: x, y: y) }
         pendingJump = nil
         publishViewport()
     }
@@ -273,9 +283,18 @@ import AppKit
         guard status != lastViewport else { return }
         lastViewport = status; onViewportChange?(status)
     }
+    private var userScrolled: Bool {
+        switch NSApp.currentEvent?.type {
+        case .scrollWheel, .leftMouseDragged, .magnify, .swipe, .smartMagnify:
+            return true
+        default:
+            return false
+        }
+    }
     @objc private func boundsChanged(_ notification: Notification) {
         guard !synchronizing, let source = notification.object as? NSClipView else { return }
-        if let pinned = pinnedOffset,
+        if userScrolled { landedOffset = nil }
+        if let pinned = pinnedOffset, userScrolled,
            abs(source.bounds.origin.y - pinned.y) > 2 || abs(source.bounds.origin.x - pinned.x) > 2 {
             pinnedOffset = nil
         }
