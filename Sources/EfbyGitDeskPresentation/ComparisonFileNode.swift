@@ -7,6 +7,9 @@ struct ComparisonFileNode: Identifiable, Sendable {
     let file: FileChange?
     let children: [ComparisonFileNode]
     var count: Int { file == nil ? children.reduce(0) { $0 + $1.count } : 1 }
+    var folderIDs: Set<String> {
+        children.reduce(into: file == nil ? Set([id]) : Set<String>()) { $0.formUnion($1.folderIDs) }
+    }
 
     static func make(_ files: [FileChange], prefix: Data = Data()) -> [ComparisonFileNode] {
         var keys: [Data] = []

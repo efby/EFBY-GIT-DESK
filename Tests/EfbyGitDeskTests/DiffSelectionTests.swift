@@ -49,6 +49,51 @@ import EfbyGitDeskInfrastructure
         #expect(model.selectedFile == nil)
     }
 
+    @Test func functionLinksOpenTheirFileAndJumpToTheMatchingLine() async throws {
+        let fixture = try await GitFixture.make(); defer { fixture.cleanup() }
+        try FileManager.default.createDirectory(at: fixture.folder.appendingPathComponent("src"), withIntermediateDirectories: true)
+        try fixture.write("src/worker.py", "# heading\ndef run():\n    return 1\n")
+        try fixture.write("src/worker.ts", "// heading\nexport function render() { return 1; }\n")
+        try fixture.write("src/worker.dart", "// heading\nvoid start() => print('ok');\n")
+        _ = try await fixture.git(["add", "--", "src/worker.py", "src/worker.ts", "src/worker.dart"])
+        _ = try await fixture.git(["commit", "-m", "Add code"])
+        _ = try await fixture.commit("README.md", "updated\n", message: "Update readme")
+        let registry = try SQLiteRegistry(path: fixture.folder.appendingPathComponent("symbols.sqlite").path)
+        let service = DeskService(git: fixture.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
+        let repository = try await service.open(path: fixture.folder.path)
+        let model = DeskModel(service: service, terminalFactory: { PTYTerminal(shell: "/bin/sh", login: false) })
+        model.repositories = [repository]; model.select(repository.id)
+        try await waitUntil { !model.loading && model.commits.count == 3 }
+        model.chooseCommit(model.commits[0]); model.chooseCommit(model.commits[1])
+        try await waitUntil { !model.filesLoading && model.files.count == 1 }
+        model.setShowAllFiles(true)
+        try await waitUntil { !model.filesLoading && model.visibleFiles.count == 4 }
+        for (name, symbolName) in [("worker.py", "run"), ("worker.ts", "render"), ("worker.dart", "start")] {
+            let file = try #require(model.visibleFiles.first { $0.name == "src/" + name })
+            model.toggleSymbols(for: file.id)
+            try await waitUntil { model.codeSymbols[file.id] != nil }
+            let symbol = try #require(model.codeSymbols[file.id]?.first { $0.name == symbolName })
+            model.navigateToSymbol(fileID: file.id, symbol: symbol)
+            try await waitUntil { model.selectedFile == file.id && !model.diffLoading && model.symbolJump != nil }
+            let jump = try #require(model.symbolJump)
+            #expect(model.diffRows[jump.row].afterNumber == symbol.line)
+        }
+        if let path = ProcessInfo.processInfo.environment["EFBY_SYMBOL_NAV_PREVIEW_PATH"] {
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1440, height: 800),
+                                  styleMask: .borderless, backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false; defer { window.close() }
+            window.appearance = NSAppearance(named: .darkAqua)
+            let hosting = NSHostingView(rootView: ComparisonWorkspaceLayer(model: model) { WorkspaceRetentionProbe(view: NSView()) })
+            hosting.appearance = window.appearance; hosting.sizingOptions = []; window.contentView = hosting
+            hosting.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(200))
+            hosting.layoutSubtreeIfNeeded(); hosting.displayIfNeeded()
+            let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+            hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+            try #require(bitmap.representation(using: .png, properties: [:])).write(to: URL(fileURLWithPath: path))
+        }
+    }
+
     @Test func diffRequiresFileSelectionAndStaysClosedAfterRefresh() async throws {
         let fixture = try await GitFixture.make()
         defer { fixture.cleanup() }

@@ -7,6 +7,10 @@ struct RepositorySidebar: View {
     @State private var editing: Repository?
     @State private var group = ""
     @State private var tree: [RepositoryTreeNode] = []
+    @State private var collapsedFolders: Set<String> = []
+    @State private var folderStateLoaded = false
+    @State private var expansionVersion = 0
+    @State private var expansionSave: Task<Void, Never>?
     private var filtered: [Repository] {
         model.repositories.filter {
             model.repositorySearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || ($0.name + " " + $0.path + " " + $0.group)
@@ -35,12 +39,13 @@ struct RepositorySidebar: View {
                         Section("Favoritos") { ForEach(model.repositories.filter(\.favorite)) { repositoryRow($0).id("favorite:" + $0.id) } }
                     }
                     Section("Proyectos") {
-                        OutlineGroup(tree, children: \.children) { node in
-                            if let repository = node.repository { repositoryRow(repository) }
-                            else {
-                                Label(node.name, systemImage: "folder").font(.body.weight(.medium))
-                                    .help(node.id).accessibilityLabel("Carpeta " + node.name)
+                        if folderStateLoaded {
+                            RepositoryTreeRows(nodes: tree, collapsed: collapsedFolders, onToggle: setFolder,
+                                               onSelect: { model.sidebarSelection = $0 }) {
+                                repositoryRow($0)
                             }
+                        } else {
+                            ProgressView("Restaurando carpetas…").controlSize(.small)
                         }
                     }
                     ForEach(Array(Set(model.repositories.map(\.group).filter { !$0.isEmpty })).sorted(), id: \.self) { name in
@@ -58,6 +63,15 @@ struct RepositorySidebar: View {
             let result = await Task.detached { RepositoryTreeBuilder.make(repositories: repositories, roots: roots) }.value
             if !Task.isCancelled { tree = result }
         }
+        .task {
+            guard !folderStateLoaded else { return }
+            let version = expansionVersion
+            let key = FolderExpansionPreference.key(scope: "repositories", repositoryID: "workspace")
+            let saved = try? await model.service.registry.preference(key)
+            guard !Task.isCancelled, expansionVersion == version else { return }
+            collapsedFolders = FolderExpansionPreference.decode(saved)
+            folderStateLoaded = true
+        }
         .sheet(item: $editing) { repository in
             VStack(alignment: .leading, spacing: 18) {
                 Text("Grupo local").font(.title2.bold())
@@ -72,6 +86,21 @@ struct RepositorySidebar: View {
                     }.buttonStyle(.borderedProminent)
                 }
             }.padding(24).frame(width: 400)
+        }
+    }
+    private func setFolder(_ id: String, expanded: Bool) {
+        var updated = collapsedFolders
+        if expanded { updated.remove(id) } else { updated.insert(id) }
+        guard updated != collapsedFolders else { return }
+        collapsedFolders = updated; expansionVersion += 1
+        guard let value = FolderExpansionPreference.encode(updated) else { return }
+        let previous = expansionSave
+        let service = model.service
+        let key = FolderExpansionPreference.key(scope: "repositories", repositoryID: "workspace")
+        expansionSave = Task {
+            await previous?.value
+            let registry = await service.registry
+            try? await registry.setPreference(key, value: value)
         }
     }
     private func repositoryRow(_ repository: Repository) -> some View {
