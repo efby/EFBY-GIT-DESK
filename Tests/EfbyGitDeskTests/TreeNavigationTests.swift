@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import Testing
 import EfbyGitDeskDomain
 import EfbyGitDeskInfrastructure
@@ -251,6 +252,8 @@ struct TreeNavigationTests {
         #expect(auditScope.receivers["this.audit"] == "AuditLog")
         #expect(CodeCallIndex.isDeclarationLine("    async write(", name: "write"))
         #expect(!CodeCallIndex.isDeclarationLine("    this.audit.write(", name: "write"))
+        #expect(!CodeCallIndex.isDeclarationLine("# def write():", name: "write", language: .python))
+        #expect(!CodeCallIndex.isDeclarationLine("// function write() {}", name: "write", language: .typescript))
         let auditClass = CodeDeclaration(fileID: "log", path: "src/logs/renamed-log.ts", name: "AuditLog", line: 1, before: false, isType: true)
         let firstWrite = CodeDeclaration(fileID: "log", path: "src/logs/renamed-log.ts", name: "write", line: 4, before: false)
         let overload = CodeDeclaration(fileID: "log", path: "src/logs/renamed-log.ts", name: "write", line: 9, before: false)
@@ -258,11 +261,36 @@ struct TreeNavigationTests {
         let auditCall = [DiffRow(before: nil, after: "    this.audit.write(", beforeNumber: nil, afterNumber: 18)]
         let auditLinks = CodeCallIndex.links(rows: auditCall, beforeLanguage: .typescript, afterLanguage: .typescript,
                                              declarations: [auditClass, firstWrite, overload, otherWrite], currentFileID: "other", imports: auditScope.imports, receivers: auditScope.receivers)
-        #expect(auditLinks.after[0].map(\.fileID) == ["log"])
-        #expect(auditLinks.after[0].map(\.line) == [4])
+        #expect(auditLinks.after[0].isEmpty)
         let pythonClient = CodeImportIndex.scope(in: "from pkg import Client\n    def __init__(self, client: Client):\n", language: .python, filePath: "src/pay.py")
         #expect(pythonClient.receivers["self.client"] == "Client")
         let dartClient = CodeImportIndex.scope(in: "final AuditLog audit;\n", language: .dart, filePath: "lib/pay.dart")
         #expect(dartClient.receivers["this.audit"] == "AuditLog")
+    }
+
+    @MainActor @Test func nativeCodeLinksExposeStandardLinkAttribute() throws {
+        let row = DiffRow(before: "target()", after: "target()", beforeNumber: 1, afterNumber: 1)
+        let declaration = CodeDeclaration(fileID: "target", path: "src/target.py", name: "target", line: 7, before: false)
+        let links = CodeCallIndex.links(rows: [row], beforeLanguage: .python, afterLanguage: .python,
+                                        declarations: [declaration], currentFileID: "caller")
+        let container = ParallelDiffContainer()
+        container.update([row], links: links)
+        let scrolls = container.subviews.compactMap { $0 as? NSScrollView }
+        let left = try #require(scrolls[0].documentView as? NSTextView)
+        let right = try #require(scrolls[1].documentView as? DiffTextView)
+        let range = (right.string as NSString).range(of: "target()")
+        #expect(range.location != NSNotFound)
+        #expect(right.textStorage?.attribute(.link, at: range.location, effectiveRange: nil) as? URL == CodeCallIndex.url(for: links.after[0][0]))
+        #expect(left.textStorage?.attribute(.link, at: range.location, effectiveRange: nil) == nil)
+        var opened: String?
+        container.onFollow = { fileID, _, _, _, _, _, _ in opened = fileID }
+        right.setSelectedRange(NSRange(location: range.location, length: 0))
+        let enter = try #require(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+            timestamp: 0, windowNumber: 0, context: nil, characters: "\r", charactersIgnoringModifiers: "\r",
+            isARepeat: false, keyCode: 36))
+        right.keyDown(with: enter)
+        #expect(opened == "target")
+        container.update([row], links: nil)
+        #expect(right.textStorage?.attribute(.link, at: range.location, effectiveRange: nil) == nil)
     }
 }

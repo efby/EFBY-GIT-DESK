@@ -211,7 +211,8 @@ enum CodeCallIndex {
                     let inClass = imported.filter { classFiles.contains($0.fileID) }
                     let pool = inClass.isEmpty ? imported : inClass
                     let owned = pool.filter { $0.owner.map { normalize($0) == normalize(typeName) } ?? false }
-                    return (owned.isEmpty ? pool : owned).min { $0.line < $1.line }
+                    let candidates = owned.isEmpty ? pool : owned
+                    return candidates.count == 1 ? candidates[0] : nil
                 }
                 if boundInConstructor { return nil }
             }
@@ -270,14 +271,20 @@ enum CodeCallIndex {
         return nil
     }
 
-    static func isDeclarationLine(_ text: String, name: String) -> Bool {
+    static func isDeclarationLine(_ text: String, name: String, language: CodeLanguage = .python) -> Bool {
         let escaped = NSRegularExpression.escapedPattern(for: name)
         let patterns = [
             "(^|[^A-Za-z0-9_$.])((async|export|public|private|protected|static|abstract|override|readonly|factory|external)[[:space:]]+)*(def|class|function|interface|enum|mixin|extension)[[:space:]]+\(escaped)([^A-Za-z0-9_$]|$)",
             "(^|[^A-Za-z0-9_$.])\(escaped)[[:space:]]*(<[^;]{0,200}>)?[[:space:]]*\\([^;\\n]{0,200}\\)[[:space:]]*(->|[[:space:]]*:|[[:space:]]*\\{|[[:space:]]*=>)",
             "^[[:space:]]*((public|private|protected|static|async|override|abstract|readonly|get|set|export|declare|default)[[:space:]]+)*\(escaped)[[:space:]]*(<[^;(]{0,80}>)?[[:space:]]*\\("
         ]
-        return patterns.contains { text.range(of: $0, options: .regularExpression) != nil }
+        var lexer = CodeLexer(language: language)
+        let hidden = lexer.tokens(in: text).filter { $0.kind == .comment || $0.kind == .string }.map(\.range)
+        return patterns.contains { pattern in
+            guard let match = text.range(of: pattern, options: .regularExpression) else { return false }
+            let start = NSRange(match, in: text).location
+            return !hidden.contains { NSLocationInRange(start, $0) }
+        }
     }
 
     private static func normalize(_ value: String) -> String {

@@ -346,3 +346,20 @@ Swift Testing con **100 pruebas registradas, 98 aprobadas y 2 opcionales omitida
 en 22 suites (8,003 s). Los límites, casos cubiertos y pendientes figuran en
 [13 — Resumen y continuidad](13-resumen-del-proyecto-y-continuidad.md). Esto no
 verifica notarización ni ejecución del DMG descargado de v0.1.12.
+
+## Auditoría y reparación de enlaces de código — 8 de octubre de 2026
+
+La auditoría posterior a los PR #14–#21 encontró cuatro problemas: caché de
+declaraciones compartida entre repositorios y obsoleta ante cambios locales,
+falsas declaraciones en comentarios, selección arbitraria entre destinos
+duplicados y enlaces activables solo con el mouse. La corrección separa la caché
+por repositorio, vuelve a resolver en índice/working tree, verifica que la
+declaración no sea un comentario, omite destinos ambiguos y publica enlaces
+estándar de AppKit con activación por Retorno. La aceptación manual con VoiceOver
+permanece pendiente.
+
+Pruebas locales después del cambio: **102 registradas, 100 aprobadas y 2
+opcionales omitidas** en 22 suites; compilación del bundle de
+desarrollo y verificación `codesign` correctas. Se añadieron casos para
+comentarios, sobrecargas, cambio de línea en un archivo de destino Git y
+activación por teclado. No equivale a una validación del DMG distribuido.

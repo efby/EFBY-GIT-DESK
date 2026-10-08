@@ -272,6 +272,31 @@ import EfbyGitDeskInfrastructure
         #expect(!model.loading)
     }
 
+    @Test func refreshingWorkingFilesReplacesChangedDeclarationTargets() async throws {
+        let fixture = try await GitFixture.make(); defer { fixture.cleanup() }
+        try fixture.write("caller.py", "def run():\n    pass\n")
+        try fixture.write("target.py", "def target_func():\n    pass\n")
+        _ = try await fixture.git(["add", "--", "caller.py", "target.py"])
+        _ = try await fixture.git(["commit", "-m", "Add source files"])
+        let registry = try SQLiteRegistry(path: fixture.folder.appendingPathComponent("catalog.sqlite").path)
+        let service = DeskService(git: fixture.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
+        let opened = try await service.open(path: fixture.folder.path)
+        let trusted = try await service.trust(opened)
+        let model = DeskModel(service: service, terminalFactory: { PTYTerminal(shell: "/bin/sh", login: false) })
+        model.repositories = [trusted]; model.select(trusted.id)
+        try await waitUntil { !model.loading && !model.commits.isEmpty }
+        try fixture.write("caller.py", "def run():\n    target_func()\n")
+        model.workspaceSection = .pending
+        try await waitUntil { !model.filesLoading && model.files.contains { $0.name == "caller.py" } }
+        let caller = try #require(model.files.first { $0.name == "caller.py" })
+        model.loadDiff(id: caller.id)
+        try await waitUntil { self.callLink(model.callLinks, name: "target_func")?.line == 1 }
+
+        try fixture.write("target.py", "# extra\n\ndef target_func():\n    pass\n")
+        model.loadFiles()
+        try await waitUntil { self.callLink(model.callLinks, name: "target_func")?.line == 3 }
+    }
+
     private func callLink(_ links: CodeCallLinks?, name: String, path: String? = nil) -> CodeCallLink? {
         guard let rows = links?.after else { return nil }
         for row in rows {
