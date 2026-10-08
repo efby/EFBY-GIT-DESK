@@ -71,9 +71,9 @@ import EfbyGitDeskInfrastructure
         try await waitUntil { !model.filesLoading && model.visibleFiles.contains { $0.name == "src/caller.py" } }
         let caller = try #require(model.visibleFiles.first { $0.name == "src/caller.py" })
         model.loadDiff(id: caller.id)
-        try await waitUntil { !model.diffLoading && model.callLinks?.after.contains { $0.contains { $0.name == "query_objects" } } == true }
-        let query = try #require(model.callLinks?.after.flatMap { $0 }.first { $0.name == "query_objects" })
-        let run = try #require(model.callLinks?.after.flatMap { $0 }.first { $0.name == "run" })
+        try await waitUntil { !model.diffLoading && callLink(model.callLinks, name: "query_objects") != nil }
+        let query = try #require(callLink(model.callLinks, name: "query_objects"))
+        let run = try #require(callLink(model.callLinks, name: "run"))
         #expect(query.path == "src/dynamodb.py")
         #expect(run.path == "src/worker.py")
         model.followDeclaration(fileID: query.fileID, line: query.line, before: query.before, name: query.name, callLine: query.callLine)
@@ -82,8 +82,8 @@ import EfbyGitDeskInfrastructure
         let jump = try #require(model.symbolJump)
         #expect(model.diffRows[jump.row].afterNumber == query.line)
         #expect(model.declarations.contains { $0.name == "query_objects" && $0.path == "src/dynamodb.py" })
-        try await waitUntil { model.callLinks?.after.contains { $0.contains { $0.name == "run" && $0.path == "src/worker.py" } } == true }
-        let worker = try #require(model.callLinks?.after.flatMap { $0 }.first { $0.name == "run" && $0.path == "src/worker.py" })
+        try await waitUntil { callLink(model.callLinks, name: "run", path: "src/worker.py") != nil }
+        let worker = try #require(callLink(model.callLinks, name: "run", path: "src/worker.py"))
         model.followDeclaration(fileID: worker.fileID, line: worker.line, before: worker.before, name: worker.name, callLine: worker.callLine)
         #expect(model.linkTrail.map(\.fileID) == [caller.id, query.fileID])
         model.returnAlongLink()
@@ -266,6 +266,16 @@ import EfbyGitDeskInfrastructure
         #expect(model.files.isEmpty)
         #expect(model.selectedID == repository.id)
         #expect(!model.loading)
+    }
+
+    private func callLink(_ links: CodeCallLinks?, name: String, path: String? = nil) -> CodeCallLink? {
+        guard let rows = links?.after else { return nil }
+        for row in rows {
+            for link in row where link.name == name && (path == nil || link.path == path) {
+                return link
+            }
+        }
+        return nil
     }
 
     private func waitUntil(_ condition: () -> Bool) async throws {
