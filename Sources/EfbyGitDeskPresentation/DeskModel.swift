@@ -44,6 +44,7 @@ private struct ReviewedSymbols {
     var symbolJump: DiffJumpTarget?
     var linkTrail: [LinkReturn] = []
     @ObservationIgnored private var pendingRestore: CGPoint?
+    @ObservationIgnored private var knownFiles: [String: FileChange] = [:]
     public var selectedFile: String?
     var openDocument: FileChange?
     public var diffText = ""
@@ -145,7 +146,7 @@ private struct ReviewedSymbols {
         }
     }
     public var detectedLanguageLabel: String {
-        guard let file = visibleFiles.first(where: { $0.id == selectedFile }) else { return "" }
+        guard let file = openedFile() else { return "" }
         return (syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.name) : syntaxLanguage).rawValue
     }
     private func noteDocumentChange(_ changed: Bool) {
@@ -154,7 +155,7 @@ private struct ReviewedSymbols {
     public func refreshHighlighting() {
         scheduleCallResolution()
         highlightQuery?.cancel()
-        guard let file = visibleFiles.first(where: { $0.id == selectedFile }), diffAligned else { return }
+        guard let file = openedFile(), diffAligned else { return }
         let rows = diffRows; let language = syntaxLanguage; let version = generation; let currentContext = context
         let oldName = file.oldPath.flatMap { String(data: $0, encoding: .utf8) } ?? file.name
         let before = language == .automatic ? CodeLanguage.detect(path: oldName) : language
@@ -247,7 +248,7 @@ private struct ReviewedSymbols {
     public func select(_ id: String) {
         guard repositories.contains(where: { $0.id == id }) else { return }
         if !openIDs.contains(id) { openIDs.append(id); persistTabs() }
-        generation += 1; query?.cancel(); searchQuery?.cancel(); selectionQuery?.cancel(); comparisonOrdering = false; comparisonOrderFailed = false; fileQuery?.cancel(); closeDiff(); filesLoading = false
+        generation += 1; query?.cancel(); searchQuery?.cancel(); selectionQuery?.cancel(); comparisonOrdering = false; comparisonOrderFailed = false; fileQuery?.cancel(); closeDiff(); knownFiles = [:]; filesLoading = false
         pendingComparisonCommit = nil; showReplaceComparison = false
         selectedID = id; selectedOIDs = []; retainedCommits = []; retainedOrder = []; commits = []; files = []; diffText = ""
         workingView = false; tips = []; parentIndex = 0; selectedTerminal = nil
@@ -397,10 +398,10 @@ private struct ReviewedSymbols {
         fileQuery?.cancel()
         declarationQuery?.cancel()
         guard let repository, let context else {
-            files = []; visibleFiles = []; fileInventoryRevision += 1; closeDiff(); loadedContext = nil; filesLoading = false; return
+            files = []; visibleFiles = []; knownFiles = [:]; fileInventoryRevision += 1; closeDiff(); loadedContext = nil; filesLoading = false; return
         }
         if loadedContext != context {
-            files = []; visibleFiles = []; declarations = []; fileInventoryRevision += 1; closeDiff(); loadedContext = context
+            files = []; visibleFiles = []; declarations = []; knownFiles = [:]; fileInventoryRevision += 1; closeDiff(); loadedContext = context
         }
         let version = generation; filesLoading = true
         fileQuery = Task {
@@ -421,7 +422,7 @@ private struct ReviewedSymbols {
                     if comparison == nil || openDocument?.id != selectedFile { loadDiff(id: selectedFile) }
                     else { scheduleCallResolution() }
                 } else if openDocument?.id == selectedFile, comparison != nil {
-                    callLinks = nil
+                    scheduleCallResolution()
                 } else { closeDiff() }
             } catch is CancellationError {} catch {
                 if version == generation && self.context == context {
@@ -437,11 +438,8 @@ private struct ReviewedSymbols {
         loadFiles()
     }
     private func scheduleCallResolution() {
-        guard showAllFiles, diffAligned, let repository, let context,
-              let file = openDocument, file.id == selectedFile else {
-            if !showAllFiles { callLinks = nil }
-            return
-        }
+        guard diffAligned, let repository, let context,
+              let file = openDocument, file.id == selectedFile else { return }
         let source = comparison?.after ?? comparison?.before ?? ""
         let key = reviewKey(context: context, fileID: file.id)
         if pendingReview == key { return }
@@ -457,11 +455,15 @@ private struct ReviewedSymbols {
         let visible = visibleFiles
         declarationQuery = Task {
             defer { if pendingReview == key { pendingReview = nil } }
-            let fingerprint = await Task.detached { CodeCallIndex.fingerprint(source) }.value
-            let imports = await Task.detached { CodeImportIndex.bindings(in: source, language: afterLanguage, filePath: file.name) }.value
+            let prepared = await Task.detached {
+                (CodeCallIndex.fingerprint(source), CodeImportIndex.scope(in: source, language: afterLanguage, filePath: file.name), CodeSymbolIndex.classSpans(text: source, language: afterLanguage))
+            }.value
+            let fingerprint = prepared.0
+            let scope = prepared.1
+            let classes = prepared.2
             if let saved = reviewed[key], saved.fingerprint == fingerprint {
-                guard !Task.isCancelled, version == generation, showAllFiles, selectedFile == fileID else { return }
-                await publish(saved.declarations, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, imports: imports)
+                guard !Task.isCancelled, version == generation, selectedFile == fileID else { return }
+                await publish(saved.declarations, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, scope: scope, classes: classes)
                 return
             }
             let names = await Task.detached {
@@ -469,8 +471,8 @@ private struct ReviewedSymbols {
             }.value
             if let saved = reviewed[key], saved.names == names {
                 remember(key, ReviewedSymbols(fingerprint: fingerprint, names: names, declarations: saved.declarations))
-                guard !Task.isCancelled, version == generation, showAllFiles, selectedFile == fileID else { return }
-                await publish(saved.declarations, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, imports: imports)
+                guard !Task.isCancelled, version == generation, selectedFile == fileID else { return }
+                await publish(saved.declarations, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, scope: scope, classes: classes)
                 return
             }
             let own = await Task.detached {
@@ -483,18 +485,22 @@ private struct ReviewedSymbols {
                 let byPath = Dictionary(visible.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
                 let remote = await Task.detached {
                     hits.flatMap { hit -> [CodeDeclaration] in
-                        guard hit.path != file.name, let candidate = byPath[hit.path] else { return [] }
+                        guard hit.path != file.name else { return [] }
+                        let candidate = byPath[hit.path] ?? FileChange(path: Data(hit.path.utf8), status: "=")
                         let language = CodeLanguage.detect(path: hit.path)
-                        let symbols = CodeSymbolIndex.make(text: hit.text, language: language).map(\.name).filter { wanted.contains($0) }
+                        let parsed = CodeSymbolIndex.make(text: hit.text, language: language)
+                        let symbols = parsed.map(\.name).filter { wanted.contains($0) }
                         let names = symbols.isEmpty ? wanted.filter { CodeCallIndex.isDeclarationLine(hit.text, name: $0) } : symbols
-                        return names.map { CodeDeclaration(fileID: candidate.id, path: hit.path, name: $0, line: hit.line, before: false) }
+                        return names.map { name in
+                            CodeDeclaration(fileID: candidate.id, path: hit.path, name: name, line: hit.line, before: false, owner: parsed.first { $0.name == name }?.owner, isType: parsed.first { $0.name == name }?.isType ?? false)
+                        }
                     }
                 }.value
                 found.append(contentsOf: remote)
             }
-            guard !Task.isCancelled, version == generation, showAllFiles, selectedFile == fileID else { return }
+            guard !Task.isCancelled, version == generation, selectedFile == fileID else { return }
             remember(key, ReviewedSymbols(fingerprint: fingerprint, names: names, declarations: found))
-            await publish(found, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, imports: imports)
+            await publish(found, fileID: fileID, rows: rows, before: beforeLanguage, after: afterLanguage, scope: scope, classes: classes)
         }
     }
     private func reviewKey(context: DiffContext, fileID: String) -> String {
@@ -514,11 +520,16 @@ private struct ReviewedSymbols {
             reviewed.removeValue(forKey: reviewedOrder.removeFirst())
         }
     }
-    private func publish(_ found: [CodeDeclaration], fileID: String, rows: [DiffRow], before: CodeLanguage, after: CodeLanguage, imports: [String: String]) async {
+    private func publish(_ found: [CodeDeclaration], fileID: String, rows: [DiffRow], before: CodeLanguage, after: CodeLanguage, scope: CodeFileScope, classes: [CodeClassSpan]) async {
+        for declaration in found {
+            guard knownFiles[declaration.fileID] == nil, let data = declaration.path.data(using: .utf8) else { continue }
+            let candidate = visibleFiles.first { $0.id == declaration.fileID } ?? FileChange(path: data, status: "=")
+            if candidate.id == declaration.fileID { knownFiles[declaration.fileID] = candidate }
+        }
         let links = await Task.detached {
-            CodeCallIndex.links(rows: rows, beforeLanguage: before, afterLanguage: after, declarations: found, currentFileID: fileID, imports: imports)
+            CodeCallIndex.links(rows: rows, beforeLanguage: before, afterLanguage: after, declarations: found, currentFileID: fileID, imports: scope.imports, receivers: scope.receivers, libraries: scope.libraries, classes: classes)
         }.value
-        guard selectedFile == fileID, diffRows == rows, showAllFiles else { return }
+        guard selectedFile == fileID, diffRows == rows else { return }
         declarations = found
         if callLinks != links { callLinks = links }
     }
@@ -547,6 +558,19 @@ private struct ReviewedSymbols {
         self.pendingSymbol = nil
         pendingRestore = nil
     }
+    private func openedFile() -> FileChange? {
+        if let selectedFile, let file = file(id: selectedFile) { return file }
+        return openDocument
+    }
+    private func file(id: String) -> FileChange? {
+        if let visible = visibleFiles.first(where: { $0.id == id }) { return visible }
+        if let known = knownFiles[id] { return known }
+        if openDocument?.id == id { return openDocument }
+        guard let declaration = declarations.first(where: { $0.fileID == id }),
+              let data = declaration.path.data(using: .utf8) else { return nil }
+        let candidate = FileChange(path: data, status: "=")
+        return candidate.id == id ? candidate : nil
+    }
     public func closeDiff() {
         diffQuery?.cancel(); highlightQuery?.cancel()
         selectedFile = nil; openDocument = nil; diffText = ""; diffSyntax = nil; symbolJump = nil; pendingSymbol = nil; callLinks = nil; linkTrail = []
@@ -555,7 +579,8 @@ private struct ReviewedSymbols {
     public func loadDiff(id: String, preserveTrail: Bool = false) {
         if !preserveTrail { linkTrail = [] }
         diffQuery?.cancel()
-        guard let repository, let context, let file = visibleFiles.first(where: { $0.id == id }) else { return }
+        guard let repository, let context, let file = file(id: id) else { return }
+        knownFiles[file.id] = file
         let preserveView = selectedFile == id && comparison != nil
         if selectedFile != id { symbolJump = nil; callLinks = nil }
         selectedFile = id

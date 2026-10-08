@@ -183,9 +183,20 @@ public actor GitAdapter: GitRepositoryPort {
             .map { FileChange(path: $0, status: "=") }
     }
     public func declarationHits(_ repository: Repository, context: DiffContext, names: [String]) async throws -> [DeclarationHit] {
-        let names = Array(names.filter { $0.range(of: #"^[A-Za-z_$][A-Za-z0-9_$]*$"#, options: .regularExpression) != nil }.prefix(40))
+        let names = Array(names.filter { $0.range(of: #"^[A-Za-z_$][A-Za-z0-9_$]*$"#, options: .regularExpression) != nil }.prefix(80))
         guard !names.isEmpty else { return [] }
-        let pattern = "(^|[^A-Za-z0-9_$.])(" + names.joined(separator: "|") + ")[[:space:]]*(<[^;]{0,200}>)?[[:space:]]*\\("
+        var hits: [DeclarationHit] = []
+        var start = 0
+        while start < names.count, hits.count < 400 {
+            let end = min(start + 25, names.count)
+            let joined = names[start..<end].joined(separator: "|")
+            start = end
+            let pattern = "(^|[^A-Za-z0-9_$.])((async|export|public|private|protected|static|abstract|override|readonly|factory|external)[[:space:]]+)*(def|class|function|interface|enum|mixin|extension)[[:space:]]+(" + joined + ")([^A-Za-z0-9_$]|$)|(^|[^A-Za-z0-9_$.])(" + joined + ")[[:space:]]*(<[^;]{0,120}>)?[[:space:]]*\\([^;\\n]{0,180}\\)[[:space:]]*(->|[[:space:]]*:|[[:space:]]*\\{|[[:space:]]*=>)|^[[:space:]]*((public|private|protected|static|async|override|abstract|readonly|get|set|export|declare|default)[[:space:]]+)*(" + joined + ")[[:space:]]*(<[^;(]{0,60}>)?[[:space:]]*\\("
+            hits.append(contentsOf: try await declarationSearch(repository, context: context, pattern: pattern))
+        }
+        return Array(hits.prefix(400))
+    }
+    private func declarationSearch(_ repository: Repository, context: DiffContext, pattern: String) async throws -> [DeclarationHit] {
         var arguments = ["grep", "-z", "-n", "-I", "--no-textconv", "--no-color", "-E", pattern]
         let prefix: String
         switch context {

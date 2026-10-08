@@ -1,7 +1,18 @@
 import Foundation
 
+struct CodeFileScope: Equatable, Sendable {
+    var imports: [String: String]
+    var receivers: [String: String]
+    var libraries: [String]
+    static let empty = CodeFileScope(imports: [:], receivers: [:], libraries: [])
+}
+
 /// Maps a name written in the open file to the module path declared by its import.
 enum CodeImportIndex {
+    static func scope(in source: String, language: CodeLanguage, filePath: String) -> CodeFileScope {
+        CodeFileScope(imports: bindings(in: source, language: language, filePath: filePath), receivers: receivers(in: source, language: language), libraries: libraries(in: source, language: language, filePath: filePath))
+    }
+
     static func bindings(in source: String, language: CodeLanguage, filePath: String) -> [String: String] {
         guard CodeSymbolIndex.supports(language), source.utf8.count <= 2_000_000 else { return [:] }
         var bound: [String: String] = [:]
@@ -24,11 +35,74 @@ enum CodeImportIndex {
         return bound.filter { !$0.value.isEmpty }
     }
 
+    /// Binds an instance name to the class constructed or declared for it.
+    static func receivers(in source: String, language: CodeLanguage) -> [String: String] {
+        guard CodeSymbolIndex.supports(language), source.utf8.count <= 2_000_000 else { return [:] }
+        let patterns: [String]
+        switch language {
+        case .python:
+            patterns = [
+                #"(?m)^[ \t]*((?:self|cls)\.[A-Za-z_]\w*)[ \t]*=[ \t]*([A-Za-z_][\w.]*)[ \t]*\("#,
+                #"(?m)^[ \t]*([A-Za-z_]\w*)[ \t]*=[ \t]*([A-Za-z_][\w.]*)[ \t]*\("#,
+                #"(?m)^[ \t]*([A-Za-z_]\w*)[ \t]*:[ \t]*([A-Za-z_][\w.]*)[ \t]*(?:#.*)?$"#,
+                #"(?:(?:self|cls)\.)?([A-Za-z_]\w*)[ \t]*:[ \t]*([A-Z][A-Za-z0-9_]*)"#
+            ]
+        case .javascript, .typescript:
+            patterns = [
+                #"(?:(this\.[A-Za-z_$][\w$]*)|([A-Za-z_$][\w$]*))\s*=\s*new\s+([A-Za-z_$][\w$]*)"#,
+                #"(?:(?:public|private|protected|readonly|static|override|abstract|declare)\s+)*((?:this\.)?[A-Za-z_$][\w$]*)\s*[?!]?\s*:\s*([A-Z][A-Za-z0-9_]*)"#
+            ]
+        case .dart:
+            patterns = [
+                #"(?:(this\.[A-Za-z_]\w*)|([A-Za-z_]\w*))\s*=\s*(?:new\s+)?([A-Z][A-Za-z0-9_]*)\s*(?:<|\()"#,
+                #"([A-Za-z_]\w*)\s*:\s*([A-Z][A-Za-z0-9_]*)"#,
+                #"(?:final|late|const|var)?\s*([A-Z][A-Za-z0-9_]*)(?:<[^;\n]{0,80}>)?\s+([A-Za-z_]\w*)"#
+            ]
+        default:
+            return [:]
+        }
+        var bound: [String: String] = [:]
+        func add(_ qualifier: String, _ type: String) {
+            let typeName = type.split(separator: ".").last.map(String.init) ?? type
+            let rejected: Set<String> = ["if", "for", "while", "return", "const", "let", "var", "function", "class", "import", "export", "new", "await", "async", "public", "private", "protected", "readonly", "static", "get", "set", "final", "late"]
+            guard let first = typeName.first, first.isUppercase, !qualifier.isEmpty, !rejected.contains(qualifier) else { return }
+            let key = qualifier.split(separator: ".").map { $0.lowercased() }.joined(separator: ".")
+            if let existing = bound[key], existing != typeName { bound[key] = ""; return }
+            bound[key] = typeName
+            if !key.contains(".") {
+                for prefix in ["self.", "this."] where bound[prefix + key] == nil {
+                    bound[prefix + key] = typeName
+                }
+            }
+        }
+        let range = NSRange(location: 0, length: source.utf16.count)
+        for pattern in patterns {
+            guard let expression = try? NSRegularExpression(pattern: pattern) else { continue }
+            expression.enumerateMatches(in: source, range: range) { match, _, _ in
+                guard let match else { return }
+                let groups = (1..<match.numberOfRanges).compactMap { index -> String? in
+                    let captured = match.range(at: index)
+                    guard captured.location != NSNotFound else { return nil }
+                    let value = substring(source, captured)
+                    return value.isEmpty ? nil : value
+                }
+                guard var type = groups.last, var qualifier = groups.dropLast().first else { return }
+                if language == .dart, let qualifierFirst = qualifier.first, qualifierFirst.isUppercase,
+                   let typeFirst = type.first, !typeFirst.isUppercase {
+                    swap(&qualifier, &type)
+                }
+                add(qualifier, type)
+            }
+        }
+        return bound.filter { !$0.value.isEmpty }
+    }
+
     static func moduleMatches(file: String, module: String) -> Bool {
         if file == module { return true }
         let fileBase = (file as NSString).deletingPathExtension
-        if fileBase == module || fileBase == (module as NSString).deletingPathExtension { return true }
-        if fileBase == module + "/index" || fileBase.hasSuffix("/" + module) || fileBase.hasSuffix("/" + module + "/index") { return true }
+        let moduleBase = (module as NSString).deletingPathExtension
+        if fileBase == module || fileBase == moduleBase { return true }
+        if fileBase == module + "/index" || fileBase.hasSuffix("/" + module) || fileBase.hasSuffix("/" + moduleBase) || fileBase.hasSuffix("/" + module + "/index") { return true }
         if fileBase == module + "/__init__" || fileBase.hasSuffix("/" + module + "/__init__") { return true }
         return false
     }
@@ -78,6 +152,19 @@ enum CodeImportIndex {
                 : pythonRelative(dots: dots.count, module: module, filePath: filePath)
             for symbol in importedSymbols(names) { add(symbol.binding, resolved) }
         }
+    }
+
+    static func libraries(in source: String, language: CodeLanguage, filePath: String) -> [String] {
+        guard language == .dart, source.utf8.count <= 2_000_000 else { return [] }
+        let expression = try? NSRegularExpression(pattern: #"import\s+['"]([^'"]+)['"](?:\s+as\s+([A-Za-z_]\w*))?(?:\s+show\s+([^;]+))?;"#)
+        let range = NSRange(location: 0, length: source.utf16.count)
+        var modules: [String] = []
+        expression?.enumerateMatches(in: source, range: range) { match, _, _ in
+            guard let match, match.range(at: 2).location == NSNotFound, match.range(at: 3).location == NSNotFound,
+                  let module = dartModule(substring(source, match.range(at: 1)), filePath: filePath) else { return }
+            modules.append(module)
+        }
+        return modules
     }
 
     private static func collectDart(_ source: String, filePath: String, add: (String, String) -> Void) {
