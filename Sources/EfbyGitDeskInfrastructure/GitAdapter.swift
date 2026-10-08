@@ -158,6 +158,28 @@ public actor GitAdapter: GitRepositoryPort {
         let args = try await diffArguments(repository, context: context, inventory: true)
         return try GitParsers.changes(complete(await run(args, directory: repository.path)))
     }
+    public func allFiles(_ repository: Repository, context: DiffContext) async throws -> [FileChange] {
+        let arguments: [String]
+        switch context {
+        case .commits(let pair):
+            try await verify(pair.target, repository: repository)
+            arguments = ["ls-tree", "-r", "-z", "--full-tree", pair.target]
+        case .commit(let oid, _):
+            try await verify(oid, repository: repository)
+            arguments = ["ls-tree", "-r", "-z", "--full-tree", oid]
+        case .staged, .working:
+            try requireTrust(repository)
+            arguments = ["ls-files", "--cached", "-z", "--"]
+        }
+        let data = try complete(await run(arguments, directory: repository.path, trusted: repository.trusted))
+        let paths: [Data]
+        switch context {
+        case .commits, .commit: paths = try GitParsers.treeFiles(data)
+        case .staged, .working: paths = data.split(separator: 0).map(Data.init)
+        }
+        return Array(Set(paths)).sorted { $0.lexicographicallyPrecedes($1) }
+            .map { FileChange(path: $0, status: "=") }
+    }
     public func diff(_ repository: Repository, context: DiffContext, file: FileChange) async throws -> String {
         guard let path = file.utf8Path else {
             return "La ruta conserva sus bytes originales. Este visor no representa texto para nombres no UTF-8."

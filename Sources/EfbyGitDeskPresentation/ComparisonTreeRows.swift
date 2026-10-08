@@ -17,7 +17,7 @@ struct ComparisonTreeRows: View {
                         .background(model.selectedFile == file.id ? Color.accentColor.opacity(0.22) : .clear)
                 }.buttonStyle(.plain).help(file.name)
                     .accessibilityIdentifier("comparisonFile-" + file.id)
-                    .accessibilityLabel("\(file.status): Ver diferencias de \(file.name)")
+                    .accessibilityLabel("\(file.status == "=" ? "Sin cambios" : file.status): Ver \(file.status == "=" ? "contenido" : "diferencias") de \(file.name)")
             } else {
                 VStack(alignment: .leading, spacing: 0) {
                     Button { toggle(node.id) } label: {
@@ -41,9 +41,9 @@ struct ComparisonTreeRows: View {
         if collapsed.contains(id) { collapsed.remove(id) } else { collapsed.insert(id) }
     }
     private func symbol(_ status: String) -> String {
-        switch status.first { case "A": "plus"; case "D": "minus"; case "R": "arrow.turn.up.right"; default: "pencil" }
+        switch status.first { case "A": "plus"; case "D": "minus"; case "R": "arrow.turn.up.right"; case "=": "doc.text"; default: "pencil" }
     }
     private func tint(_ status: String) -> Color {
-        switch status.first { case "A": .green; case "D": .red; default: .orange }
+        switch status.first { case "A": .green; case "D": .red; case "=": .secondary; default: .orange }
     }
 }

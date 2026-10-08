@@ -30,6 +30,9 @@ import EfbyGitDeskDomain
         retainedCommits.filter { retained in selectedOIDs.contains(retained.oid) && !commits.contains { $0.oid == retained.oid } }
     }
     public var files: [FileChange] = []
+    public var showAllFiles = false
+    public private(set) var visibleFiles: [FileChange] = []
+    public private(set) var fileInventoryRevision = 0
     public var selectedFile: String?
     public var diffText = ""
     public var comparison: FileComparison?
@@ -124,12 +127,12 @@ import EfbyGitDeskDomain
         }
     }
     public var detectedLanguageLabel: String {
-        guard let file = files.first(where: { $0.id == selectedFile }) else { return "" }
+        guard let file = visibleFiles.first(where: { $0.id == selectedFile }) else { return "" }
         return (syntaxLanguage == .automatic ? CodeLanguage.detect(path: file.name) : syntaxLanguage).rawValue
     }
     public func refreshHighlighting() {
         highlightQuery?.cancel()
-        guard let file = files.first(where: { $0.id == selectedFile }), diffAligned else { return }
+        guard let file = visibleFiles.first(where: { $0.id == selectedFile }), diffAligned else { return }
         let rows = diffRows; let language = syntaxLanguage; let version = generation; let currentContext = context
         let oldName = file.oldPath.flatMap { String(data: $0, encoding: .utf8) } ?? file.name
         let before = language == .automatic ? CodeLanguage.detect(path: oldName) : language
@@ -371,10 +374,10 @@ import EfbyGitDeskDomain
     public func loadFiles() {
         fileQuery?.cancel()
         guard let repository, let context else {
-            files = []; closeDiff(); loadedContext = nil; filesLoading = false; return
+            files = []; visibleFiles = []; fileInventoryRevision += 1; closeDiff(); loadedContext = nil; filesLoading = false; return
         }
         if loadedContext != context {
-            files = []; closeDiff(); loadedContext = context
+            files = []; visibleFiles = []; fileInventoryRevision += 1; closeDiff(); loadedContext = context
         }
         let version = generation; filesLoading = true
         fileQuery = Task {
@@ -383,10 +386,28 @@ import EfbyGitDeskDomain
                 let newFiles = try await service.git.changes(repository, context: context)
                 guard !Task.isCancelled, version == generation, self.context == context else { return }
                 files = newFiles
-                if let selectedFile, files.contains(where: { $0.id == selectedFile }) { loadDiff(id: selectedFile) }
+                if showAllFiles {
+                    let all = try await service.git.allFiles(repository, context: context)
+                    guard !Task.isCancelled, version == generation, self.context == context, showAllFiles else { return }
+                    let changed = Set(newFiles.map(\.path))
+                    visibleFiles = (newFiles + all.filter { !changed.contains($0.path) })
+                        .sorted { $0.path.lexicographicallyPrecedes($1.path) }
+                } else { visibleFiles = newFiles }
+                fileInventoryRevision += 1
+                if let selectedFile, visibleFiles.contains(where: { $0.id == selectedFile }) { loadDiff(id: selectedFile) }
                 else { closeDiff() }
-            } catch is CancellationError {} catch { if version == generation && self.context == context { self.error = error.localizedDescription } }
+            } catch is CancellationError {} catch {
+                if version == generation && self.context == context {
+                    visibleFiles = []; fileInventoryRevision += 1; closeDiff()
+                    self.error = error.localizedDescription
+                }
+            }
         }
+    }
+    public func setShowAllFiles(_ value: Bool) {
+        guard showAllFiles != value else { return }
+        showAllFiles = value
+        loadFiles()
     }
     public func closeDiff() {
         diffQuery?.cancel(); highlightQuery?.cancel()
@@ -395,7 +416,7 @@ import EfbyGitDeskDomain
     }
     public func loadDiff(id: String) {
         diffQuery?.cancel()
-        guard let repository, let context, let file = files.first(where: { $0.id == id }) else { return }
+        guard let repository, let context, let file = visibleFiles.first(where: { $0.id == id }) else { return }
         let preserveView = selectedFile == id && comparison != nil
         selectedFile = id
         if !preserveView {
@@ -420,7 +441,9 @@ import EfbyGitDeskDomain
                 }
                 diffLoading = false
                 refreshHighlighting()
-                diffText = result.patch.isEmpty ? "Cambio de metadatos o modo; los documentos se muestran completos." : result.patch
+                diffText = result.patch.isEmpty
+                    ? (file.status == "=" ? "Sin cambios; se muestran ambos documentos completos." : "Cambio de metadatos o modo; los documentos se muestran completos.")
+                    : result.patch
             } catch is CancellationError {} catch { if !Task.isCancelled, version == generation, selectedFile == id, self.context == context { self.error = error.localizedDescription; diffLoading = false } }
         }
     }

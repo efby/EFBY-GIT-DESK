@@ -2,6 +2,16 @@ import Foundation
 import EfbyGitDeskDomain
 
 public enum GitParsers {
+    public static func treeFiles(_ data: Data) throws -> [Data] {
+        try data.split(separator: 0).compactMap { record in
+            guard let tab = record.firstIndex(of: 9) else { throw DeskError("El árbol de archivos está incompleto.") }
+            let header = record[..<tab].split(separator: 32)
+            guard header.count == 3 else { throw DeskError("El árbol de archivos no es válido.") }
+            // Submodules are shown in the inventory but have no readable blob.
+            guard header[1] == Data("blob".utf8) || header[1] == Data("commit".utf8) else { return nil }
+            return Data(record[record.index(after: tab)...])
+        }
+    }
     public static func status(_ data: Data) -> RepositorySnapshot {
         let records = data.split(separator: 0, omittingEmptySubsequences: true)
         var result = RepositorySnapshot()

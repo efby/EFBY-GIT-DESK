@@ -8,7 +8,7 @@ struct ComparisonWorkspaceLayer<Content: View>: View {
         self.model = model; self.content = content()
     }
     var body: some View {
-        let file = model.files.first { $0.id == model.selectedFile }
+        let file = model.visibleFiles.first { $0.id == model.selectedFile }
         ZStack {
             content.opacity(file == nil ? 1 : 0)
                 .disabled(file != nil).allowsHitTesting(file == nil).accessibilityHidden(file != nil)

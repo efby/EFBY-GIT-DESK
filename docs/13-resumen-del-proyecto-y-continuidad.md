@@ -116,6 +116,10 @@ consulta Gravatar ni se envían correos a servicios externos para obtener imáge
 Los archivos aparecen en árbol con carpetas desplegables, conteos, **Expandir todo**,
 selección e iconos/color de añadido, eliminado, modificado o renombrado. Se conservan
 bytes e identidades de rutas, incluso no UTF-8 y sustituciones archivo/directorio.
+La casilla **Todos los archivos** consulta el árbol del commit de destino o el índice
+para incluir archivos sin cambios; la lista de modificaciones conserva los eliminados.
+El árbol se construye fuera del actor principal. La cabecera de repositorios muestra
+el icono de EFBY Git Desk ya incorporado al bundle en lugar de las letras «EF».
 No se agregaron controles de ordenamiento ni selector Path/File. Las filas compactas
 usan 3 puntos de padding vertical en lugar de 7, separación interna de carpeta 0
 y raíz 1; se redujo margen del texto de ayuda y Expandir todo sin reducir la fuente.

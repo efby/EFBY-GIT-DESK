@@ -103,5 +103,7 @@ El botón **Cerrar**, con fondo rojo, vuelve al repositorio; Esc mantiene la mis
 
 El visor de diferencias mantiene **Comparación A→B** a la derecha, con sus commits y lista de archivos. Haz clic en otro archivo para sustituir los documentos sin cerrar la comparación. El archivo actual queda marcado y el separador permite adaptar el ancho, compartido con el panel de la pantalla principal y guardado entre sesiones. **Cerrar** o Esc vuelve al workspace con la selección de commits conservada. También funciona con el detalle de un commit y las comparaciones del índice/working tree.
 
+La casilla **Todos los archivos** amplía el árbol a los archivos del commit de destino o del índice, según el contexto, además de los modificados. Los archivos sin cambios usan un icono neutro; al abrirlos se ven los documentos completos sin marcas de modificación. La casilla desmarcada muestra solo los cambios. Si el inventario excede el límite de 16 MB, la aplicación informa el error sin presentar una lista parcial como completa.
+
 
 El DMG de desarrollo universal y los workflows de CI/release se documentan en [DMG y GitHub Actions](12-dmg-y-github-actions.md). El paquete local está verificado con firma ad hoc; la notarización Apple y la configuración efectiva de GitHub siguen pendientes.

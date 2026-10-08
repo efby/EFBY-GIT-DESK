@@ -1,7 +1,7 @@
 import Foundation
 import EfbyGitDeskDomain
 
-struct ComparisonFileNode: Identifiable {
+struct ComparisonFileNode: Identifiable, Sendable {
     let id: String
     let name: String
     let file: FileChange?
