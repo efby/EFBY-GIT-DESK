@@ -80,13 +80,13 @@ struct DiffPane: View {
     }
     private var fileList: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 1) {
+            LazyVStack(alignment: .leading, spacing: 1) {
                 Button(allFoldersExpanded ? "Colapsar todo" : "Expandir todo") {
                     updateCollapsed(FolderExpansionPreference.toggleAll(collapsed: collapsed, visible: visibleFolderIDs))
                 }
                 .disabled(visibleFolderIDs.isEmpty)
                 .buttonStyle(.plain).padding(.bottom, 3)
-                ComparisonTreeRows(model: model, nodes: treeNodes, collapsed: collapsed, toggleFolder: toggleFolder)
+                ComparisonTreeRows(lines: ComparisonFileNode.lines(treeNodes, collapsed: collapsed), selectedFile: model.selectedFile, collapsed: collapsed, toggleFolder: toggleFolder, openFile: { model.loadDiff(id: $0) })
             }.padding(.horizontal, 12).padding(.vertical, 6).frame(maxWidth: .infinity, alignment: .leading)
         }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }

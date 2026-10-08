@@ -134,6 +134,10 @@ struct ParallelComparisonTests {
         #expect(scrolls[0].contentView.bounds.origin == .zero)
         container.jump(to: DiffJumpTarget(row: 35))
         #expect(abs(scrolls[1].contentView.bounds.origin.y - 630) < 1)
+        container.jump(to: DiffJumpTarget(row: 10, restoreOffset: CGPoint(x: 80, y: 180)))
+        #expect(abs(scrolls[0].contentView.bounds.origin.y - 180) < 1)
+        #expect(abs(scrolls[0].contentView.bounds.origin.x - 80) < 1)
+        #expect(abs(scrolls[1].contentView.bounds.origin.y - 180) < 1)
         if let path = ProcessInfo.processInfo.environment["EFBY_DIFF_PREVIEW_PATH"] {
             let window = NSWindow(contentRect: container.frame, styleMask: .borderless, backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false

@@ -1,40 +1,60 @@
 import SwiftUI
 
+struct ComparisonTreeLine: Identifiable, Sendable {
+    let id: String
+    let depth: Int
+    let name: String
+    let fileID: String?
+    let status: String
+    let fileName: String
+    let folderID: String?
+    let count: Int
+}
+
+extension ComparisonFileNode {
+    static func lines(_ nodes: [ComparisonFileNode], collapsed: Set<String>, depth: Int = 0) -> [ComparisonTreeLine] {
+        nodes.flatMap { node -> [ComparisonTreeLine] in
+            if let file = node.file {
+                return [ComparisonTreeLine(id: node.id, depth: depth, name: node.name, fileID: file.id, status: file.status, fileName: file.name, folderID: nil, count: 1)]
+            }
+            let header = ComparisonTreeLine(id: node.id, depth: depth, name: node.name, fileID: nil, status: "", fileName: "", folderID: node.id, count: node.count)
+            guard !collapsed.contains(node.id) else { return [header] }
+            return [header] + lines(node.children, collapsed: collapsed, depth: depth + 1)
+        }
+    }
+}
+
 struct ComparisonTreeRows: View {
-    @Bindable var model: DeskModel
-    let nodes: [ComparisonFileNode]
+    let lines: [ComparisonTreeLine]
+    let selectedFile: String?
     let collapsed: Set<String>
     let toggleFolder: (String) -> Void
+    let openFile: (String) -> Void
     var body: some View {
-        ForEach(nodes) { node in
-            if let file = node.file {
-                Button { model.loadDiff(id: file.id) } label: {
+        ForEach(lines) { line in
+            if let fileID = line.fileID {
+                Button { openFile(fileID) } label: {
                     HStack(spacing: 8) {
-                        Image(systemName: symbol(file.status)).foregroundStyle(tint(file.status))
-                        Text(node.name).lineLimit(1).truncationMode(.middle)
+                        Image(systemName: symbol(line.status)).foregroundStyle(tint(line.status))
+                        Text(line.name).lineLimit(1).truncationMode(.middle)
                         Spacer(minLength: 0)
-                    }.padding(.vertical, 3).padding(.horizontal, 8)
+                    }.padding(.vertical, 3).padding(.leading, 8 + CGFloat(line.depth) * 18).padding(.trailing, 8)
                         .contentShape(Rectangle())
-                        .background(model.selectedFile == file.id ? Color.accentColor.opacity(0.22) : .clear)
-                }.buttonStyle(.plain).help(file.name)
-                    .accessibilityIdentifier("comparisonFile-" + file.id)
-                    .accessibilityLabel("\(file.status == "=" ? "Sin cambios" : file.status): Ver \(file.status == "=" ? "contenido" : "diferencias") de \(file.name)")
-            } else {
-                VStack(alignment: .leading, spacing: 0) {
-                    Button { toggleFolder(node.id) } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: collapsed.contains(node.id) ? "chevron.right" : "chevron.down")
-                                .font(.caption).frame(width: 12)
-                            Text(node.name).lineLimit(1)
-                            Text("\(node.count)").font(.caption).foregroundStyle(.secondary)
-                            Spacer(minLength: 0)
-                        }.padding(.vertical, 3).foregroundStyle(.secondary).contentShape(Rectangle())
-                    }.buttonStyle(.plain)
-                        .accessibilityLabel("\(collapsed.contains(node.id) ? "Expandir" : "Contraer") carpeta \(node.name), \(node.count) archivos")
-                    if !collapsed.contains(node.id) {
-                        ComparisonTreeRows(model: model, nodes: node.children, collapsed: collapsed, toggleFolder: toggleFolder).padding(.leading, 18)
-                    }
-                }
+                        .background(selectedFile == fileID ? Color.accentColor.opacity(0.22) : .clear)
+                }.buttonStyle(.plain).help(line.fileName)
+                    .accessibilityIdentifier("comparisonFile-" + fileID)
+                    .accessibilityLabel("\(line.status == "=" ? "Sin cambios" : line.status): Ver \(line.status == "=" ? "contenido" : "diferencias") de \(line.fileName)")
+            } else if let folderID = line.folderID {
+                Button { toggleFolder(folderID) } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: collapsed.contains(folderID) ? "chevron.right" : "chevron.down")
+                            .font(.caption).frame(width: 12)
+                        Text(line.name).lineLimit(1)
+                        Text("\(line.count)").font(.caption).foregroundStyle(.secondary)
+                        Spacer(minLength: 0)
+                    }.padding(.vertical, 3).padding(.leading, CGFloat(line.depth) * 18).foregroundStyle(.secondary).contentShape(Rectangle())
+                }.buttonStyle(.plain)
+                    .accessibilityLabel("\(collapsed.contains(folderID) ? "Expandir" : "Contraer") carpeta \(line.name), \(line.count) archivos")
             }
         }
     }

@@ -182,11 +182,11 @@ public actor GitAdapter: GitRepositoryPort {
         return Array(Set(paths)).sorted { $0.lexicographicallyPrecedes($1) }
             .map { FileChange(path: $0, status: "=") }
     }
-    public func declarationPaths(_ repository: Repository, context: DiffContext, names: [String]) async throws -> [String] {
+    public func declarationHits(_ repository: Repository, context: DiffContext, names: [String]) async throws -> [DeclarationHit] {
         let names = Array(names.filter { $0.range(of: #"^[A-Za-z_$][A-Za-z0-9_$]*$"#, options: .regularExpression) != nil }.prefix(40))
         guard !names.isEmpty else { return [] }
-        let pattern = "(^|[^A-Za-z0-9_$])(" + names.joined(separator: "|") + ")[[:space:]]*\\("
-        var arguments = ["grep", "-z", "-n", "-I", "--no-textconv", "--no-color", "--max-count=8", "-E", pattern]
+        let pattern = "(^|[^A-Za-z0-9_$.])(" + names.joined(separator: "|") + ")[[:space:]]*(<[^;]{0,200}>)?[[:space:]]*\\("
+        var arguments = ["grep", "-z", "-n", "-I", "--no-textconv", "--no-color", "-E", pattern]
         let prefix: String
         switch context {
         case .commits(let pair):
@@ -206,24 +206,35 @@ public actor GitAdapter: GitRepositoryPort {
             prefix = ""
         }
         arguments.append("--")
-        let result = try await run(arguments, directory: repository.path, trusted: repository.trusted, limit: 512 * 1024, allowFailure: true)
-        if result.truncated || (result.status != 0 && result.status != 1) { return [] }
-        return Self.grepPaths(result.output, prefix: prefix)
+        arguments.append(contentsOf: [":(glob)**/*.py", ":(glob)**/*.pyi", ":(glob)**/*.pyw", ":(glob)**/*.js", ":(glob)**/*.jsx", ":(glob)**/*.mjs", ":(glob)**/*.cjs", ":(glob)**/*.ts", ":(glob)**/*.tsx", ":(glob)**/*.mts", ":(glob)**/*.cts", ":(glob)**/*.dart",
+            ":(glob,exclude)**/node_modules/**", ":(glob,exclude)**/dist/**", ":(glob,exclude)**/.next/**",
+            ":(glob,exclude)**/build/**", ":(glob,exclude)**/coverage/**", ":(glob,exclude)**/vendor/**"])
+        let result = try await run(arguments, directory: repository.path, trusted: repository.trusted,
+            environment: ["GIT_LITERAL_PATHSPECS": "0"], limit: 2 * 1024 * 1024, allowFailure: true)
+        if result.status != 0 && result.status != 1 && result.output.isEmpty { return [] }
+        return Self.grepHits(result.output, prefix: prefix)
     }
-    private static func grepPaths(_ data: Data, prefix: String) -> [String] {
-        var paths: [String] = []
-        var seen = Set<String>()
+    private static func grepHits(_ data: Data, prefix: String) -> [DeclarationHit] {
+        var hits: [DeclarationHit] = []
+        var paths = Set<String>()
         let records: [Data.SubSequence] = data.split(separator: 10, omittingEmptySubsequences: true)
-        for record in records {
+        for record in records.prefix(400) {
             let fields: [Data.SubSequence] = record.split(separator: 0, omittingEmptySubsequences: false)
-            guard let raw = fields.first.flatMap({ String(data: Data($0), encoding: .utf8) }) else { continue }
+            guard fields.count >= 3,
+                  let raw = String(data: Data(fields[0]), encoding: .utf8),
+                  let lineText = String(data: Data(fields[1]), encoding: .utf8),
+                  let line = Int(lineText),
+                  let text = String(data: Data(fields[2]), encoding: .utf8) else { continue }
             let path = prefix.isEmpty || !raw.hasPrefix(prefix) ? raw : String(raw.dropFirst(prefix.count))
             let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
-            guard ["py", "pyi", "pyw", "ts", "tsx", "mts", "cts", "dart"].contains(ext), seen.insert(path).inserted else { continue }
-            paths.append(path)
-            if paths.count >= 24 { break }
+            guard ["py", "pyi", "pyw", "js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts", "dart"].contains(ext) else { continue }
+            if !paths.contains(path) {
+                if paths.count >= 80 { continue }
+                paths.insert(path)
+            }
+            hits.append(DeclarationHit(path: path, line: line, text: text))
         }
-        return paths
+        return hits
     }
     public func diff(_ repository: Repository, context: DiffContext, file: FileChange) async throws -> String {
         guard let path = file.utf8Path else {
