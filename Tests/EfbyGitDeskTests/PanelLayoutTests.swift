@@ -51,19 +51,34 @@ import EfbyGitDeskInfrastructure
         window.appearance = NSAppearance(named: .darkAqua)
         let host = NSHostingView(rootView: WorkspaceView(model: model))
         host.sizingOptions = []; host.appearance = window.appearance; window.contentView = host
-        host.layoutSubtreeIfNeeded(); try await Task.sleep(for: .milliseconds(400)); host.layoutSubtreeIfNeeded()
-        // The nested content must also be traversed when the outer split is found.
         func allSplits(_ view: NSView) -> [PersistentSplitContainer] {
             ((view as? PersistentSplitContainer).map { [$0] } ?? []) + view.subviews.flatMap { allSplits($0) }
+        }
+        let deadline = ContinuousClock.now.advanced(by: .seconds(20))
+        while model.gitVersion.isEmpty || allSplits(host).count < 2 {
+            guard ContinuousClock.now < deadline else { break }
+            host.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(50))
         }
         let panels = allSplits(host)
         #expect(panels.count == 2)
         let sidebar = try #require(panels.first { $0.anchoredLeading })
         let comparison = try #require(panels.first { !$0.anchoredLeading })
+        let initial = ContinuousClock.now.advanced(by: .seconds(20))
+        while abs(sidebar.arrangedSubviews[0].frame.width - 340) >= 1 || abs(comparison.arrangedSubviews[1].frame.width - 340) >= 1 {
+            guard ContinuousClock.now < initial else { break }
+            host.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(50))
+        }
         #expect(abs(sidebar.arrangedSubviews[0].frame.width - 340) < 1)
         #expect(abs(comparison.arrangedSubviews[1].frame.width - 340) < 1)
         model.sidebarWidth = 250; model.detailWidth = 430
-        try await Task.sleep(for: .milliseconds(100)); host.layoutSubtreeIfNeeded()
+        let resized = ContinuousClock.now.advanced(by: .seconds(20))
+        while abs(sidebar.arrangedSubviews[0].frame.width - 250) >= 1 || abs(comparison.arrangedSubviews[1].frame.width - 430) >= 1 {
+            guard ContinuousClock.now < resized else { break }
+            host.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(50))
+        }
         #expect(allSplits(host).contains { $0 === sidebar })
         #expect(allSplits(host).contains { $0 === comparison })
         #expect(abs(sidebar.arrangedSubviews[0].frame.width - 250) < 1)

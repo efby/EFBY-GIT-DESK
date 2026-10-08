@@ -167,9 +167,13 @@ import EfbyGitDeskInfrastructure
         let probe = NSView()
         let hosting = NSHostingView(rootView: ComparisonWorkspaceLayer(model: model) { WorkspaceRetentionProbe(view: probe) })
         hosting.appearance = window.appearance; hosting.sizingOptions = []; window.contentView = hosting
-        hosting.layoutSubtreeIfNeeded(); try await Task.sleep(for: .milliseconds(100)); hosting.layoutSubtreeIfNeeded()
         func splits(_ view: NSView) -> [PersistentSplitContainer] {
             ((view as? PersistentSplitContainer).map { [$0] } ?? []) + view.subviews.flatMap { splits($0) }
+        }
+        try await waitUntil {
+            hosting.layoutSubtreeIfNeeded()
+            guard let split = splits(hosting).first, split.arrangedSubviews.count > 1 else { return false }
+            return abs(split.arrangedSubviews[1].frame.width - 340) < 1
         }
         let split = try #require(splits(hosting).first)
         let navigator = split.arrangedSubviews[1]
@@ -180,7 +184,10 @@ import EfbyGitDeskInfrastructure
         #expect(model.selectedFile == script.id)
         #expect(model.diffLoading)
         try await waitUntil { !model.diffLoading && model.comparison?.after?.contains("print('new')") == true }
-        try await Task.sleep(for: .milliseconds(100)); hosting.layoutSubtreeIfNeeded()
+        try await waitUntil {
+            hosting.layoutSubtreeIfNeeded()
+            return splits(hosting).first === split && split.arrangedSubviews[1] === navigator
+        }
         #expect(splits(hosting).first === split)
         #expect(split.arrangedSubviews[1] === navigator)
         #expect(probe.window === window)
@@ -248,7 +255,7 @@ import EfbyGitDeskInfrastructure
     }
 
     private func waitUntil(_ condition: () -> Bool) async throws {
-        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        let deadline = ContinuousClock.now.advanced(by: .seconds(20))
         while !condition() {
             guard ContinuousClock.now < deadline else { throw CocoaError(.fileReadUnknown) }
             try await Task.sleep(for: .milliseconds(20))
