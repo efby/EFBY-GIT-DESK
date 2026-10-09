@@ -411,3 +411,15 @@ integración verifica eventos de inicio y fin por cada repositorio temporal y
 revalidación de identidad. Se ejecutaron las 104 pruebas de 23 suites con éxito
 (102 aprobadas y 2 optativas omitidas). No se confirmó confianza sobre los
 repositorios personales del equipo.
+
+## Cabeceras compactas — 9 de octubre de 2026
+
+Se retiró el logotipo y nombre duplicados del lateral; ahora su cabecera dice
+**Explorador**, mientras EFBY Git Desk permanece en la barra superior. La
+cabecera central reemplaza el nombre repetido del repositorio por las dos
+carpetas superiores de su ubicación, junto a la rama; la pestaña conserva el
+nombre del repositorio. Se mantuvieron **Pendientes**, **Preparados** e
+**Historial**. La ruta completa se ofrece como ayuda y etiqueta de accesibilidad.
+En la ventana real se comprobó el ejemplo **PAY / CATALAGO** con `master`, el
+lateral más compacto y las tres pestañas. La suite local completó 104 pruebas
+registradas en 23 suites; el bundle recompiló con firma ad hoc.

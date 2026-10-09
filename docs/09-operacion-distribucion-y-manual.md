@@ -26,6 +26,12 @@ En un clon nuevo, primero se transfieren objetos sin checkout. La aplicación ex
 
 ## 3. Uso cotidiano
 
+La marca EFBY Git Desk queda en la barra superior. El lateral **Explorador**
+agrupa proyectos; la pestaña activa muestra el nombre del repositorio y la
+cabecera central muestra sus carpetas superiores y la rama. La ruta completa
+puede consultarse al pasar el cursor. Las vistas **Pendientes**,
+**Preparados** e **Historial** permanecen separadas.
+
 El gestor busca por nombre, ruta y grupo. «Cerrar» cierra una pestaña; «Quitar» elimina una referencia del catálogo local; ninguna de esas acciones elimina la carpeta del repositorio. Favoritos y grupos son locales a EFBY Git Desk.
 
 Debajo del árbol de proyectos, «Fetch de todos» abre inmediatamente un panel de progreso y visita secuencialmente los remotos de los repositorios confiables registrados. El panel muestra el repositorio/remoto en curso, añade cada resultado y permite cancelar antes de presentar el resumen. Los no confiables, los de solo inspección y los que carecen de remotos se indican como omitidos; los errores de un remoto no detienen los siguientes. «Confiar en todos» presenta antes la lista exacta de repositorios pendientes y advierte que Git podrá ejecutar hooks, filtros y auxiliares y que un clon pendiente puede hacer checkout. Tras confirmar, esa misma hoja muestra el progreso por repositorio, permite cancelar y conserva el resumen; se comprueba de nuevo cada identidad y una discrepancia no recibe confianza. Ninguno de los dos botones actúa automáticamente al abrir una carpeta.

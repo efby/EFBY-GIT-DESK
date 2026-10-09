@@ -26,12 +26,10 @@ struct RepositorySidebar: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(nsImage: NSApplication.shared.applicationIconImage)
-                    .resizable().scaledToFit().frame(width: 52, height: 52)
-                    .accessibilityLabel("Logo de EFBY Git Desk")
-                Text("EFBY Git Desk").font(.headline)
-            }.padding(.horizontal, 16).padding(.top, 14)
+            Text("Explorador")
+                .font(.headline)
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
             TextField("Buscar en todos los proyectos", text: $model.repositorySearch).textFieldStyle(.roundedBorder).padding(.horizontal, 12)
             List(selection: $model.sidebarSelection) {
                 if !model.repositorySearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

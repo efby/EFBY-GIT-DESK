@@ -47,9 +47,10 @@ Git en sus subcarpetas y construye un árbol navegable. La búsqueda encuentra
 repositorios por nombre, ruta o grupo aun con carpetas contraídas. El descubrimiento
 no concede confianza ni ejecuta hooks; informa resultados parciales y permite cancelar.
 
-La cabecera lateral muestra solo el nombre EFBY Git Desk; Bitbucket Cloud permanece
-como conexión opcional. Bajo el árbol, tres botones de igual ancho permiten agregar
-carpeta, hacer **Fetch de todos** y **Confiar en todos**. El fetch recorre los remotos
+La marca EFBY Git Desk está en la barra superior. El lateral se titula
+**Explorador** y Bitbucket Cloud permanece como conexión opcional. Bajo el árbol,
+tres botones de igual ancho permiten agregar carpeta, hacer **Fetch de todos** y
+**Confiar en todos**. El fetch recorre los remotos
 de cada repositorio confiable de forma secuencial, revalida identidad antes de leer
 remotos y conserva un resultado por remoto; omite los no confiables, los de solo
 inspección y los que no tienen remoto. Un error individual no detiene los demás.
@@ -73,6 +74,11 @@ las ramas están en el menú **Ramas**, sin el antiguo lateral de área de traba
 Los paneles son redimensionables y recuerdan ancho. Los valores iniciales registrados
 son 340 puntos para comparación y lateral; el mínimo del lateral es 210. El visor
 reserva espacio para documentos y el navegador de archivos según tamaño disponible.
+
+La pestaña activa ya identifica el repositorio. La cabecera central muestra como
+contexto sus dos carpetas superiores y la rama, con la ruta completa en ayuda y
+accesibilidad. **Pendientes**, **Preparados** e **Historial** se conservan como
+estados distintos.
 
 Se implementaron ramas, staging por archivo, commit del índice, fetch, pull solo
 fast-forward y push con destino explícito. Historial paginado, grafo, búsqueda y SHA
