@@ -47,12 +47,42 @@ Git en sus subcarpetas y construye un árbol navegable. La búsqueda encuentra
 repositorios por nombre, ruta o grupo aun con carpetas contraídas. El descubrimiento
 no concede confianza ni ejecuta hooks; informa resultados parciales y permite cancelar.
 
+La marca EFBY Git Desk está en la barra superior junto a un símbolo de ramas
+cian del tamaño del anterior logotipo. El lateral se titula **Explorador**, con
+símbolo de panel, y Bitbucket Cloud permanece
+como conexión opcional. Bajo el árbol,
+tres botones de igual ancho permiten agregar carpeta, hacer **Fetch de todos** y
+**Confiar en todos**. El fetch recorre los remotos
+de cada repositorio confiable de forma secuencial, revalida identidad antes de leer
+remotos y conserva un resultado por remoto; omite los no confiables, los de solo
+inspección y los que no tienen remoto. Un error individual no detiene los demás.
+El panel de progreso aparece al iniciar, indica el proyecto/remoto en curso y
+añade resultados uno por uno. Permite cancelar y conserva el resumen al terminar.
+La confianza global requiere revisar la lista de pendientes y confirmar una advertencia
+sobre hooks/filtros/auxiliares, terminal y checkout de clones. Tras confirmar,
+la misma hoja muestra el progreso por repositorio y permite cancelar o revisar
+el resumen final. `DeskService.trust` revalida cada identidad; no se confía en
+worktrees vinculados ni repositorios que
+solo admiten inspección. Ambos procesos admiten cancelación y muestran resultados
+parciales. La comprobación visual de la hoja se hizo sin ejecutar confianza sobre
+los repositorios personales del equipo.
+La suite local de esta rama terminó con 104 pruebas registradas, 102 aprobadas
+y 2 optativas omitidas en 23 suites; el bundle de desarrollo compiló con firma
+ad hoc verificada. No se generó ni comprobó un DMG de distribución.
+
 El workspace ocupa el área disponible incluso sin seleccionar commits. Las acciones
 se presentan en pestañas **Pendientes**, **Preparados** e **Historial**, con contadores;
 las ramas están en el menú **Ramas**, sin el antiguo lateral de área de trabajo.
 Los paneles son redimensionables y recuerdan ancho. Los valores iniciales registrados
 son 340 puntos para comparación y lateral; el mínimo del lateral es 210. El visor
 reserva espacio para documentos y el navegador de archivos según tamaño disponible.
+
+La pestaña activa ya identifica el repositorio. La cabecera central muestra como
+contexto sus dos carpetas superiores y la rama, con la ruta completa en ayuda y
+accesibilidad. **Pendientes**, **Preparados** e **Historial** se conservan como
+estados distintos.
+El visor de archivos extiende ese contexto a **carpetas / repositorio / archivo**
+en su cabecera y ofrece la ruta absoluta como ayuda.
 
 Se implementaron ramas, staging por archivo, commit del índice, fetch, pull solo
 fast-forward y push con destino explícito. Historial paginado, grafo, búsqueda y SHA
@@ -130,6 +160,8 @@ y raíz 1; se redujo margen del texto de ayuda y Expandir todo sin reducir la fu
 Se retiraron las cabeceras duplicadas Documento 1/Documento 2, SHA y ruta sobre el
 código, porque las tarjetas y la barra del archivo ya identifican el contexto.
 El aviso de falta de salto de línea final sigue visible solo cuando corresponde.
+Los archivos CRLF se dibujan sin símbolos de retorno de carro al final de cada
+línea; sus bytes originales siguen disponibles para la comparación.
 
 Ambos documentos sincronizan scroll horizontal y vertical, con números originales
 y huecos cuando no hay correspondencia. La barra **Modificaciones**, navegación al

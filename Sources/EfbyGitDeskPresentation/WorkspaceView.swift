@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import EfbyGitDeskApplication
 import EfbyGitDeskDomain
 
 public struct WorkspaceView: View {
@@ -60,6 +61,13 @@ public struct WorkspaceView: View {
         .tint(.teal).preferredColorScheme(.dark)
         .frame(minWidth: 1120, minHeight: 700)
         .toolbar {
+            ToolbarItem(placement: .navigation) {
+                GitBranchMark()
+                    .stroke(Color(red: 0.08, green: 0.70, blue: 0.78),
+                            style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+                    .frame(width: 22, height: 22)
+                    .accessibilityHidden(true)
+            }
             if model.selectedFile == nil {
                 ToolbarItemGroup {
                     Button("Abrir carpeta", systemImage: "folder.badge.plus") { model.chooseRepository() }.keyboardShortcut("o")
@@ -92,6 +100,9 @@ public struct WorkspaceView: View {
         .sheet(isPresented: $cloning) { CloneSheet(model: model) }
         .sheet(isPresented: $newBranch) { BranchSheet(model: model) }
         .sheet(isPresented: $pushing) { PushSheet(model: model) }
+        .sheet(item: $model.bulkProgress) { progress in
+            BulkRepositoryProgressSheet(progress: progress) { model.cancelOperation() }
+        }
         .sheet(isPresented: $model.showAmend) { AmendSheet(model: model) }
         .sheet(item: $model.plan, onDismiss: { if !model.busy { model.cancelPlan(); model.unpause() } }) { plan in
             AmendConfirmation(model: model, plan: plan)
@@ -100,7 +111,16 @@ public struct WorkspaceView: View {
     private var topBar: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(model.repository?.name ?? "EFBY Git Desk").font(.headline)
+                if let repository = model.repository {
+                    Text(Self.parentContext(for: repository.path))
+                        .font(.headline)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .help(repository.path)
+                        .accessibilityLabel("Ubicación del proyecto: \(repository.path)")
+                } else {
+                    Text("Selecciona un proyecto").font(.headline)
+                }
                 Label(model.snapshot.branch.isEmpty ? "Sin rama" : model.snapshot.branch, systemImage: "arrow.triangle.branch")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -117,6 +137,12 @@ public struct WorkspaceView: View {
             Button("Terminal", systemImage: "terminal") { model.terminalVisible.toggle(); model.persistLayout() }
                 .keyboardShortcut("j").disabled(model.repository?.trusted != true)
         }.buttonStyle(.bordered).controlSize(.small).padding(12)
+    }
+    static func parentContext(for path: String) -> String {
+        let parent = URL(fileURLWithPath: path).deletingLastPathComponent()
+        let components = parent.pathComponents.filter { $0 != "/" }
+        let context = components.suffix(2).joined(separator: " / ")
+        return context.isEmpty ? parent.path : context
     }
     private var welcome: some View {
         VStack(spacing: 22) {

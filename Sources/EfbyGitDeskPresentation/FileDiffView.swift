@@ -26,9 +26,10 @@ struct FileDiffView: View {
                     .keyboardShortcut(.escape, modifiers: [])
                     .accessibilityIdentifier("closeComparison")
                     .help("Cerrar solo el visor y volver al repositorio (Esc)")
-                Label(file.name, systemImage: "doc.text")
+                Label(fileBreadcrumb, systemImage: "doc.text")
                     .font(.caption.monospaced()).lineLimit(1).truncationMode(.middle)
                     .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                    .help(fullFilePath)
                 Picker("Formato de código", selection: $model.syntaxLanguage) {
                     ForEach(CodeLanguage.allCases) { language in Text(language.rawValue).tag(language) }
                 }.labelsHidden().frame(width: 180).help("Detectar el lenguaje por extensión o elegirlo manualmente")
@@ -72,6 +73,16 @@ struct FileDiffView: View {
     private var returnTitle: String {
         guard let name = model.linkTrail.last?.name.split(separator: "/").last else { return "Volver" }
         return "Volver a \(name)"
+    }
+
+    private var fileBreadcrumb: String {
+        guard let repository = model.repository else { return file.name }
+        return "\(WorkspaceView.parentContext(for: repository.path)) / \(repository.name) / \(file.name)"
+    }
+
+    private var fullFilePath: String {
+        guard let repository = model.repository else { return file.name }
+        return URL(fileURLWithPath: repository.path).appendingPathComponent(file.name).path
     }
 
     private func missingFinalNewline(_ comparison: FileComparison) -> String {

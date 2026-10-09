@@ -25,7 +25,9 @@ struct TextPreview: NSViewRepresentable {
         let value = NSMutableAttributedString(string: "")
         for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
             let color: NSColor = line.hasPrefix("+") ? .systemGreen : (line.hasPrefix("-") ? .systemRed : (line.hasPrefix("@@") ? .systemTeal : .textColor))
-            value.append(NSAttributedString(string: String(line) + "\n", attributes: [
+            var visible = String(line)
+            if visible.hasSuffix("\r") { visible.removeLast() }
+            value.append(NSAttributedString(string: visible + "\n", attributes: [
                 .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular), .foregroundColor: color
             ]))
         }

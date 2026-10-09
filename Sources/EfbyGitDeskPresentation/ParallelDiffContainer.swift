@@ -93,10 +93,7 @@ import AppKit
         paragraph.tabStops = []; paragraph.defaultTabInterval = 32
         for (index, row) in rows.enumerated() {
             let number = before ? row.beforeNumber : row.afterNumber
-            let content = ((before ? row.before : row.after) ?? "")
-                .replacingOccurrences(of: "\r", with: "␍")
-                .replacingOccurrences(of: "\u{2028}", with: "↵")
-                .replacingOccurrences(of: "\u{2029}", with: "¶")
+            let content = displayContent(before ? row.before : row.after)
             let marker = row.changed ? (number == nil ? "·" : (before ? "−" : "+")) : " "
             let line = (number.map { String(format: "%5d", $0) } ?? "     ") + " " + marker + " │ " + content
             let isNewLine = row.before == nil && row.after != nil
@@ -173,10 +170,7 @@ import AppKit
         var offset = 0
         for (index, row) in rows.enumerated() {
             let number = before ? row.beforeNumber : row.afterNumber
-            let content = ((before ? row.before : row.after) ?? "")
-                .replacingOccurrences(of: "\r", with: "␍")
-                .replacingOccurrences(of: "\u{2028}", with: "↵")
-                .replacingOccurrences(of: "\u{2029}", with: "¶")
+            let content = displayContent(before ? row.before : row.after)
             let marker = row.changed ? (number == nil ? "·" : (before ? "−" : "+")) : " "
             let line = (number.map { String(format: "%5d", $0) } ?? "     ") + " " + marker + " │ " + content
             let prefix = line.utf16.count - content.utf16.count
@@ -265,6 +259,15 @@ import AppKit
     private func estimatedColumns(_ text: String?) -> Int {
         guard let text else { return 0 }
         return text.utf16.count + text.utf16.reduce(0) { $0 + ($1 == 9 ? 3 : 0) }
+    }
+    private func displayContent(_ text: String?) -> String {
+        var content = text ?? ""
+        // DiffAlignment keeps CRLF intact; only omit the line terminator in the editor.
+        if content.hasSuffix("\r") { content.removeLast() }
+        return content
+            .replacingOccurrences(of: "\r", with: "␍")
+            .replacingOccurrences(of: "\u{2028}", with: "↵")
+            .replacingOccurrences(of: "\u{2029}", with: "¶")
     }
     override func layout() {
         super.layout()

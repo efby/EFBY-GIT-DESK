@@ -26,7 +26,19 @@ En un clon nuevo, primero se transfieren objetos sin checkout. La aplicación ex
 
 ## 3. Uso cotidiano
 
+La marca EFBY Git Desk queda en la barra superior. El lateral **Explorador**
+agrupa proyectos; la pestaña activa muestra el nombre del repositorio y la
+cabecera central muestra sus carpetas superiores y la rama. La ruta completa
+puede consultarse al pasar el cursor. Las vistas **Pendientes**,
+**Preparados** e **Historial** permanecen separadas.
+
+Al abrir un archivo en el visor de diferencias, su cabecera conserva la
+referencia **carpetas superiores / repositorio / ruta del archivo**; la ruta
+absoluta está disponible como ayuda al pasar el cursor.
+
 El gestor busca por nombre, ruta y grupo. «Cerrar» cierra una pestaña; «Quitar» elimina una referencia del catálogo local; ninguna de esas acciones elimina la carpeta del repositorio. Favoritos y grupos son locales a EFBY Git Desk.
+
+Debajo del árbol de proyectos, «Fetch de todos» abre inmediatamente un panel de progreso y visita secuencialmente los remotos de los repositorios confiables registrados. El panel muestra el repositorio/remoto en curso, añade cada resultado y permite cancelar antes de presentar el resumen. Los no confiables, los de solo inspección y los que carecen de remotos se indican como omitidos; los errores de un remoto no detienen los siguientes. «Confiar en todos» presenta antes la lista exacta de repositorios pendientes y advierte que Git podrá ejecutar hooks, filtros y auxiliares y que un clon pendiente puede hacer checkout. Tras confirmar, esa misma hoja muestra el progreso por repositorio, permite cancelar y conserva el resumen; se comprueba de nuevo cada identidad y una discrepancia no recibe confianza. Ninguno de los dos botones actúa automáticamente al abrir una carpeta.
 
 En la vista de trabajo, la cabecera muestra repositorio, rama y remoto. «Obtener cambios (fetch)» actualiza referencias. «Traer cambios (pull)» admite fast-forward; si existe divergencia, muestra las alternativas y requiere resolverla explícitamente por terminal en v1. «Enviar cambios (push)» muestra el destino antes de ejecutarse. El servidor puede rechazar el envío aunque la conexión funcione.
 
@@ -36,7 +48,7 @@ El terminal inferior comienza en la carpeta del repositorio y conserva su contex
 
 ## 4. Comparar commits y copiar SHA
 
-Entrar en comparación y seleccionar A y B. El commit inferior del historial es la base y el superior es el destino, independientemente del orden de selección. Con exactamente dos commits, la lista muestra los cambios para pasar de A a B. Seleccionar un archivo abre ambas versiones completas en columnas paralelas, con números de línea y cambios resaltados. Una tercera selección requiere quitar primero uno de los extremos.
+Entrar en comparación y seleccionar A y B. El commit inferior del historial es la base y el superior es el destino, independientemente del orden de selección. Con exactamente dos commits, la lista muestra los cambios para pasar de A a B. Seleccionar un archivo abre ambas versiones completas en columnas paralelas, con números de línea y cambios resaltados. Una tercera selección sobre otro commit pregunta si se desea sustituir el par; cancelar lo conserva y aceptar deja seleccionado el último commit pulsado.
 
 La comparación muestra todos los archivos detectados aunque un binario o archivo grande no pueda representarse como texto. Un filtro puede ocultar filas visualmente, pero se indica el total y el filtro activo. Si los árboles son iguales, el resultado informa que no hay diferencias aunque los SHA sean distintos.
 

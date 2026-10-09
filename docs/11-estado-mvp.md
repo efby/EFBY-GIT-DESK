@@ -363,3 +363,101 @@ opcionales omitidas** en 22 suites; compilación del bundle de
 desarrollo y verificación `codesign` correctas. Se añadieron casos para
 comentarios, sobrecargas, cambio de línea en un archivo de destino Git y
 activación por teclado. No equivale a una validación del DMG distribuido.
+
+## Acciones globales de repositorios — 9 de octubre de 2026
+
+Se retiró «BITBUCKET CLOUD» del subtítulo del logo. El lateral agrupa y alinea
+**Agregar carpeta**, **Fetch de todos** y **Confiar en todos**. La confianza global
+requiere una hoja con rutas y advertencia antes de actuar. El servicio revalida
+la identidad de cada proyecto, omite los incompatibles y muestra resultados por
+repositorio. Fetch global usa los remotos de cada repositorio confiable, continúa
+ante errores individuales e informa omisiones y cancelaciones. No ejecuta pull,
+checkout ni concede confianza de manera implícita al pulsar fetch.
+El panel de progreso se presenta desde el inicio y añade un resultado al acabar
+cada proyecto/remoto, mostrando también la operación en curso y una opción de
+cancelación. La prueba con remotos locales verifica el orden de eventos inicio/fin.
+
+Las pruebas de integración usan repositorios y remotos locales temporales para
+verificar varios remotos, proyectos sin confianza o sin remoto, un remoto no
+admitido y una identidad reemplazada. El bundle de desarrollo se abrió en macOS:
+se comprobaron el encabezado y los controles. La primera inspección descubrió
+que la hoja mostraba cero proyectos pese al contador; se corrigió vinculando la
+lista al identificador de la hoja. La segunda inspección mostró 183 pendientes y
+sus rutas, sin confirmar la confianza. Se verificó el mismo ancho y alineación
+de los tres botones en la aplicación abierta. El usuario probó fetch global en
+su instalación y la barra de estado informó 3 completados, 183 omitidos y 0
+errores; no se inspeccionó el contenido de los remotos. No se ejecutó confianza
+global sobre repositorios personales. Quedan pendientes la aceptación manual de
+ese flujo y la verificación del DMG distribuido.
+
+Tras añadir el progreso en vivo, la aplicación recompilada se abrió de nuevo y
+se pulsó **Fetch de todos**. La hoja apareció durante el proceso: mostraba
+2 completados, 133 omitidos y el remoto `origin` de `infraestructura` en curso,
+con botón para cancelar. Al terminar mostró 3 completados, 183 omitidos y 0
+errores, lista individual desplazable y botón **Cerrar**. Esta comprobación no
+equivale a inspeccionar el contenido de los remotos ni al DMG distribuido.
+
+Validación local de esta rama: **104 pruebas registradas en 23 suites, 102
+aprobadas y 2 optativas omitidas**; `scripts/build-app.sh` compiló el bundle y
+verificó su firma ad hoc. Se revisaron enlaces Markdown y `git diff --check`.
+
+## Progreso de confianza global — 9 de octubre de 2026
+
+Después de la confirmación explícita, la misma hoja de **Confiar en todos**
+cambia al panel de progreso. Indica el repositorio que está verificando, añade
+cada resultado al terminar y ofrece cancelación; el resumen queda visible hasta
+cerrarlo. Así no depende de cerrar una hoja para presentar otra. La prueba de
+integración verifica eventos de inicio y fin por cada repositorio temporal y
+revalidación de identidad. Se ejecutaron las 104 pruebas de 23 suites con éxito
+(102 aprobadas y 2 optativas omitidas). No se confirmó confianza sobre los
+repositorios personales del equipo.
+
+## Cabeceras compactas — 9 de octubre de 2026
+
+Se retiró el logotipo y nombre duplicados del lateral; ahora su cabecera dice
+**Explorador**, mientras EFBY Git Desk permanece en la barra superior. La
+cabecera central reemplaza el nombre repetido del repositorio por las dos
+carpetas superiores de su ubicación, junto a la rama; la pestaña conserva el
+nombre del repositorio. Se mantuvieron **Pendientes**, **Preparados** e
+**Historial**. La ruta completa se ofrece como ayuda y etiqueta de accesibilidad.
+En la ventana real se comprobó el ejemplo **PAY / CATALAGO** con `master`, el
+lateral más compacto y las tres pestañas. La suite local completó 104 pruebas
+registradas en 23 suites; el bundle recompiló con firma ad hoc.
+
+El refinamiento siguiente colocó el símbolo nativo de panel junto a
+**Explorador** y el icono de la aplicación junto a **EFBY Git Desk** en la barra
+superior. Se comprobó en la ventana real que ambos aparecen en esas posiciones
+y que el logo no vuelve al lateral.
+
+## Ruta del archivo en el visor — 9 de octubre de 2026
+
+La cabecera del visor de diferencias ahora conserva el contexto de las dos
+carpetas superiores, el repositorio y la ruta del archivo. La ruta absoluta se
+muestra como ayuda y los nombres largos se acortan visualmente en el centro.
+En la app abierta se comprobó **PAY / CATALAGO / catalogo_cliente_post /
+src/lambda_handler.py** con la comparación A→B a la derecha. Pasaron 104
+pruebas registradas en 23 suites y la compilación local del bundle.
+
+## Finales de línea CRLF en el visor — 9 de octubre de 2026
+
+Las líneas con CRLF conservan el retorno de carro en el contenido original para
+la alineación y comparación, pero el editor omite ese terminador al dibujar cada
+línea. Ya no aparece el símbolo `␍` al final de líneas iguales o modificadas.
+La misma regla se aplica al resumen textual de un diff. Una prueba nativa
+comprueba ambas columnas y confirma que las filas originales mantienen CRLF.
+La suite local registró 105 pruebas en 23 suites (103 aprobadas y 2 optativas
+omitidas), y el bundle de desarrollo compiló y verificó su firma ad hoc.
+La app del usuario estaba ocupada con «Fetch de todos», por lo que no se
+interrumpió esa operación para recargarla visualmente.
+
+## Símbolo de Git en la marca superior — 9 de octubre de 2026
+
+La barra superior reemplaza el logotipo junto a «EFBY Git Desk» por un trazado
+de rama con dos nodos circulares, en cian y con el mismo marco de 22 × 22 puntos.
+La marca escrita conserva su etiqueta accesible; el símbolo es decorativo. El
+icono del bundle y del Dock no cambian.
+
+La suite local registró 105 pruebas en 23 suites (103 aprobadas y 2 optativas
+omitidas), y el bundle ad hoc compiló.
+Tras reiniciar la app se comprobó visualmente el trazado de dos nodos junto
+al nombre en la barra superior.
