@@ -80,6 +80,8 @@ La pestaña activa ya identifica el repositorio. La cabecera central muestra com
 contexto sus dos carpetas superiores y la rama, con la ruta completa en ayuda y
 accesibilidad. **Pendientes**, **Preparados** e **Historial** se conservan como
 estados distintos.
+El visor de archivos extiende ese contexto a **carpetas / repositorio / archivo**
+en su cabecera y ofrece la ruta absoluta como ayuda.
 
 Se implementaron ramas, staging por archivo, commit del índice, fetch, pull solo
 fast-forward y push con destino explícito. Historial paginado, grafo, búsqueda y SHA

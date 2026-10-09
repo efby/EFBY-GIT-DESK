@@ -37,7 +37,7 @@ Las pestañas **Pendientes**, **Preparados** e **Historial** cambian la vista de
 
 La pestaña activa identifica el repositorio; la cabecera central muestra sus dos carpetas superiores como contexto (por ejemplo, **PAY / CATALAGO**) y la rama. La ruta completa está disponible al pasar el cursor o mediante accesibilidad. La cabecera **Explorador** lleva el símbolo de panel y el logo de la app acompaña la marca en la barra superior.
 
-El repositorio ocupa todo el espacio disponible incluso sin seleccionar commits. Selecciona un commit (o dos para comparar A→B) y haz clic en un archivo para abrir su diff. El compare cubre el área de la misma ventana de la app, conservando montada la vista del repositorio y sus sesiones, sin activar el fullscreen de macOS. **Cerrar** o `Esc` recuperan la vista anterior; cambiar la selección de commits cierra el visor.
+El repositorio ocupa todo el espacio disponible incluso sin seleccionar commits. Selecciona un commit (o dos para comparar A→B) y haz clic en un archivo para abrir su diff. El visor muestra en su cabecera el contexto **carpetas / repositorio / archivo** y ofrece la ruta absoluta al pasar el cursor. El compare cubre el área de la misma ventana de la app, conservando montada la vista del repositorio y sus sesiones, sin activar el fullscreen de macOS. **Cerrar** o `Esc` recuperan la vista anterior; cambiar la selección de commits cierra el visor.
 
 En el panel de archivos, **Todos los archivos** muestra también los archivos sin cambios del árbol seleccionado para revisar código. Desmarcado, vuelve al inventario de modificaciones. Los archivos eliminados siguen visibles al mostrar todos; un archivo sin cambios abre sus dos documentos completos al hacer clic. La cabecera lateral usa el logo de la app.
 

@@ -137,7 +137,7 @@ public struct WorkspaceView: View {
                 .keyboardShortcut("j").disabled(model.repository?.trusted != true)
         }.buttonStyle(.bordered).controlSize(.small).padding(12)
     }
-    private static func parentContext(for path: String) -> String {
+    static func parentContext(for path: String) -> String {
         let parent = URL(fileURLWithPath: path).deletingLastPathComponent()
         let components = parent.pathComponents.filter { $0 != "/" }
         let context = components.suffix(2).joined(separator: " / ")

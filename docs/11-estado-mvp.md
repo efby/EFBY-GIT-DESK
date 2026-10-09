@@ -428,3 +428,12 @@ El refinamiento siguiente colocó el símbolo nativo de panel junto a
 **Explorador** y el icono de la aplicación junto a **EFBY Git Desk** en la barra
 superior. Se comprobó en la ventana real que ambos aparecen en esas posiciones
 y que el logo no vuelve al lateral.
+
+## Ruta del archivo en el visor — 9 de octubre de 2026
+
+La cabecera del visor de diferencias ahora conserva el contexto de las dos
+carpetas superiores, el repositorio y la ruta del archivo. La ruta absoluta se
+muestra como ayuda y los nombres largos se acortan visualmente en el centro.
+En la app abierta se comprobó **PAY / CATALAGO / catalogo_cliente_post /
+src/lambda_handler.py** con la comparación A→B a la derecha. Pasaron 104
+pruebas registradas en 23 suites y la compilación local del bundle.
