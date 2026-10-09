@@ -47,8 +47,9 @@ Git en sus subcarpetas y construye un árbol navegable. La búsqueda encuentra
 repositorios por nombre, ruta o grupo aun con carpetas contraídas. El descubrimiento
 no concede confianza ni ejecuta hooks; informa resultados parciales y permite cancelar.
 
-La marca EFBY Git Desk está en la barra superior junto al icono de la app. El
-lateral se titula **Explorador**, con símbolo de panel, y Bitbucket Cloud permanece
+La marca EFBY Git Desk está en la barra superior junto a un símbolo de ramas
+cian del tamaño del anterior logotipo. El lateral se titula **Explorador**, con
+símbolo de panel, y Bitbucket Cloud permanece
 como conexión opcional. Bajo el árbol,
 tres botones de igual ancho permiten agregar carpeta, hacer **Fetch de todos** y
 **Confiar en todos**. El fetch recorre los remotos

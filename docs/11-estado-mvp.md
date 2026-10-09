@@ -449,3 +449,15 @@ La suite local registró 105 pruebas en 23 suites (103 aprobadas y 2 optativas
 omitidas), y el bundle de desarrollo compiló y verificó su firma ad hoc.
 La app del usuario estaba ocupada con «Fetch de todos», por lo que no se
 interrumpió esa operación para recargarla visualmente.
+
+## Símbolo de Git en la marca superior — 9 de octubre de 2026
+
+La barra superior reemplaza el logotipo junto a «EFBY Git Desk» por un trazado
+de rama con dos nodos circulares, en cian y con el mismo marco de 22 × 22 puntos.
+La marca escrita conserva su etiqueta accesible; el símbolo es decorativo. El
+icono del bundle y del Dock no cambian.
+
+La suite local registró 105 pruebas en 23 suites (103 aprobadas y 2 optativas
+omitidas), y el bundle ad hoc compiló.
+Tras reiniciar la app se comprobó visualmente el trazado de dos nodos junto
+al nombre en la barra superior.

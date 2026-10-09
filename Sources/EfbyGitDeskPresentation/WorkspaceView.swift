@@ -62,8 +62,9 @@ public struct WorkspaceView: View {
         .frame(minWidth: 1120, minHeight: 700)
         .toolbar {
             ToolbarItem(placement: .navigation) {
-                Image(nsImage: NSApplication.shared.applicationIconImage)
-                    .resizable()
+                GitBranchMark()
+                    .stroke(Color(red: 0.08, green: 0.70, blue: 0.78),
+                            style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
                     .frame(width: 22, height: 22)
                     .accessibilityHidden(true)
             }
