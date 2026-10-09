@@ -26,8 +26,9 @@ struct RepositorySidebar: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Explorador")
+            Label("Explorador", systemImage: "sidebar.left")
                 .font(.headline)
+                .symbolRenderingMode(.hierarchical)
                 .padding(.horizontal, 16)
                 .padding(.top, 14)
             TextField("Buscar en todos los proyectos", text: $model.repositorySearch).textFieldStyle(.roundedBorder).padding(.horizontal, 12)

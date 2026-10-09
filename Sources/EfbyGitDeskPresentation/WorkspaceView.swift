@@ -61,6 +61,12 @@ public struct WorkspaceView: View {
         .tint(.teal).preferredColorScheme(.dark)
         .frame(minWidth: 1120, minHeight: 700)
         .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Image(nsImage: NSApplication.shared.applicationIconImage)
+                    .resizable()
+                    .frame(width: 22, height: 22)
+                    .accessibilityHidden(true)
+            }
             if model.selectedFile == nil {
                 ToolbarItemGroup {
                     Button("Abrir carpeta", systemImage: "folder.badge.plus") { model.chooseRepository() }.keyboardShortcut("o")

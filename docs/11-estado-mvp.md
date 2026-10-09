@@ -423,3 +423,8 @@ nombre del repositorio. Se mantuvieron **Pendientes**, **Preparados** e
 En la ventana real se comprobó el ejemplo **PAY / CATALAGO** con `master`, el
 lateral más compacto y las tres pestañas. La suite local completó 104 pruebas
 registradas en 23 suites; el bundle recompiló con firma ad hoc.
+
+El refinamiento siguiente colocó el símbolo nativo de panel junto a
+**Explorador** y el icono de la aplicación junto a **EFBY Git Desk** en la barra
+superior. Se comprobó en la ventana real que ambos aparecen en esas posiciones
+y que el logo no vuelve al lateral.

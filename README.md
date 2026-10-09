@@ -35,7 +35,7 @@ El lateral se titula **Explorador** y muestra **Agregar carpeta**, **Fetch de to
 
 Las pestañas **Pendientes**, **Preparados** e **Historial** cambian la vista del repositorio; las dos primeras muestran sus contadores. El menú **Ramas** permite consultar ramas locales/remotas y cambiar o borrar una rama local integrada. El panel lateral de área de trabajo se eliminó para ampliar el contenido.
 
-La pestaña activa identifica el repositorio; la cabecera central muestra sus dos carpetas superiores como contexto (por ejemplo, **PAY / CATALAGO**) y la rama. La ruta completa está disponible al pasar el cursor o mediante accesibilidad.
+La pestaña activa identifica el repositorio; la cabecera central muestra sus dos carpetas superiores como contexto (por ejemplo, **PAY / CATALAGO**) y la rama. La ruta completa está disponible al pasar el cursor o mediante accesibilidad. La cabecera **Explorador** lleva el símbolo de panel y el logo de la app acompaña la marca en la barra superior.
 
 El repositorio ocupa todo el espacio disponible incluso sin seleccionar commits. Selecciona un commit (o dos para comparar A→B) y haz clic en un archivo para abrir su diff. El compare cubre el área de la misma ventana de la app, conservando montada la vista del repositorio y sus sesiones, sin activar el fullscreen de macOS. **Cerrar** o `Esc` recuperan la vista anterior; cambiar la selección de commits cierra el visor.
 
