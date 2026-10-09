@@ -2,6 +2,11 @@ import SwiftUI
 import AppKit
 import EfbyGitDeskDomain
 
+private struct BulkTrustSelection: Identifiable {
+    let id = UUID()
+    let repositories: [Repository]
+}
+
 struct RepositorySidebar: View {
     @Bindable var model: DeskModel
     @State private var editing: Repository?
@@ -11,6 +16,9 @@ struct RepositorySidebar: View {
     @State private var folderStateLoaded = false
     @State private var expansionVersion = 0
     @State private var expansionSave: Task<Void, Never>?
+    @State private var trustSelection: BulkTrustSelection?
+    @State private var pendingTrustIDs: [String] = []
+    private var untrusted: [Repository] { model.repositories.filter { !$0.trusted } }
     private var filtered: [Repository] {
         model.repositories.filter {
             model.repositorySearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || ($0.name + " " + $0.path + " " + $0.group)
@@ -23,10 +31,7 @@ struct RepositorySidebar: View {
                 Image(nsImage: NSApplication.shared.applicationIconImage)
                     .resizable().scaledToFit().frame(width: 52, height: 52)
                     .accessibilityLabel("Logo de EFBY Git Desk")
-                VStack(alignment: .leading) {
-                    Text("EFBY Git Desk").font(.headline)
-                    Text("BITBUCKET CLOUD").font(.caption2).foregroundStyle(.secondary)
-                }
+                Text("EFBY Git Desk").font(.headline)
             }.padding(.horizontal, 16).padding(.top, 14)
             TextField("Buscar en todos los proyectos", text: $model.repositorySearch).textFieldStyle(.roundedBorder).padding(.horizontal, 12)
             List(selection: $model.sidebarSelection) {
@@ -54,8 +59,31 @@ struct RepositorySidebar: View {
                 }
             }.listStyle(.sidebar)
             if filtered.isEmpty && !model.repositories.isEmpty { Text("Sin coincidencias").foregroundStyle(.secondary).padding() }
-            Button("Agregar carpeta", systemImage: "folder.badge.plus") { model.chooseRepository() }
-                .buttonStyle(.bordered).disabled(model.busy).padding(.horizontal, 12)
+            VStack(spacing: 6) {
+                Button { model.chooseRepository() } label: {
+                    Label("Agregar carpeta", systemImage: "folder.badge.plus")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .disabled(model.busy)
+                Button { model.fetchAll() } label: {
+                    Label("Fetch de todos", systemImage: "arrow.down.to.line")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .disabled(model.busy || model.repositories.isEmpty)
+                .help("Obtiene cambios de todos los remotos de los repositorios confiables. Muestra cuáles se omitieron o fallaron.")
+                Button {
+                    trustSelection = BulkTrustSelection(repositories: untrusted.sorted {
+                        $0.path.localizedStandardCompare($1.path) == .orderedAscending
+                    })
+                } label: {
+                    Label("Confiar en todos (\(untrusted.count))", systemImage: "lock.shield")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .disabled(model.busy || untrusted.isEmpty)
+                .help("Revisa los repositorios pendientes antes de conceder confianza a todos.")
+            }
+            .buttonStyle(.bordered)
+            .padding(.horizontal, 12)
             Text("\(model.repositories.count) repositorios locales").font(.caption).foregroundStyle(.secondary).padding(16)
         }
         .task(id: RepositoryTreeSnapshot(repositories: model.repositories, roots: model.folderRoots)) {
@@ -86,6 +114,17 @@ struct RepositorySidebar: View {
                     }.buttonStyle(.borderedProminent)
                 }
             }.padding(24).frame(width: 400)
+        }
+        .sheet(item: $trustSelection, onDismiss: {
+            guard !pendingTrustIDs.isEmpty else { return }
+            let ids = pendingTrustIDs
+            pendingTrustIDs = []
+            model.trustAll(ids: ids)
+        }) { selection in
+            BulkTrustSheet(repositories: selection.repositories) { ids in
+                pendingTrustIDs = ids
+                trustSelection = nil
+            }
         }
     }
     private func setFolder(_ id: String, expanded: Bool) {

@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import EfbyGitDeskApplication
 import EfbyGitDeskDomain
 
 public struct WorkspaceView: View {
@@ -92,6 +93,9 @@ public struct WorkspaceView: View {
         .sheet(isPresented: $cloning) { CloneSheet(model: model) }
         .sheet(isPresented: $newBranch) { BranchSheet(model: model) }
         .sheet(isPresented: $pushing) { PushSheet(model: model) }
+        .sheet(item: $model.bulkProgress) { progress in
+            BulkRepositoryProgressSheet(progress: progress) { model.cancelOperation() }
+        }
         .sheet(isPresented: $model.showAmend) { AmendSheet(model: model) }
         .sheet(item: $model.plan, onDismiss: { if !model.busy { model.cancelPlan(); model.unpause() } }) { plan in
             AmendConfirmation(model: model, plan: plan)

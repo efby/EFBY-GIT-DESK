@@ -47,6 +47,24 @@ Git en sus subcarpetas y construye un árbol navegable. La búsqueda encuentra
 repositorios por nombre, ruta o grupo aun con carpetas contraídas. El descubrimiento
 no concede confianza ni ejecuta hooks; informa resultados parciales y permite cancelar.
 
+La cabecera lateral muestra solo el nombre EFBY Git Desk; Bitbucket Cloud permanece
+como conexión opcional. Bajo el árbol, tres botones de igual ancho permiten agregar
+carpeta, hacer **Fetch de todos** y **Confiar en todos**. El fetch recorre los remotos
+de cada repositorio confiable de forma secuencial, revalida identidad antes de leer
+remotos y conserva un resultado por remoto; omite los no confiables, los de solo
+inspección y los que no tienen remoto. Un error individual no detiene los demás.
+El panel de progreso aparece al iniciar, indica el proyecto/remoto en curso y
+añade resultados uno por uno. Permite cancelar y conserva el resumen al terminar.
+La confianza global requiere revisar la lista de pendientes y confirmar una advertencia
+sobre hooks/filtros/auxiliares, terminal y checkout de clones. `DeskService.trust`
+revalida cada identidad; no se confía en worktrees vinculados ni repositorios que
+solo admiten inspección. Ambos procesos admiten cancelación y muestran resultados
+parciales. La comprobación visual de la hoja se hizo sin ejecutar confianza sobre
+los repositorios personales del equipo.
+La suite local de esta rama terminó con 104 pruebas registradas, 102 aprobadas
+y 2 optativas omitidas en 23 suites; el bundle de desarrollo compiló con firma
+ad hoc verificada. No se generó ni comprobó un DMG de distribución.
+
 El workspace ocupa el área disponible incluso sin seleccionar commits. Las acciones
 se presentan en pestañas **Pendientes**, **Preparados** e **Historial**, con contadores;
 las ramas están en el menú **Ramas**, sin el antiguo lateral de área de trabajo.

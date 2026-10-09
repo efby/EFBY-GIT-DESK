@@ -77,6 +77,7 @@ private struct ReviewedSymbols {
     public var gitExecutable = ""
     public var status = "Abre un repositorio para comenzar."
     public var error: String?
+    var bulkProgress: BulkRepositoryProgress?
     public var terminalVisible = false
     public var terminalHeight: Double = 230
     public var branchWidth: Double = 180
@@ -261,6 +262,38 @@ private struct ReviewedSymbols {
         perform("Activando repositorio confiable…") {
             _ = try await self.service.trust(repository)
             self.repositories = try await self.service.registry.repositories()
+        }
+    }
+    public func trustAll(ids: [String]) {
+        guard !ids.isEmpty, !busy else { return }
+        let progress = BulkRepositoryProgress(kind: .trusted)
+        bulkProgress = progress
+        perform("Verificando y confiando en los repositorios seleccionados…") {
+            do {
+                let report = try await self.service.trustAll(ids: ids) { event in await progress.apply(event) }
+                self.repositories = (try? await self.service.registry.repositories()) ?? self.repositories
+                progress.finish(report)
+                self.status = "Confianza: \(report.completed) completados, \(report.skipped) omitidos, \(report.failed) con error."
+            } catch is CancellationError {
+                progress.finish(BulkRepositoryReport(kind: .trusted, entries: progress.entries, cancelled: true))
+                throw CancellationError()
+            } catch { progress.fail(error); throw error }
+        }
+    }
+    public func fetchAll() {
+        guard !repositories.isEmpty, !busy else { return }
+        let profile = profile
+        let progress = BulkRepositoryProgress(kind: .fetch)
+        bulkProgress = progress
+        perform("Obteniendo cambios de todos los repositorios…") {
+            do {
+                let report = try await self.service.fetchAll(profile: profile) { event in await progress.apply(event) }
+                progress.finish(report)
+                self.status = "Fetch: \(report.completed) completados, \(report.skipped) omitidos, \(report.failed) con error."
+            } catch is CancellationError {
+                progress.finish(BulkRepositoryReport(kind: .fetch, entries: progress.entries, cancelled: true))
+                throw CancellationError()
+            } catch { progress.fail(error); throw error }
         }
     }
     public func update(_ repository: Repository) {

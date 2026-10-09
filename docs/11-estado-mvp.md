@@ -363,3 +363,40 @@ opcionales omitidas** en 22 suites; compilación del bundle de
 desarrollo y verificación `codesign` correctas. Se añadieron casos para
 comentarios, sobrecargas, cambio de línea en un archivo de destino Git y
 activación por teclado. No equivale a una validación del DMG distribuido.
+
+## Acciones globales de repositorios — 9 de octubre de 2026
+
+Se retiró «BITBUCKET CLOUD» del subtítulo del logo. El lateral agrupa y alinea
+**Agregar carpeta**, **Fetch de todos** y **Confiar en todos**. La confianza global
+requiere una hoja con rutas y advertencia antes de actuar. El servicio revalida
+la identidad de cada proyecto, omite los incompatibles y muestra resultados por
+repositorio. Fetch global usa los remotos de cada repositorio confiable, continúa
+ante errores individuales e informa omisiones y cancelaciones. No ejecuta pull,
+checkout ni concede confianza de manera implícita al pulsar fetch.
+El panel de progreso se presenta desde el inicio y añade un resultado al acabar
+cada proyecto/remoto, mostrando también la operación en curso y una opción de
+cancelación. La prueba con remotos locales verifica el orden de eventos inicio/fin.
+
+Las pruebas de integración usan repositorios y remotos locales temporales para
+verificar varios remotos, proyectos sin confianza o sin remoto, un remoto no
+admitido y una identidad reemplazada. El bundle de desarrollo se abrió en macOS:
+se comprobaron el encabezado y los controles. La primera inspección descubrió
+que la hoja mostraba cero proyectos pese al contador; se corrigió vinculando la
+lista al identificador de la hoja. La segunda inspección mostró 183 pendientes y
+sus rutas, sin confirmar la confianza. Se verificó el mismo ancho y alineación
+de los tres botones en la aplicación abierta. El usuario probó fetch global en
+su instalación y la barra de estado informó 3 completados, 183 omitidos y 0
+errores; no se inspeccionó el contenido de los remotos. No se ejecutó confianza
+global sobre repositorios personales. Quedan pendientes la aceptación manual de
+ese flujo y la verificación del DMG distribuido.
+
+Tras añadir el progreso en vivo, la aplicación recompilada se abrió de nuevo y
+se pulsó **Fetch de todos**. La hoja apareció durante el proceso: mostraba
+2 completados, 133 omitidos y el remoto `origin` de `infraestructura` en curso,
+con botón para cancelar. Al terminar mostró 3 completados, 183 omitidos y 0
+errores, lista individual desplazable y botón **Cerrar**. Esta comprobación no
+equivale a inspeccionar el contenido de los remotos ni al DMG distribuido.
+
+Validación local de esta rama: **104 pruebas registradas en 23 suites, 102
+aprobadas y 2 optativas omitidas**; `scripts/build-app.sh` compiló el bundle y
+verificó su firma ad hoc. Se revisaron enlaces Markdown y `git diff --check`.
