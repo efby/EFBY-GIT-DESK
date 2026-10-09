@@ -101,6 +101,30 @@ struct ParallelComparisonTests {
         }
     }
 
+    @MainActor @Test func crlfTerminatorsStayInComparisonButNotInEitherEditor() throws {
+        let comparison = FileComparison(before: "same\r\nold\r\n", after: "same\r\nnew\r\n",
+            beforeLabel: "A", afterLabel: "B", patch: "@@ -1,2 +1,2 @@\n same\r\n-old\r\n+new\r\n")
+        let rows = try DiffAlignment.make(comparison)
+        #expect(rows[0].before == "same\r")
+        #expect(rows[0].after == "same\r")
+        let container = ParallelDiffContainer()
+        container.update(rows)
+        let editors = container.subviews.compactMap { ($0 as? NSScrollView)?.documentView as? NSTextView }
+        #expect(editors.count == 2)
+        #expect(editors[0].string.contains("same\n"))
+        #expect(editors[1].string.contains("same\n"))
+        #expect(editors[0].string.contains("old\n"))
+        #expect(editors[1].string.contains("new\n"))
+        #expect(editors.allSatisfy { !$0.string.contains("\r") && !$0.string.contains("␍") })
+
+        let unchanged = FileComparison(before: "same\r\nblank\r\n", after: "same\r\nblank\r\n",
+            beforeLabel: "A", afterLabel: "B", patch: "")
+        let unchangedRows = try DiffAlignment.make(unchanged)
+        #expect(unchangedRows.allSatisfy { !$0.changed })
+        container.update(unchangedRows)
+        #expect(editors.allSatisfy { $0.string.contains("blank\n") && !$0.string.contains("␍") })
+    }
+
     @MainActor @Test func nativeColumnsSynchronizeBothAxesAndNavigateChanges() throws {
         let lines = (1...100).map { "line \($0)" }.joined(separator: "\n")
         var changed = lines.components(separatedBy: "\n")

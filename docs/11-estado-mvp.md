@@ -437,3 +437,15 @@ muestra como ayuda y los nombres largos se acortan visualmente en el centro.
 En la app abierta se comprobó **PAY / CATALAGO / catalogo_cliente_post /
 src/lambda_handler.py** con la comparación A→B a la derecha. Pasaron 104
 pruebas registradas en 23 suites y la compilación local del bundle.
+
+## Finales de línea CRLF en el visor — 9 de octubre de 2026
+
+Las líneas con CRLF conservan el retorno de carro en el contenido original para
+la alineación y comparación, pero el editor omite ese terminador al dibujar cada
+línea. Ya no aparece el símbolo `␍` al final de líneas iguales o modificadas.
+La misma regla se aplica al resumen textual de un diff. Una prueba nativa
+comprueba ambas columnas y confirma que las filas originales mantienen CRLF.
+La suite local registró 105 pruebas en 23 suites (103 aprobadas y 2 optativas
+omitidas), y el bundle de desarrollo compiló y verificó su firma ad hoc.
+La app del usuario estaba ocupada con «Fetch de todos», por lo que no se
+interrumpió esa operación para recargarla visualmente.
