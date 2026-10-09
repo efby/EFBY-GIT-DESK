@@ -56,8 +56,10 @@ inspección y los que no tienen remoto. Un error individual no detiene los demá
 El panel de progreso aparece al iniciar, indica el proyecto/remoto en curso y
 añade resultados uno por uno. Permite cancelar y conserva el resumen al terminar.
 La confianza global requiere revisar la lista de pendientes y confirmar una advertencia
-sobre hooks/filtros/auxiliares, terminal y checkout de clones. `DeskService.trust`
-revalida cada identidad; no se confía en worktrees vinculados ni repositorios que
+sobre hooks/filtros/auxiliares, terminal y checkout de clones. Tras confirmar,
+la misma hoja muestra el progreso por repositorio y permite cancelar o revisar
+el resumen final. `DeskService.trust` revalida cada identidad; no se confía en
+worktrees vinculados ni repositorios que
 solo admiten inspección. Ambos procesos admiten cancelación y muestran resultados
 parciales. La comprobación visual de la hoja se hizo sin ejecutar confianza sobre
 los repositorios personales del equipo.

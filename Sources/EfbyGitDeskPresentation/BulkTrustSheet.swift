@@ -3,12 +3,22 @@ import EfbyGitDeskDomain
 
 struct BulkTrustSheet: View {
     let repositories: [Repository]
-    let confirm: ([String]) -> Void
+    @Bindable var model: DeskModel
     @Environment(\.dismiss) private var dismiss
 
     private var pendingCheckoutCount: Int { repositories.filter(\.pendingCheckout).count }
 
     var body: some View {
+        Group {
+            if let progress = model.trustProgress {
+                BulkRepositoryProgressSheet(progress: progress) { model.cancelOperation() }
+            } else {
+                confirmation
+            }
+        }
+    }
+
+    private var confirmation: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Confiar en todos").font(.title2.bold())
             Text("Revisa los \(repositories.count) repositorios que recibirán confianza. Se volverá a comprobar la identidad de cada uno; los que hayan cambiado o solo admitan inspección se omitirán con un resultado visible.")
@@ -28,8 +38,7 @@ struct BulkTrustSheet: View {
                 Button("Cancelar", role: .cancel) { dismiss() }
                 Spacer()
                 Button("Confiar en \(repositories.count) repositorios") {
-                    let ids = repositories.map(\.id)
-                    confirm(ids)
+                    model.trustAll(ids: repositories.map(\.id))
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(repositories.isEmpty)

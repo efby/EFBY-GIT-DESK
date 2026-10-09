@@ -400,3 +400,14 @@ equivale a inspeccionar el contenido de los remotos ni al DMG distribuido.
 Validación local de esta rama: **104 pruebas registradas en 23 suites, 102
 aprobadas y 2 optativas omitidas**; `scripts/build-app.sh` compiló el bundle y
 verificó su firma ad hoc. Se revisaron enlaces Markdown y `git diff --check`.
+
+## Progreso de confianza global — 9 de octubre de 2026
+
+Después de la confirmación explícita, la misma hoja de **Confiar en todos**
+cambia al panel de progreso. Indica el repositorio que está verificando, añade
+cada resultado al terminar y ofrece cancelación; el resumen queda visible hasta
+cerrarlo. Así no depende de cerrar una hoja para presentar otra. La prueba de
+integración verifica eventos de inicio y fin por cada repositorio temporal y
+revalidación de identidad. Se ejecutaron las 104 pruebas de 23 suites con éxito
+(102 aprobadas y 2 optativas omitidas). No se confirmó confianza sobre los
+repositorios personales del equipo.

@@ -41,9 +41,17 @@ private actor BulkProgressRecorder {
         #expect(before.skipped == 2)
         #expect(before.completed == 0)
 
-        let trusted = try await service.trustAll(ids: [one.id, two.id])
+        let trustRecorder = BulkProgressRecorder()
+        let trusted = try await service.trustAll(ids: [one.id, two.id]) { event in await trustRecorder.record(event) }
         #expect(trusted.completed == 2)
         #expect(try await registry.repositories().allSatisfy(\.trusted))
+        let trustEvents = await trustRecorder.snapshot()
+        #expect(trustEvents.count == 4)
+        for repository in [one, two] {
+            let start = trustEvents.firstIndex(of: "start:\(repository.id):")
+            let finish = trustEvents.firstIndex(of: "finish:\(repository.path):")
+            #expect(start != nil && finish != nil && start! < finish!)
+        }
         let recorder = BulkProgressRecorder()
         let fetched = try await service.fetchAll(profile: nil) { event in await recorder.record(event) }
         #expect(fetched.completed == 2)

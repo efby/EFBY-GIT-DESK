@@ -17,7 +17,6 @@ struct RepositorySidebar: View {
     @State private var expansionVersion = 0
     @State private var expansionSave: Task<Void, Never>?
     @State private var trustSelection: BulkTrustSelection?
-    @State private var pendingTrustIDs: [String] = []
     private var untrusted: [Repository] { model.repositories.filter { !$0.trusted } }
     private var filtered: [Repository] {
         model.repositories.filter {
@@ -116,15 +115,10 @@ struct RepositorySidebar: View {
             }.padding(24).frame(width: 400)
         }
         .sheet(item: $trustSelection, onDismiss: {
-            guard !pendingTrustIDs.isEmpty else { return }
-            let ids = pendingTrustIDs
-            pendingTrustIDs = []
-            model.trustAll(ids: ids)
+            if model.trustProgress?.finished == false { model.cancelOperation() }
+            model.trustProgress = nil
         }) { selection in
-            BulkTrustSheet(repositories: selection.repositories) { ids in
-                pendingTrustIDs = ids
-                trustSelection = nil
-            }
+            BulkTrustSheet(repositories: selection.repositories, model: model)
         }
     }
     private func setFolder(_ id: String, expanded: Bool) {

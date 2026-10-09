@@ -78,6 +78,7 @@ private struct ReviewedSymbols {
     public var status = "Abre un repositorio para comenzar."
     public var error: String?
     var bulkProgress: BulkRepositoryProgress?
+    var trustProgress: BulkRepositoryProgress?
     public var terminalVisible = false
     public var terminalHeight: Double = 230
     public var branchWidth: Double = 180
@@ -267,7 +268,7 @@ private struct ReviewedSymbols {
     public func trustAll(ids: [String]) {
         guard !ids.isEmpty, !busy else { return }
         let progress = BulkRepositoryProgress(kind: .trusted)
-        bulkProgress = progress
+        trustProgress = progress
         perform("Verificando y confiando en los repositorios seleccionados…") {
             do {
                 let report = try await self.service.trustAll(ids: ids) { event in await progress.apply(event) }
