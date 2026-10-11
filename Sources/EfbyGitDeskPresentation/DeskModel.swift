@@ -305,7 +305,7 @@ private struct ReviewedSymbols {
     }
     public func remove(_ repository: Repository) {
         guard !busy else { return }
-        guard confirmClosingSessions(repository.id) else { return }
+        guard confirmClosingSessions([repository.id]) else { return }
         openIDs.removeAll { $0 == repository.id }; persistTabs()
         terminals[repository.id]?.forEach { $0.driver.close() }
         terminals.removeValue(forKey: repository.id)
@@ -317,20 +317,36 @@ private struct ReviewedSymbols {
             } catch { self.error = error.localizedDescription }
         }
     }
-    private func confirmClosingSessions(_ id: String) -> Bool {
-        guard terminals[id]?.contains(where: { $0.driver.running }) == true else { return true }
+    private func confirmClosingSessions(_ ids: [String]) -> Bool {
+        let running = ids.reduce(0) { $0 + (terminals[$1]?.filter { $0.driver.running }.count ?? 0) }
+        guard running > 0 else { return true }
         let alert = NSAlert(); alert.messageText = "Cerrar sesiones del terminal"
-        alert.informativeText = "Las sesiones y sus procesos recibirán una señal de cierre. Tus archivos se conservan."
+        alert.informativeText = "Se cerrarán \(running) sesiones activas y sus procesos. Tus archivos se conservan."
         alert.addButton(withTitle: "Cerrar sesiones"); alert.addButton(withTitle: "Cancelar")
         return alert.runModal() == .alertFirstButtonReturn
     }
     public func closeRepository(_ id: String) {
-        guard !busy, confirmClosingSessions(id) else { return }
-        terminals[id]?.forEach { $0.driver.close() }; terminals.removeValue(forKey: id)
-        openIDs.removeAll { $0 == id }; persistTabs()
-        if selectedID == id {
-            selectedID = nil; commits = []; files = []; diffText = ""
-            if let next = openIDs.last { select(next) }
+        closeRepositories([id])
+    }
+    func closeRepositoryTabs(relativeTo id: String, scope: RepositoryTabCloseScope) {
+        closeRepositories(RepositoryTabClosePlan.targets(in: openIDs, relativeTo: id, scope: scope), preferredID: id)
+    }
+    private func closeRepositories(_ ids: [String], preferredID: String? = nil) {
+        guard !busy else { return }
+        let closing = Set(ids).intersection(openIDs)
+        guard !closing.isEmpty, confirmClosingSessions(openIDs.filter { closing.contains($0) }) else { return }
+        for id in closing {
+            terminals[id]?.forEach { $0.driver.close() }
+            terminals.removeValue(forKey: id)
+        }
+        openIDs.removeAll { closing.contains($0) }; persistTabs()
+        if let selectedID, closing.contains(selectedID) {
+            generation += 1; query?.cancel(); searchQuery?.cancel(); selectionQuery?.cancel(); fileQuery?.cancel()
+            closeDiff()
+            self.selectedID = nil; commits = []; files = []; diffText = ""
+            selectedOIDs = []; retainedCommits = []; snapshot = RepositorySnapshot(); branches = []
+            if let preferredID, openIDs.contains(preferredID) { select(preferredID) }
+            else if let next = openIDs.last { select(next) }
             else { Task { try? await service.registry.setPreference("repository.selected", value: "") } }
         }
     }
@@ -750,6 +766,32 @@ private struct ReviewedSymbols {
         selectedTerminal = currentTerminals.first?.id; refresh()
     }
     public func closeAllTerminals() { terminals.values.flatMap { $0 }.forEach { $0.driver.close() } }
+    public func openExternalTerminal(for id: String) {
+        guard let repository = repositories.first(where: { $0.id == id }) else { return }
+        perform("Abriendo Terminal en \(repository.name)…", refreshAfter: false) {
+            let directory = try await self.service.authorizeTerminal(repository)
+            guard let terminal = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal") else {
+                throw DeskError("Terminal de macOS no está disponible.")
+            }
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                let folder = URL(fileURLWithPath: directory, isDirectory: true)
+                let configuration = NSWorkspace.OpenConfiguration()
+                configuration.activates = true
+                NSWorkspace.shared.open([folder], withApplicationAt: terminal, configuration: configuration) { _, error in
+                    if let error { continuation.resume(throwing: error) }
+                    else { continuation.resume() }
+                }
+            }
+            self.status = "Terminal abierto en \(repository.name)."
+        }
+    }
+    public func showInFinder(_ id: String) {
+        guard let repository = repositories.first(where: { $0.id == id }) else { return }
+        guard NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path) else {
+            error = "Finder no pudo abrir la carpeta del repositorio."
+            return
+        }
+    }
     static func panelWidth(_ saved: String?, default fallback: Double, minimum: Double, maximum: Double = .greatestFiniteMagnitude) -> Double {
         guard let saved, let value = Double(saved), value.isFinite else { return fallback }
         return min(maximum, max(minimum, value))

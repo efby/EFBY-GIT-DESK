@@ -46,6 +46,11 @@ confianza y preferencias persistidas. Abrir una carpeta superior descubre proyec
 Git en sus subcarpetas y construye un árbol navegable. La búsqueda encuentra
 repositorios por nombre, ruta o grupo aun con carpetas contraídas. El descubrimiento
 no concede confianza ni ejecuta hooks; informa resultados parciales y permite cancelar.
+El menú contextual de cada pestaña permite **Cerrar pestaña**, **Cerrar otras pestañas**,
+**Cerrar pestañas a la derecha** y **Cerrar pestañas a la izquierda**, según su posición
+visible. Si las pestañas afectadas tienen terminales activos, se solicita una sola
+confirmación antes de cerrarlos. El menú también ofrece **Abrir en Terminal** para
+repositorios confiables y **Mostrar en Finder** para localizar su carpeta.
 
 La marca EFBY Git Desk está en la barra superior junto a un símbolo de ramas
 cian del tamaño del anterior logotipo. El lateral se titula **Explorador**, con

@@ -15,6 +15,23 @@ struct RepositoryTabs: View {
                             }.font(.caption).padding(9)
                                 .background(id == model.selectedID ? Color.teal.opacity(0.2) : .clear, in: RoundedRectangle(cornerRadius: 6))
                                 .help(repository.path)
+                                .contextMenu {
+                                    Button("Cerrar pestaña", systemImage: "xmark") { model.closeRepository(id) }
+                                        .disabled(model.busy)
+                                    Button("Cerrar otras pestañas", systemImage: "rectangle.on.rectangle.slash") {
+                                        model.closeRepositoryTabs(relativeTo: id, scope: .others)
+                                    }.disabled(model.busy || model.openIDs.count < 2)
+                                    Button("Cerrar pestañas a la derecha", systemImage: "arrow.right.to.line") {
+                                        model.closeRepositoryTabs(relativeTo: id, scope: .right)
+                                    }.disabled(model.busy || RepositoryTabClosePlan.targets(in: model.openIDs, relativeTo: id, scope: .right).isEmpty)
+                                    Button("Cerrar pestañas a la izquierda", systemImage: "arrow.left.to.line") {
+                                        model.closeRepositoryTabs(relativeTo: id, scope: .left)
+                                    }.disabled(model.busy || RepositoryTabClosePlan.targets(in: model.openIDs, relativeTo: id, scope: .left).isEmpty)
+                                    Divider()
+                                    Button("Abrir en Terminal", systemImage: "terminal") { model.openExternalTerminal(for: id) }
+                                        .disabled(model.busy || !repository.trusted || repository.inspectionReason != nil || repository.linkedWorktree)
+                                    Button("Mostrar en Finder", systemImage: "folder") { model.showInFinder(id) }
+                                }
                         }
                     }
                 }.padding(.horizontal, 12).padding(.top, 6)
