@@ -339,6 +339,23 @@ sustituirlos. El digest ZIP de Actions es distinto del digest del DMG de una Rel
 
 ## Pendientes y criterios de continuidad
 
+### Acciones masivas y marca de repositorios (10 de octubre de 2026)
+
+«Fetch de todos» y «Confiar en todos» procesan hasta cuatro directorios Git
+independientes en paralelo. Los repositorios que comparten `commonGitDir` siguen
+en serie; los remotos de cada repositorio también. Se conservan la comprobación
+de identidad y confianza, la coordinación de mutaciones y los resultados por
+repositorio/remoto. El panel muestra todas las operaciones activas. Las filas de
+repositorios usan la misma marca de rama cian que el título, a escala de la fila;
+las carpetas comunes conservan su icono y los repositorios sin confianza muestran
+además un candado.
+
+Evidencia local: 106 pruebas en 23 suites aprobadas, incluida una prueba de seis
+repositorios que observó cuatro operaciones simultáneas en ambos flujos. La app
+de desarrollo compiló, verificó su firma ad hoc y se abrió en macOS para revisar
+visualmente la nueva marca dentro del árbol. No se ejecutó un fetch real sobre
+los repositorios del usuario ni se midió el tiempo contra sus remotos.
+
 Distribuir instaladores firmados no completa por sí solo H6. Permanecen abiertos:
 cuenta real Bitbucket y ramas protegidas; helper Keychain en distribución; VoiceOver,
 foco/teclado y restauración visual completos; instalación del artefacto descargado

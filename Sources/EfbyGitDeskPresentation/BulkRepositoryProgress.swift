@@ -5,7 +5,7 @@ import EfbyGitDeskApplication
 @MainActor @Observable final class BulkRepositoryProgress: Identifiable {
     let id = UUID()
     let kind: BulkRepositoryReport.Kind
-    var current: String?
+    var active: [String: String] = [:]
     var entries: [BulkRepositoryReport.Entry] = []
     var finished = false
     var cancelled = false
@@ -21,23 +21,23 @@ import EfbyGitDeskApplication
     func apply(_ event: BulkRepositoryProgressEvent) {
         switch event {
         case .started(let repository, let remote):
-            current = repository.name + (remote.map { " · \($0)" } ?? "")
+            active[repository.path] = repository.name + (remote.map { " · \($0)" } ?? "")
         case .finished(let entry):
             entries.append(entry)
-            current = nil
+            active.removeValue(forKey: entry.path)
         }
     }
 
     func finish(_ report: BulkRepositoryReport) {
         entries = report.entries
         cancelled = report.cancelled
-        current = nil
+        active.removeAll()
         finished = true
     }
 
     func fail(_ error: Error) {
         failure = error.localizedDescription
-        current = nil
+        active.removeAll()
         finished = true
     }
 }

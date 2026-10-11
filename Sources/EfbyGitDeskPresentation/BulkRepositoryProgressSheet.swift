@@ -11,10 +11,16 @@ struct BulkRepositoryProgressSheet: View {
             Text("\(progress.kind.rawValue) de todos").font(.title2.bold())
             Text("\(progress.completed) completados · \(progress.skipped) omitidos · \(progress.failed) con error")
                 .foregroundStyle(.secondary)
-            if let current = progress.current, !progress.finished {
-                HStack(spacing: 10) {
-                    ProgressView().controlSize(.small)
-                    Text("Procesando: \(current)").lineLimit(2)
+            if !progress.active.isEmpty && !progress.finished {
+                VStack(alignment: .leading, spacing: 5) {
+                    ForEach(progress.active.keys.sorted(), id: \.self) { path in
+                        if let current = progress.active[path] {
+                            HStack(spacing: 10) {
+                                ProgressView().controlSize(.small)
+                                Text("Procesando: \(current)").lineLimit(1)
+                            }
+                        }
+                    }
                 }
                 .accessibilityElement(children: .combine)
             } else if !progress.finished {

@@ -18,7 +18,46 @@ private actor BulkProgressRecorder {
     func snapshot() -> [String] { events }
 }
 
+private actor BulkConcurrencyRecorder {
+    private var active: Set<String> = []
+    private var peak = 0
+
+    func record(_ event: BulkRepositoryProgressEvent) async {
+        switch event {
+        case .started(let repository, _):
+            active.insert(repository.path)
+            peak = max(peak, active.count)
+            // Keep each worker occupied long enough to observe overlapping starts.
+            try? await Task.sleep(for: .milliseconds(80))
+        case .finished(let entry):
+            active.remove(entry.path)
+        }
+    }
+
+    func maximum() -> Int { peak }
+}
+
 @Suite(.serialized) struct BulkRepositoryOperationsTests {
+    @Test func bulkTrustAndFetchUseAtMostFourIndependentRepositoriesAtOnce() async throws {
+        var fixtures: [GitFixture] = []
+        for _ in 0..<6 { fixtures.append(try await GitFixture.make()) }
+        defer { for fixture in fixtures { fixture.cleanup() } }
+        let registry = try SQLiteRegistry(path: fixtures[0].folder.appendingPathComponent("catalog.sqlite").path)
+        let service = DeskService(git: fixtures[0].adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
+        var ids: [String] = []
+        for fixture in fixtures { ids.append(try await service.open(path: fixture.folder.path).id) }
+
+        let trustRecorder = BulkConcurrencyRecorder()
+        let trust = try await service.trustAll(ids: ids) { event in await trustRecorder.record(event) }
+        #expect(trust.completed == 6)
+        #expect(await trustRecorder.maximum() == 4)
+
+        let fetchRecorder = BulkConcurrencyRecorder()
+        let fetch = try await service.fetchAll(profile: nil) { event in await fetchRecorder.record(event) }
+        #expect(fetch.skipped == 6)
+        #expect(await fetchRecorder.maximum() == 4)
+    }
+
     @Test func trustsRegisteredRepositoriesThenFetchesEveryRemoteAndReportsSkips() async throws {
         let first = try await GitFixture.make(); defer { first.cleanup() }
         let second = try await GitFixture.make(); defer { second.cleanup() }

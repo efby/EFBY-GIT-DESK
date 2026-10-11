@@ -81,110 +81,140 @@ public actor DeskService {
         let repositories = try await registry.repositories()
             .filter { selected.contains($0.id) }
             .sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
-        var entries: [BulkRepositoryReport.Entry] = []
-        var cancelled = false
-        for repository in repositories {
-            if Task.isCancelled { cancelled = true; break }
-            if let progress { await progress(.started(repository: repository, remote: nil)) }
-            if repository.trusted {
-                let entry = BulkRepositoryReport.Entry(repository: repository, result: .skipped, detail: "Ya tenía confianza.")
-                entries.append(entry)
-                if let progress { await progress(.finished(entry)) }
-                continue
-            }
-            if repository.inspectionReason != nil || repository.linkedWorktree {
-                let entry = BulkRepositoryReport.Entry(repository: repository, result: .skipped, detail: "Solo admite inspección en este MVP.")
-                entries.append(entry)
-                if let progress { await progress(.finished(entry)) }
-                continue
-            }
-            do {
-                _ = try await trust(repository)
-                let entry = BulkRepositoryReport.Entry(repository: repository, result: .completed, detail: "Identidad verificada y confianza guardada.")
-                entries.append(entry)
-                if let progress { await progress(.finished(entry)) }
-            } catch is CancellationError {
-                let entry = BulkRepositoryReport.Entry(repository: repository, result: .failed, detail: "Interrumpido; comprueba su estado antes de repetir.")
-                entries.append(entry)
-                if let progress { await progress(.finished(entry)) }
-                cancelled = true
-                break
-            } catch {
-                let entry = BulkRepositoryReport.Entry(repository: repository, result: .failed, detail: error.localizedDescription)
-                entries.append(entry)
-                if let progress { await progress(.finished(entry)) }
-            }
-        }
-        return BulkRepositoryReport(kind: .trusted, entries: entries, cancelled: cancelled)
+        return await runBulk(.trusted, repositories: repositories, profile: nil, progress: progress)
     }
     public func fetchAll(profile: ConnectionProfile?,
                          progress: (@Sendable (BulkRepositoryProgressEvent) async -> Void)? = nil) async throws -> BulkRepositoryReport {
         let repositories = try await registry.repositories()
             .sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
-        var entries: [BulkRepositoryReport.Entry] = []
-        var cancelled = false
-        repositoryLoop: for repository in repositories {
-            if Task.isCancelled { cancelled = true; break }
-            if let progress { await progress(.started(repository: repository, remote: nil)) }
-            guard repository.trusted else {
-                let entry = BulkRepositoryReport.Entry(repository: repository, result: .skipped, detail: "Confianza pendiente.")
-                entries.append(entry)
-                if let progress { await progress(.finished(entry)) }
-                continue
-            }
-            guard repository.inspectionReason == nil, !repository.linkedWorktree else {
-                let entry = BulkRepositoryReport.Entry(repository: repository, result: .skipped, detail: "Solo admite inspección en este MVP.")
-                entries.append(entry)
-                if let progress { await progress(.finished(entry)) }
-                continue
-            }
-            do {
-                let actual = try await git.discover(path: repository.path)
-                guard actual.gitDirectory == repository.gitDirectory,
-                      actual.commonDirectory == repository.commonDirectory,
-                      actual.identity == repository.identity else {
-                    let entry = BulkRepositoryReport.Entry(repository: repository, result: .failed, detail: "La identidad cambió. Vuelve a abrirlo antes de hacer fetch.")
-                    entries.append(entry)
-                    if let progress { await progress(.finished(entry)) }
-                    continue
-                }
-                let remotes = try await git.remotes(repository)
-                if remotes.isEmpty {
-                    let entry = BulkRepositoryReport.Entry(repository: repository, result: .skipped, detail: "No tiene remotos configurados.")
-                    entries.append(entry)
-                    if let progress { await progress(.finished(entry)) }
-                    continue
-                }
-                for remote in remotes {
-                    if Task.isCancelled { cancelled = true; break repositoryLoop }
-                    if let progress { await progress(.started(repository: repository, remote: remote)) }
-                    do {
-                        _ = try await mutate(.fetch(remote), repository: repository, profile: profile)
-                        let entry = BulkRepositoryReport.Entry(repository: repository, remote: remote, result: .completed, detail: "Referencias remotas actualizadas.")
-                        entries.append(entry)
-                        if let progress { await progress(.finished(entry)) }
-                    } catch is CancellationError {
-                        let entry = BulkRepositoryReport.Entry(repository: repository, remote: remote, result: .failed, detail: "Fetch interrumpido; consulta las referencias antes de repetir.")
-                        entries.append(entry)
-                        if let progress { await progress(.finished(entry)) }
-                        cancelled = true
-                        break repositoryLoop
-                    } catch {
-                        let entry = BulkRepositoryReport.Entry(repository: repository, remote: remote, result: .failed, detail: error.localizedDescription)
-                        entries.append(entry)
-                        if let progress { await progress(.finished(entry)) }
-                    }
-                }
-            } catch is CancellationError {
-                cancelled = true
-                break
-            } catch {
-                let entry = BulkRepositoryReport.Entry(repository: repository, result: .failed, detail: error.localizedDescription)
-                entries.append(entry)
-                if let progress { await progress(.finished(entry)) }
+        return await runBulk(.fetch, repositories: repositories, profile: profile, progress: progress)
+    }
+
+    private func runBulk(_ kind: BulkRepositoryReport.Kind, repositories: [Repository], profile: ConnectionProfile?,
+                         progress: (@Sendable (BulkRepositoryProgressEvent) async -> Void)?) async -> BulkRepositoryReport {
+        // Linked worktrees share a Git directory; never schedule them in separate workers.
+        var groups: [[Repository]] = []
+        var groupIndex: [String: Int] = [:]
+        for repository in repositories {
+            if let index = groupIndex[repository.commonDirectory] { groups[index].append(repository) }
+            else {
+                groupIndex[repository.commonDirectory] = groups.count
+                groups.append([repository])
             }
         }
-        return BulkRepositoryReport(kind: .fetch, entries: entries, cancelled: cancelled)
+        let batches = groups
+        return await withTaskGroup(of: (Int, [BulkRepositoryReport.Entry]).self) { group in
+            var next = 0
+            var results = Array(repeating: [BulkRepositoryReport.Entry](), count: batches.count)
+            for _ in 0..<min(4, batches.count) {
+                let index = next; next += 1
+                group.addTask { [self] in
+                    (index, await processBulkGroup(batches[index], kind: kind, profile: profile, progress: progress))
+                }
+            }
+            while let (index, entries) = await group.next() {
+                results[index] = entries
+                if Task.isCancelled { group.cancelAll() }
+                else if next < batches.count {
+                    let index = next; next += 1
+                    group.addTask { [self] in
+                        (index, await processBulkGroup(batches[index], kind: kind, profile: profile, progress: progress))
+                    }
+                }
+            }
+            return BulkRepositoryReport(kind: kind, entries: results.flatMap { $0 }, cancelled: Task.isCancelled)
+        }
+    }
+
+    private func processBulkGroup(_ repositories: [Repository], kind: BulkRepositoryReport.Kind,
+                                  profile: ConnectionProfile?, progress: (@Sendable (BulkRepositoryProgressEvent) async -> Void)?) async -> [BulkRepositoryReport.Entry] {
+        var entries: [BulkRepositoryReport.Entry] = []
+        for repository in repositories {
+            if Task.isCancelled { break }
+            if kind == .trusted { entries += await trustOne(repository, progress: progress) }
+            else { entries += await fetchOne(repository, profile: profile, progress: progress) }
+        }
+        return entries
+    }
+
+    private func trustOne(_ repository: Repository, progress: (@Sendable (BulkRepositoryProgressEvent) async -> Void)?) async -> [BulkRepositoryReport.Entry] {
+        if let progress { await progress(.started(repository: repository, remote: nil)) }
+        let entry: BulkRepositoryReport.Entry
+        if repository.trusted {
+            entry = .init(repository: repository, result: .skipped, detail: "Ya tenía confianza.")
+        } else if repository.inspectionReason != nil || repository.linkedWorktree {
+            entry = .init(repository: repository, result: .skipped, detail: "Solo admite inspección en este MVP.")
+        } else {
+            do {
+                _ = try await trust(repository)
+                entry = .init(repository: repository, result: .completed, detail: "Identidad verificada y confianza guardada.")
+            } catch is CancellationError {
+                entry = .init(repository: repository, result: .failed, detail: "Interrumpido; comprueba su estado antes de repetir.")
+            } catch {
+                entry = .init(repository: repository, result: .failed, detail: error.localizedDescription)
+            }
+        }
+        if let progress { await progress(.finished(entry)) }
+        return [entry]
+    }
+
+    private func fetchOne(_ repository: Repository, profile: ConnectionProfile?,
+                          progress: (@Sendable (BulkRepositoryProgressEvent) async -> Void)?) async -> [BulkRepositoryReport.Entry] {
+        if let progress { await progress(.started(repository: repository, remote: nil)) }
+        var entries: [BulkRepositoryReport.Entry] = []
+        func finish(_ entry: BulkRepositoryReport.Entry) async {
+            if let progress { await progress(.finished(entry)) }
+        }
+        guard repository.trusted else {
+            let entry = BulkRepositoryReport.Entry(repository: repository, result: .skipped, detail: "Confianza pendiente.")
+            await finish(entry)
+            return [entry]
+        }
+        guard repository.inspectionReason == nil, !repository.linkedWorktree else {
+            let entry = BulkRepositoryReport.Entry(repository: repository, result: .skipped, detail: "Solo admite inspección en este MVP.")
+            await finish(entry)
+            return [entry]
+        }
+        do {
+            let actual = try await git.discover(path: repository.path)
+            guard actual.gitDirectory == repository.gitDirectory,
+                  actual.commonDirectory == repository.commonDirectory,
+                  actual.identity == repository.identity else {
+                let entry = BulkRepositoryReport.Entry(repository: repository, result: .failed, detail: "La identidad cambió. Vuelve a abrirlo antes de hacer fetch.")
+                await finish(entry)
+                return [entry]
+            }
+            let remotes = try await git.remotes(repository)
+            if remotes.isEmpty {
+                let entry = BulkRepositoryReport.Entry(repository: repository, result: .skipped, detail: "No tiene remotos configurados.")
+                await finish(entry)
+                return [entry]
+            }
+            for remote in remotes {
+                if Task.isCancelled { break }
+                if let progress { await progress(.started(repository: repository, remote: remote)) }
+                let entry: BulkRepositoryReport.Entry
+                do {
+                    _ = try await mutate(.fetch(remote), repository: repository, profile: profile)
+                    entry = .init(repository: repository, remote: remote, result: .completed, detail: "Referencias remotas actualizadas.")
+                } catch is CancellationError {
+                    entry = .init(repository: repository, remote: remote, result: .failed, detail: "Fetch interrumpido; consulta las referencias antes de repetir.")
+                } catch {
+                    entry = .init(repository: repository, remote: remote, result: .failed, detail: error.localizedDescription)
+                }
+                entries.append(entry)
+                await finish(entry)
+            }
+        } catch is CancellationError {
+            let entry = BulkRepositoryReport.Entry(repository: repository, result: .failed, detail: "Fetch interrumpido; consulta las referencias antes de repetir.")
+            entries.append(entry)
+            await finish(entry)
+        } catch {
+            let entry = BulkRepositoryReport.Entry(repository: repository, result: .failed, detail: error.localizedDescription)
+            entries.append(entry)
+            await finish(entry)
+        }
+        return entries
     }
     public func authorizeTerminal(_ repository: Repository) async throws -> String {
         try await requireTrust(repository)
