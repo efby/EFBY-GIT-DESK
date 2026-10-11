@@ -137,7 +137,18 @@ struct RepositorySidebar: View {
     }
     private func repositoryRow(_ repository: Repository) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Label(repository.name, systemImage: repository.trusted ? "folder" : "lock.shield")
+            HStack(spacing: 6) {
+                GitBranchMark()
+                    .stroke(Color(red: 0.08, green: 0.70, blue: 0.78),
+                            style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                    .frame(width: 17, height: 17)
+                    .accessibilityHidden(true)
+                Text(repository.name)
+                if !repository.trusted {
+                    Image(systemName: "lock.shield").font(.caption2)
+                        .foregroundStyle(.secondary).accessibilityLabel("Confianza pendiente")
+                }
+            }
                 .font(.body.weight(repository.id == model.selectedID ? .semibold : .regular))
             Text(repository.path).font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
         }.padding(.vertical, 4).tag(repository.id)
