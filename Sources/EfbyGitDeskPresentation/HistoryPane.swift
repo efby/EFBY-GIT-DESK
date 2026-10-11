@@ -7,7 +7,8 @@ struct HistoryPane: View {
     @State private var graph: [String: GraphRow] = [:]
     @State private var commitMessage = ""
     var body: some View {
-        VStack(spacing: 0) {
+        let location = HistoryLocation(snapshot: model.snapshot, branches: model.branches)
+        return VStack(spacing: 0) {
             if model.workingView { working }
             else {
                 HStack {
@@ -46,6 +47,26 @@ struct HistoryPane: View {
                                                 Text(String(commit.date.prefix(10)))
                                                 if !commit.references.isEmpty { Text(commit.references).foregroundStyle(.teal).lineLimit(1) }
                                             }.font(.caption2).foregroundStyle(.secondary)
+                                            if commit.oid == location.localOID || commit.oid == location.remoteOID {
+                                                HStack(spacing: 8) {
+                                                    if commit.oid == location.localOID {
+                                                        Label("Mi equipo · \(location.localName)", systemImage: "desktopcomputer")
+                                                            .foregroundStyle(.cyan)
+                                                        if let behind = location.behind, behind > 0 {
+                                                            Text("↓ \(behind) commits").foregroundStyle(.orange)
+                                                        }
+                                                        if let ahead = location.ahead, ahead > 0 {
+                                                            Text("↑ \(ahead) commits").foregroundStyle(.green)
+                                                        }
+                                                    }
+                                                    if commit.oid == location.remoteOID, let remoteName = location.remoteName {
+                                                        Label("Remoto · \(remoteName)", systemImage: "cloud")
+                                                            .foregroundStyle(.blue)
+                                                    }
+                                                }
+                                                .font(.caption2.weight(.semibold))
+                                                .lineLimit(1)
+                                            }
                                         }
                                         Spacer(minLength: 4)
                                         Text(commit.shortOID).font(.caption.monospaced()).foregroundStyle(.secondary)
@@ -53,7 +74,7 @@ struct HistoryPane: View {
                                     .background(model.selectedOIDs.contains(commit.oid) ? Color.teal.opacity(0.18) : .clear)
                                     .contentShape(Rectangle())
                                 }.buttonStyle(.plain)
-                                .accessibilityLabel("\(commit.message), \(commit.author), \(commit.shortOID)")
+                                .accessibilityLabel("\(commit.message), \(commit.author), \(commit.shortOID)\(location.accessibilitySuffix(for: commit.oid))")
                                 .contextMenu {
                                     Button("Copiar SHA completo", systemImage: "doc.on.doc") {
                                         NSPasteboard.general.clearContents(); NSPasteboard.general.setString(commit.oid, forType: .string)
