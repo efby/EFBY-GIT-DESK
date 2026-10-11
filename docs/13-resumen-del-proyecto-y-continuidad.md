@@ -91,6 +91,11 @@ caracteres (sin distinguir mayúsculas), además de mensajes para las consultas 
 hexadecimales. Busca objetos commit alcanzables desde las referencias del historial,
 no solamente la página cargada; admite SHA-1 y SHA-256. Prefijos con más de 64 objetos
 solicitan más caracteres. No interpreta expresiones como `HEAD~1` ni opciones Git.
+El historial marca con un computador el commit de **Mi equipo** (HEAD) y con una
+nube el de la rama remota seguida; si ambos apuntan al mismo commit, aparecen
+juntos. Junto al marcador local se muestran los commits de adelanto o atraso
+solo cuando Git dispone de esos contadores. Las marcas no dependen de la
+selección de commits para comparación ni modifican sus colores.
 
 Cambiar o borrar la búsqueda conserva los commits seleccionados, sus datos y el
 contexto de comparación. Si un seleccionado queda fuera del filtro o de la página,
