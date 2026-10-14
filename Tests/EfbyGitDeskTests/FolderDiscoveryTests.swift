@@ -117,6 +117,66 @@ struct FolderDiscoveryTests {
         #expect(result.repositories.first?.trusted == false)
         #expect(result.issues.contains { $0.contains("bare") })
     }
+    @Test func trustedRegistrationWithMissingIdentityIsPreservedOnRediscover() async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        let registry = try SQLiteRegistry(path: f.folder.appendingPathComponent("catalog.sqlite").path)
+        let service = DeskService(git: f.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
+        let opened = try await service.open(path: f.folder.path)
+        _ = try await service.trust(opened)
+        let stale = Repository(path: f.repository.path, gitDirectory: f.repository.gitDirectory,
+                               commonDirectory: f.repository.commonDirectory, name: f.repository.name,
+                               trusted: true, identity: nil)
+        try await registry.save(stale)
+        let reopened = try await service.open(path: f.folder.path)
+        #expect(reopened.trusted)
+        #expect(reopened.identity == f.repository.identity)
+    }
+    @Test func bulkTrustRefreshesStaleCatalogEntries() async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        let registry = try SQLiteRegistry(path: f.folder.appendingPathComponent("catalog.sqlite").path)
+        let service = DeskService(git: f.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
+        let opened = try await service.open(path: f.folder.path)
+        let stale = Repository(path: opened.path, gitDirectory: opened.gitDirectory,
+                               commonDirectory: opened.commonDirectory, name: opened.name,
+                               trusted: false, identity: nil)
+        try await registry.save(stale)
+        let report = try await service.trustAll(ids: [stale.id])
+        #expect(report.completed == 1)
+        #expect(try await registry.repositories().first?.trusted == true)
+        #expect(try await registry.repositories().first?.identity == opened.identity)
+    }
+    @Test func discardFolderRemovesNestedProjectsWithoutDeletingFiles() async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        let workspace = f.folder.appendingPathComponent("workspace")
+        for path in ["alpha", "beta/nested"] {
+            let directory = workspace.appendingPathComponent(path)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            _ = try await f.git(["init", "--initial-branch=main", directory.path])
+        }
+        let registry = try SQLiteRegistry(path: f.folder.appendingPathComponent("catalog.sqlite").path)
+        let service = DeskService(git: f.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()), discovery: FolderDiscovery())
+        _ = try await service.openFolder(path: workspace.path)
+        #expect(try await registry.repositories().count == 2)
+        let removed = try await service.discardFolder(root: workspace.path)
+        #expect(removed.count == 2)
+        #expect(try await registry.repositories().isEmpty)
+        #expect(try await service.folderRoots().isEmpty)
+        #expect(FileManager.default.fileExists(atPath: workspace.appendingPathComponent("alpha").path))
+    }
+    @Test func rescanFolderRebuildsProjectsAfterDiscard() async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        let workspace = f.folder.appendingPathComponent("workspace")
+        let project = workspace.appendingPathComponent("service")
+        try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
+        _ = try await f.git(["init", "--initial-branch=main", project.path])
+        let registry = try SQLiteRegistry(path: f.folder.appendingPathComponent("catalog.sqlite").path)
+        let service = DeskService(git: f.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()), discovery: FolderDiscovery())
+        _ = try await service.openFolder(path: workspace.path)
+        let rediscovered = try await service.rescanFolder(root: workspace.path)
+        #expect(rediscovered.repositories.count == 1)
+        #expect(try await registry.repositories().count == 1)
+        #expect(try await service.folderRoots().contains(workspace.resolvingSymlinksInPath().path))
+    }
     @Test func directoryTreeKeepsHierarchyAndMergesOverlappingRoots() {
         func repo(_ path: String) -> Repository { Repository(path: path, gitDirectory: path + "/.git", commonDirectory: path + "/.git", name: URL(fileURLWithPath: path).lastPathComponent) }
         let repositories = [repo("/Projects/team/api"), repo("/Projects/team/ui"), repo("/Projects/team/api/nested"), repo("/ProjectSibling/repo")]

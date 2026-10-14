@@ -193,8 +193,8 @@ private struct ReviewedSymbols {
             gitVersion = try await service.git.version()
             gitExecutable = try await service.git.executablePath()
             let savedSelection = try await service.registry.preference("repository.selected")
-            if let savedSelection, repositories.contains(where: { $0.id == savedSelection }) {
-                _ = try await service.open(path: savedSelection)
+            if let savedSelection, let selected = repositories.first(where: { $0.id == savedSelection }) {
+                _ = try await service.open(path: selected.path)
                 repositories = try await service.registry.repositories()
                 selectedID = savedSelection
             }
@@ -301,6 +301,54 @@ private struct ReviewedSymbols {
         Task {
             do { try await service.registry.save(repository); repositories = try await service.registry.repositories() }
             catch { self.error = error.localizedDescription }
+        }
+    }
+    public func discardFolderRoot(_ root: String) {
+        guard !busy else { return }
+        let members = repositories.filter { RepositoryTreeBuilder.contains(root, path: $0.path) }
+        guard !members.isEmpty else { return }
+        guard confirmClosingSessions(members.map(\.id)) else { return }
+        perform("Quitando carpeta y referencias del registro…", refreshAfter: false) {
+            let removed = try await self.service.discardFolder(root: root)
+            for id in removed {
+                self.openIDs.removeAll { $0 == id }
+                self.terminals[id]?.forEach { $0.driver.close() }
+                self.terminals.removeValue(forKey: id)
+            }
+            self.persistTabs()
+            self.repositories = try await self.service.registry.repositories()
+            self.folderRoots = try await self.service.folderRoots()
+            if let current = self.selectedID, removed.contains(current) {
+                self.selectedID = nil
+                self.commits = []
+                self.files = []
+                self.diffText = ""
+                try await self.service.registry.setPreference("repository.selected", value: "")
+            }
+            self.status = "Se quitaron \(removed.count) referencias bajo \(URL(fileURLWithPath: root).lastPathComponent). Los archivos no se modificaron."
+        }
+    }
+    public func rescanFolderRoot(_ root: String) {
+        guard !busy else { return }
+        let members = repositories.filter { RepositoryTreeBuilder.contains(root, path: $0.path) }
+        if !members.isEmpty, !confirmClosingSessions(members.map(\.id)) { return }
+        perform("Volviendo a escanear la carpeta…", refreshAfter: false) {
+            let result = try await self.service.rescanFolder(root: root)
+            for id in members.map(\.id) {
+                self.openIDs.removeAll { $0 == id }
+                self.terminals[id]?.forEach { $0.driver.close() }
+                self.terminals.removeValue(forKey: id)
+            }
+            self.persistTabs()
+            self.repositories = try await self.service.registry.repositories()
+            self.folderRoots = try await self.service.folderRoots()
+            if let current = self.selectedID, members.contains(where: { $0.id == current }) {
+                self.selectedID = nil
+                try await self.service.registry.setPreference("repository.selected", value: "")
+            }
+            self.repositorySearch = ""
+            self.status = "\(result.repositories.count) repositorios encontrados en " + URL(fileURLWithPath: result.root).lastPathComponent
+            if !result.issues.isEmpty { self.error = result.issues.prefix(12).joined(separator: "\n") }
         }
     }
     public func remove(_ repository: Repository) {
