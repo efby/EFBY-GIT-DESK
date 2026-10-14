@@ -234,8 +234,8 @@ import EfbyGitDeskInfrastructure
         model.repositories = [opened]; model.select(opened.id)
         try await waitUntil { !model.loading && !model.commits.isEmpty }
         model.workspaceSection = .pending
-        #expect(model.workspaceSection == .history) // Trust is required, even for programmatic tab changes.
-        let repository = try await service.trust(opened)
+        #expect(model.workspaceSection == .pending)
+        let repository = opened
         model.repositories = [repository]
         try fixture.write("README.md", "staged content\n")
         _ = try await fixture.git(["add", "--", "README.md"])

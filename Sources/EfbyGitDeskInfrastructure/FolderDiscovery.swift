@@ -4,11 +4,12 @@ import EfbyGitDeskDomain
 
 public struct FolderDiscovery: FolderDiscoveryPort {
     public init() {}
-    public func scan(path: String) async throws -> FolderScanResult {
-        let task = Task.detached { try Self.walk(path: path) }
+    public func scan(path: String,
+                     progress: (@Sendable (String, Int, Int) -> Void)? = nil) async throws -> FolderScanResult {
+        let task = Task.detached { try Self.walk(path: path, progress: progress) }
         return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
     }
-    private static func walk(path: String) throws -> FolderScanResult {
+    private static func walk(path: String, progress: (@Sendable (String, Int, Int) -> Void)?) throws -> FolderScanResult {
         let manager = FileManager.default
         let root = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath()
         let rootPath = root.path
@@ -25,13 +26,20 @@ public struct FolderDiscovery: FolderDiscoveryPort {
             let directoryPath = directory.path
             try Task.checkCancellation()
             guard visited.insert(directoryPath).inserted else { continue }
-            if manager.fileExists(atPath: directory.appendingPathComponent(".git").path) { found.insert(directoryPath) }
+            if visited.count.isMultiple(of: 12) {
+                progress?(directoryPath, found.count, visited.count)
+            }
+            if manager.fileExists(atPath: directory.appendingPathComponent(".git").path) {
+                found.insert(directoryPath)
+                progress?(directoryPath, found.count, visited.count)
+            }
             // Report possible bare repositories through Git validation, while continuing to find nested projects.
             if manager.fileExists(atPath: directory.appendingPathComponent("HEAD").path),
                manager.fileExists(atPath: directory.appendingPathComponent("objects").path),
                manager.fileExists(atPath: directory.appendingPathComponent("refs").path),
                manager.fileExists(atPath: directory.appendingPathComponent("config").path) {
                 found.insert(directoryPath)
+                progress?(directoryPath, found.count, visited.count)
             }
             let children: [URL]
             do { children = try manager.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey]) }

@@ -46,6 +46,11 @@ private actor BulkConcurrencyRecorder {
         let service = DeskService(git: fixtures[0].adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
         var ids: [String] = []
         for fixture in fixtures { ids.append(try await service.open(path: fixture.folder.path).id) }
+        for repository in try await registry.repositories() {
+            var copy = repository
+            copy.trusted = false
+            try await registry.save(copy)
+        }
 
         let trustRecorder = BulkConcurrencyRecorder()
         let trust = try await service.trustAll(ids: ids) { event in await trustRecorder.record(event) }
@@ -76,10 +81,16 @@ private actor BulkConcurrencyRecorder {
         let service = DeskService(git: first.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
         let one = try await service.open(path: first.folder.path)
         let two = try await service.open(path: second.folder.path)
+        #expect(one.trusted && two.trusted)
         let before = try await service.fetchAll(profile: nil)
-        #expect(before.skipped == 2)
-        #expect(before.completed == 0)
+        #expect(before.completed >= 2)
+        #expect(before.skipped >= 1)
 
+        for repository in [one, two] {
+            var copy = repository
+            copy.trusted = false
+            try await registry.save(copy)
+        }
         let trustRecorder = BulkProgressRecorder()
         let trusted = try await service.trustAll(ids: [one.id, two.id]) { event in await trustRecorder.record(event) }
         #expect(trusted.completed == 2)

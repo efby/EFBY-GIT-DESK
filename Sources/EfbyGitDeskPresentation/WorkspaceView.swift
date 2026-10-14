@@ -103,6 +103,9 @@ public struct WorkspaceView: View {
         .sheet(item: $model.bulkProgress) { progress in
             BulkRepositoryProgressSheet(progress: progress) { model.cancelOperation() }
         }
+        .sheet(item: $model.folderScanProgress) { progress in
+            FolderScanProgressSheet(progress: progress) { model.cancelOperation() }
+        }
         .sheet(isPresented: $model.showAmend) { AmendSheet(model: model) }
         .sheet(item: $model.plan, onDismiss: { if !model.busy { model.cancelPlan(); model.unpause() } }) { plan in
             AmendConfirmation(model: model, plan: plan)

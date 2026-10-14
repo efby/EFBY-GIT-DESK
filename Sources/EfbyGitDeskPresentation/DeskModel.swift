@@ -16,6 +16,7 @@ private struct ReviewedSymbols {
     public var folderRoots: [String] = []
     public var repositories: [Repository] = []
     public var selectedID: String?
+    public var explorerSelectedIDs: Set<String> = []
     public var openIDs: [String] = []
     public var snapshot = RepositorySnapshot()
     public var branches: [Branch] = []
@@ -79,6 +80,7 @@ private struct ReviewedSymbols {
     public var error: String?
     var bulkProgress: BulkRepositoryProgress?
     var trustProgress: BulkRepositoryProgress?
+    var folderScanProgress: FolderScanProgressModel?
     public var terminalVisible = false
     public var terminalHeight: Double = 230
     public var branchWidth: Double = 180
@@ -108,13 +110,6 @@ private struct ReviewedSymbols {
 
     public init(service: DeskService, terminalFactory: @escaping @MainActor () -> any TerminalPort) {
         self.service = service; self.terminalFactory = terminalFactory
-    }
-    public var sidebarSelection: String? {
-        get { selectedID }
-        set {
-            guard let newValue, repositories.contains(where: { $0.id == newValue }) else { return }
-            selectedID = newValue
-        }
     }
     public var repository: Repository? { repositories.first { $0.id == selectedID } }
     public var mutable: Bool { repository?.trusted == true && repository?.linkedWorktree == false && repository?.inspectionReason == nil && !busy }
@@ -197,6 +192,7 @@ private struct ReviewedSymbols {
                 _ = try await service.open(path: selected.path)
                 repositories = try await service.registry.repositories()
                 selectedID = savedSelection
+                explorerSelectedIDs = [savedSelection]
             }
             if let selectedID, !openIDs.contains(selectedID), repository != nil { openIDs.append(selectedID) }
             if repository != nil { refresh() }
@@ -210,14 +206,20 @@ private struct ReviewedSymbols {
         if panel.runModal() == .OK, let url = panel.url { open(path: url.path) }
     }
     public func open(path: String) {
+        let scanProgress = FolderScanProgressModel(rootPath: path)
+        folderScanProgress = scanProgress
         perform("Buscando repositorios en la carpeta y sus subcarpetas…", refreshAfter: false) {
             let result: FolderOpenResult
-            do { result = try await self.service.openFolder(path: path) }
+            do {
+                result = try await self.service.openFolder(path: path, progress: { await scanProgress.apply($0) })
+            }
             catch {
+                scanProgress.fail(error)
                 self.repositories = (try? await self.service.registry.repositories()) ?? self.repositories
                 self.folderRoots = (try? await self.service.folderRoots()) ?? self.folderRoots
                 throw error
             }
+            scanProgress.finish(issues: result.issues, cancelled: Task.isCancelled)
             self.repositories = try await self.service.registry.repositories()
             self.folderRoots = try await self.service.folderRoots()
             self.repositorySearch = ""
@@ -252,7 +254,7 @@ private struct ReviewedSymbols {
         if !openIDs.contains(id) { openIDs.append(id); persistTabs() }
         generation += 1; query?.cancel(); searchQuery?.cancel(); selectionQuery?.cancel(); comparisonOrdering = false; comparisonOrderFailed = false; fileQuery?.cancel(); closeDiff(); knownFiles = [:]; filesLoading = false
         pendingComparisonCommit = nil; showReplaceComparison = false
-        selectedID = id; selectedOIDs = []; retainedCommits = []; retainedOrder = []; commits = []; files = []; diffText = ""
+        selectedID = id; explorerSelectedIDs = [id]; selectedOIDs = []; retainedCommits = []; retainedOrder = []; commits = []; files = []; diffText = ""
         workingView = false; tips = []; parentIndex = 0; selectedTerminal = nil
         snapshot = RepositorySnapshot(); branches = []; remoteNames = []; remote = ""; remoteSupported = false; loadedContext = nil
         Task { try? await service.registry.setPreference("repository.selected", value: id) }
@@ -307,7 +309,7 @@ private struct ReviewedSymbols {
         guard !busy else { return }
         let members = repositories.filter { RepositoryTreeBuilder.contains(root, path: $0.path) }
         guard !members.isEmpty else { return }
-        guard confirmClosingSessions(members.map(\.id)) else { return }
+        guard confirmRemoveFromRegistry(count: members.count), confirmClosingSessions(members.map(\.id)) else { return }
         perform("Quitando carpeta y referencias del registro…", refreshAfter: false) {
             let removed = try await self.service.discardFolder(root: root)
             for id in removed {
@@ -332,8 +334,17 @@ private struct ReviewedSymbols {
         guard !busy else { return }
         let members = repositories.filter { RepositoryTreeBuilder.contains(root, path: $0.path) }
         if !members.isEmpty, !confirmClosingSessions(members.map(\.id)) { return }
+        let scanProgress = FolderScanProgressModel(rootPath: root)
+        folderScanProgress = scanProgress
         perform("Volviendo a escanear la carpeta…", refreshAfter: false) {
-            let result = try await self.service.rescanFolder(root: root)
+            let result: FolderOpenResult
+            do {
+                result = try await self.service.rescanFolder(root: root, progress: { await scanProgress.apply($0) })
+            } catch {
+                scanProgress.fail(error)
+                throw error
+            }
+            scanProgress.finish(issues: result.issues, cancelled: Task.isCancelled)
             for id in members.map(\.id) {
                 self.openIDs.removeAll { $0 == id }
                 self.terminals[id]?.forEach { $0.driver.close() }
@@ -352,18 +363,42 @@ private struct ReviewedSymbols {
         }
     }
     public func remove(_ repository: Repository) {
+        let targets = explorerSelectedIDs.contains(repository.id) && explorerSelectedIDs.count > 1
+            ? Array(explorerSelectedIDs) : [repository.id]
+        removeFromRegistry(ids: targets)
+    }
+    public func removeFromRegistry(ids: [String]) {
         guard !busy else { return }
-        guard confirmClosingSessions([repository.id]) else { return }
-        openIDs.removeAll { $0 == repository.id }; persistTabs()
-        terminals[repository.id]?.forEach { $0.driver.close() }
-        terminals.removeValue(forKey: repository.id)
-        Task {
-            do {
-                try await service.registry.remove(id: repository.id)
-                repositories = try await service.registry.repositories()
-                if selectedID == repository.id { selectedID = nil; commits = []; files = []; diffText = ""; try await service.registry.setPreference("repository.selected", value: "") }
-            } catch { self.error = error.localizedDescription }
+        let unique = Array(Set(ids)).filter { id in repositories.contains { $0.id == id } }
+        guard !unique.isEmpty else { return }
+        guard confirmRemoveFromRegistry(count: unique.count), confirmClosingSessions(unique) else { return }
+        perform("Quitando referencias del registro…", refreshAfter: false) {
+            for id in unique {
+                self.openIDs.removeAll { $0 == id }
+                self.terminals[id]?.forEach { $0.driver.close() }
+                self.terminals.removeValue(forKey: id)
+            }
+            self.persistTabs()
+            for id in unique { try await self.service.registry.remove(id: id) }
+            self.repositories = try await self.service.registry.repositories()
+            self.explorerSelectedIDs.subtract(unique)
+            if let current = self.selectedID, unique.contains(current) {
+                self.selectedID = nil
+                self.commits = []
+                self.files = []
+                self.diffText = ""
+                try await self.service.registry.setPreference("repository.selected", value: "")
+            }
+            self.status = "Se quitaron \(unique.count) referencias del registro. Las carpetas en disco no se modificaron."
         }
+    }
+    private func confirmRemoveFromRegistry(count: Int) -> Bool {
+        let alert = NSAlert()
+        alert.messageText = count == 1 ? "Quitar proyecto del registro" : "Quitar proyectos del registro"
+        alert.informativeText = "Se quitarán \(count) referencias de EFBY Git Desk. Las carpetas y archivos en disco no se borran ni se modifican."
+        alert.addButton(withTitle: "Quitar del registro")
+        alert.addButton(withTitle: "Cancelar")
+        return alert.runModal() == .alertFirstButtonReturn
     }
     private func confirmClosingSessions(_ ids: [String]) -> Bool {
         let running = ids.reduce(0) { $0 + (terminals[$1]?.filter { $0.driver.running }.count ?? 0) }

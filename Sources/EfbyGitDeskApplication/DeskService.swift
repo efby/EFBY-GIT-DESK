@@ -13,11 +13,22 @@ public actor DeskService {
     }
     public func open(path: String) async throws -> Repository {
         var result = try await git.discover(path: path)
-        if let saved = try await registry.repositories().first(where: { $0.path == result.path }) {
+        let saved = try await registry.repositories().first(where: { $0.path == result.path })
+        if let saved {
             result = Self.mergeRegistration(saved: saved, discovered: result)
         }
+        result = Self.applyDefaultTrust(result, prior: saved)
         result.lastOpened = .now
         try await registry.save(result)
+        return result
+    }
+
+    /// Los proyectos nuevos en el catálogo nacen confiables. Un registro ya guardado como no confiable
+    /// o un `.git` sustituido conservan la restricción hasta confiar de nuevo. Los clones sin checkout no.
+    static func applyDefaultTrust(_ repository: Repository, prior: Repository?) -> Repository {
+        var result = repository
+        guard !result.pendingCheckout, prior == nil, !result.trusted else { return result }
+        result.trusted = true
         return result
     }
 
@@ -46,57 +57,98 @@ public actor DeskService {
         }
         return result
     }
-    public func openFolder(path: String) async throws -> FolderOpenResult {
+    public func openFolder(path: String,
+                           preservingFolderRoots: [String] = [],
+                           progress: (@Sendable (FolderScanProgressEvent) async -> Void)? = nil) async throws -> FolderOpenResult {
         guard let discovery else {
             let repository = try await open(path: path)
             return FolderOpenResult(root: repository.path, repositories: [repository], issues: [])
         }
-        let scan = try await discovery.scan(path: path)
+        let scanProgress: (@Sendable (String, Int, Int) -> Void)?
+        if let progress {
+            scanProgress = { current, discovered, visited in
+                Task { await progress(.scanning(currentPath: current, discovered: discovered, visited: visited)) }
+            }
+        } else {
+            scanProgress = nil
+        }
+        let scan = try await discovery.scan(path: path, progress: scanProgress)
         var opened: [Repository] = [], issues: [String] = []
         if scan.unreadableDirectories > 0 { issues.append("No se pudieron leer \(scan.unreadableDirectories) carpetas.") }
         if scan.externalLinks > 0 { issues.append("Se omitieron \(scan.externalLinks) enlaces a carpetas fuera de la ubicación elegida.") }
-        for candidate in scan.paths {
+        let candidates = scan.paths
+        for (index, candidate) in candidates.enumerated() {
             try Task.checkCancellation()
+            let name = URL(fileURLWithPath: candidate).lastPathComponent
+            await progress?(.importing(path: candidate, name: name, index: index + 1, total: max(candidates.count, 1)))
             do { opened.append(try await open(path: candidate)) }
             catch is CancellationError { throw CancellationError() }
-            catch { issues.append(URL(fileURLWithPath: candidate).lastPathComponent + ": " + error.localizedDescription) }
+            catch { issues.append(name + ": " + error.localizedDescription) }
         }
-        if scan.paths.isEmpty {
+        if candidates.isEmpty {
             // Preserve opening a subfolder within an existing repository.
             do { opened = [try await open(path: path)] }
             catch is CancellationError { throw CancellationError() }
             catch { issues.append("No se encontraron repositorios Git en esta carpeta ni en sus subcarpetas.") }
         }
         if !opened.isEmpty {
-            var roots = try await folderRoots()
-            if opened.count > 1 || opened.first?.path != scan.root {
-                if !roots.contains(scan.root) { roots.append(scan.root) }
-                let encoded = try JSONEncoder().encode(roots)
-                try await registry.setPreference("repository.folderRoots", value: String(decoding: encoded, as: UTF8.self))
-            }
+            try await persistFolderRoots(scanRoot: scan.root, opened: opened, candidateCount: candidates.count,
+                                       ensuring: preservingFolderRoots)
         }
         return FolderOpenResult(root: scan.root, repositories: opened, issues: issues)
     }
     public func folderRoots() async throws -> [String] {
         guard let value = try await registry.preference("repository.folderRoots"), let data = value.data(using: .utf8) else { return [] }
-        return (try? JSONDecoder().decode([String].self, from: data)) ?? []
+        let decoded = (try? JSONDecoder().decode([String].self, from: data)) ?? []
+        return Array(Set(decoded.map(RepositoryFolderPaths.canonical))).sorted()
+    }
+    public func removeRepositories(under root: String) async throws -> [String] {
+        let normalized = RepositoryFolderPaths.canonical(root)
+        let removed = try await registry.repositories().filter { RepositoryFolderPaths.contains(normalized, path: $0.path) }
+        for repository in removed { try await registry.remove(id: repository.id) }
+        return removed.map(\.id)
     }
     /// Quita una carpeta raíz del explorador y todas las referencias a repositorios bajo ella. No borra archivos.
     public func discardFolder(root: String) async throws -> [String] {
-        let normalized = URL(fileURLWithPath: root).standardizedFileURL.path
-        let repositories = try await registry.repositories()
-        let removed = repositories.filter { RepositoryFolderScope.contains(normalized, path: $0.path) }
-        for repository in removed { try await registry.remove(id: repository.id) }
+        let normalized = RepositoryFolderPaths.canonical(root)
+        let removed = try await removeRepositories(under: normalized)
         var roots = try await folderRoots()
-        roots.removeAll { RepositoryFolderScope.contains(normalized, path: $0) }
+        roots.removeAll { RepositoryFolderPaths.contains(normalized, path: $0) }
         let encoded = try JSONEncoder().encode(roots)
         try await registry.setPreference("repository.folderRoots", value: String(decoding: encoded, as: UTF8.self))
-        return removed.map(\.id)
+        return removed
     }
-    /// Descarta la carpeta raíz y vuelve a buscar repositorios Git en ella y sus subcarpetas.
-    public func rescanFolder(root: String) async throws -> FolderOpenResult {
-        _ = try await discardFolder(root: root)
-        return try await openFolder(path: root)
+    /// Actualiza los repositorios bajo una carpeta conservando sus raíces del árbol del explorador.
+    public func rescanFolder(root: String,
+                            progress: (@Sendable (FolderScanProgressEvent) async -> Void)? = nil) async throws -> FolderOpenResult {
+        let normalized = RepositoryFolderPaths.canonical(root)
+        let priorRoots = try await folderRoots()
+        let preserved = priorRoots.filter {
+            RepositoryFolderPaths.canonical($0) == normalized
+                || RepositoryFolderPaths.contains(normalized, path: $0)
+                || RepositoryFolderPaths.contains($0, path: normalized)
+        }
+        _ = try await removeRepositories(under: normalized)
+        return try await openFolder(path: normalized, preservingFolderRoots: preserved + [normalized], progress: progress)
+    }
+
+    private func persistFolderRoots(scanRoot: String, opened: [Repository], candidateCount: Int,
+                                    ensuring: [String]) async throws {
+        let scanRoot = RepositoryFolderPaths.canonical(scanRoot)
+        var roots = Set(try await folderRoots())
+        for path in ensuring { roots.insert(RepositoryFolderPaths.canonical(path)) }
+        if shouldRegisterFolderRoot(scanRoot: scanRoot, opened: opened, candidateCount: candidateCount) {
+            roots.insert(scanRoot)
+        }
+        let encoded = try JSONEncoder().encode(roots.sorted())
+        try await registry.setPreference("repository.folderRoots", value: String(decoding: encoded, as: UTF8.self))
+    }
+
+    private func shouldRegisterFolderRoot(scanRoot: String, opened: [Repository], candidateCount: Int) -> Bool {
+        guard !opened.isEmpty else { return false }
+        if candidateCount > 1 || opened.count > 1 { return true }
+        if let only = opened.first, RepositoryFolderPaths.canonical(only.path) != scanRoot { return true }
+        return false
     }
     public func trust(_ repository: Repository) async throws -> Repository {
         let actual = try await git.discover(path: repository.path)
@@ -182,13 +234,17 @@ public actor DeskService {
     private func trustOne(_ repository: Repository, progress: (@Sendable (BulkRepositoryProgressEvent) async -> Void)?) async -> [BulkRepositoryReport.Entry] {
         if let progress { await progress(.started(repository: repository, remote: nil)) }
         let entry: BulkRepositoryReport.Entry
-        if repository.trusted {
-            entry = .init(repository: repository, result: .skipped, detail: "Ya tenía confianza.")
-        } else if repository.inspectionReason != nil || repository.linkedWorktree {
-            entry = .init(repository: repository, result: .skipped, detail: "Solo admite inspección en este MVP.")
-        } else {
-            do {
-                let refreshed = try await open(path: repository.path)
+        do {
+            let refreshed = try await open(path: repository.path)
+            if refreshed.inspectionReason != nil || refreshed.linkedWorktree {
+                entry = .init(repository: repository, result: .skipped, detail: "Solo admite inspección en este MVP.")
+            } else if refreshed.trusted,
+                      repository.trusted,
+                      refreshed.gitDirectory == repository.gitDirectory,
+                      refreshed.commonDirectory == repository.commonDirectory,
+                      repository.identity == refreshed.identity {
+                entry = .init(repository: repository, result: .skipped, detail: "Ya tenía confianza.")
+            } else {
                 guard refreshed.gitDirectory == repository.gitDirectory,
                       refreshed.commonDirectory == repository.commonDirectory else {
                     throw DeskError("El registro cambió en disco. Abre el proyecto y confía de nuevo antes de usar acciones globales.")
@@ -196,13 +252,17 @@ public actor DeskService {
                 if let savedIdentity = repository.identity, savedIdentity != refreshed.identity {
                     throw DeskError("El registro cambió en disco. Abre el proyecto y confía de nuevo antes de usar acciones globales.")
                 }
-                _ = try await trust(refreshed)
-                entry = .init(repository: repository, result: .completed, detail: "Identidad verificada y confianza guardada.")
-            } catch is CancellationError {
-                entry = .init(repository: repository, result: .failed, detail: "Interrumpido; comprueba su estado antes de repetir.")
-            } catch {
-                entry = .init(repository: repository, result: .failed, detail: error.localizedDescription)
+                if refreshed.trusted {
+                    entry = .init(repository: repository, result: .skipped, detail: "Ya tenía confianza.")
+                } else {
+                    _ = try await trust(refreshed)
+                    entry = .init(repository: repository, result: .completed, detail: "Identidad verificada y confianza guardada.")
+                }
             }
+        } catch is CancellationError {
+            entry = .init(repository: repository, result: .failed, detail: "Interrumpido; comprueba su estado antes de repetir.")
+        } catch {
+            entry = .init(repository: repository, result: .failed, detail: error.localizedDescription)
         }
         if let progress { await progress(.finished(entry)) }
         return [entry]
@@ -348,11 +408,5 @@ public actor DeskService {
         }
         guard repository.inspectionReason == nil else { throw DeskError(repository.inspectionReason!) }
         guard !repository.linkedWorktree else { throw DeskError("Este MVP permite inspeccionar worktrees vinculados, pero no modificarlos.") }
-    }
-}
-
-private enum RepositoryFolderScope {
-    static func contains(_ root: String, path: String) -> Bool {
-        path == root || path.hasPrefix(root == "/" ? "/" : root + "/")
     }
 }

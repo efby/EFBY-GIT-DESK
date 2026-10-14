@@ -2,7 +2,7 @@ import Foundation
 import EfbyGitDeskDomain
 
 struct RepositoryTreeBuilder {
-    static func contains(_ root: String, path: String) -> Bool { path == root || path.hasPrefix(root == "/" ? "/" : root + "/") }
+    static func contains(_ root: String, path: String) -> Bool { RepositoryFolderPaths.contains(root, path: path) }
     static func make(repositories: [Repository], roots: [String]) -> [RepositoryTreeNode] {
         let candidates = Array(Set(roots)).sorted { $0.count < $1.count }
         var outer: [String] = []
