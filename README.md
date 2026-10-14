@@ -6,7 +6,23 @@ Incluye repositorios en pestañas, favoritos/grupos, confianza persistida, ramas
 
 ## Compilar y abrir
 
-Para desarrollar y compilar: Xcode con Swift 6.2 o posterior y Git 2.40 o posterior. Para usar el DMG instalado no se requiere Xcode: se utiliza el Git accesible para la cuenta del usuario (PATH, rutas habituales o selección en Ajustes → Git), validado con `git --version`; se priorizan instalaciones de usuario y, si no hay otra compatible, también CLT o `/usr/bin/git` cuando respondan correctamente. El entorno verificado utiliza Swift 6.4, Git 2.51 y macOS 26.6.2 en arm64. El mínimo de compilación es macOS 14; su ejecución e Intel están pendientes de validar.
+Para desarrollar y compilar: Xcode con Swift 6.2 o posterior y Git 2.40 o posterior. El entorno verificado utiliza Swift 6.4, Git 2.51 y macOS 26.6.2 en arm64. El mínimo de compilación es macOS 14; su ejecución e Intel están pendientes de validar.
+
+### Qué Git usa la aplicación instalada
+
+EFBY Git Desk **no instala ni sustituye Git**. Usa el ejecutable que ya tengas en tu cuenta de macOS y lo valida ejecutando `git --version`: debe responder como Git **2.40 o posterior**. Si el binario no responde, está roto o es demasiado antiguo, la app lo descarta y prueba otra ruta.
+
+**Detección automática (al arrancar o si no guardaste ruta en Ajustes):**
+
+1. Recorre el `PATH` de tu sesión y ubicaciones habituales: `~/miniforge3/bin`, `~/homebrew/bin`, `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/local/git/bin`, MacPorts, etc.
+2. En cada candidato ejecuta `git --version` y se queda con el **primer** que cumpla la versión mínima.
+3. Si ninguno sirve, prueba como respaldo las rutas de **Apple** (`/usr/bin/git`, Command Line Tools o Xcode) con la misma validación. Un stub sin herramientas instaladas **no** cuenta porque no pasa la prueba.
+
+**Prioridad:** si coexisten varias instalaciones (por ejemplo Homebrew y CLT), se prefieren las de usuario antes que el Git de Apple.
+
+**Ruta manual (Ajustes → Git → Seleccionar…):** puedes indicar cualquier ejecutable con ruta absoluta (incluido `/usr/bin/git` o el de CLT) si `git --version` funciona en tu Mac. La ruta se guarda en el catálogo local de la app y se reaplica al reiniciar.
+
+**Si no hay Git válido:** el explorador, conexiones y preferencias siguen abiertos, pero no se leen repositorios hasta que haya un Git compatible. No hace falta Xcode para operar Git cuando CLT u otra instalación responden correctamente.
 
 ```sh
 bash scripts/test.sh
@@ -15,8 +31,6 @@ open "dist/EFBY Git Desk.app"
 ```
 
 Para un paquete optimizado: `bash scripts/build-app.sh release`. El paquete incluye el helper de credenciales y lleva firma ad hoc de desarrollo. No es un release con Developer ID ni notarización. Abrir `Package.swift` en Xcode permite desarrollar los targets.
-
-La aplicación instalada no requiere Xcode para operar Git. Si no encuentra ningún ejecutable que responda como Git ≥ 2.40, conserva el acceso al catálogo y los ajustes, pero no puede leer los repositorios. No instala ni reemplaza Git automáticamente.
 
 ## Uso inicial
 
