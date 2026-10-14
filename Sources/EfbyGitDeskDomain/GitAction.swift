@@ -10,4 +10,5 @@ public enum GitAction: Sendable {
     case fetch(String)
     case pull(String)
     case push(remote: String, branch: String, setUpstream: Bool)
+    case restoreRepositoryState(oid: String, message: String, remote: String, branch: String)
 }

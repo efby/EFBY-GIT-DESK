@@ -83,6 +83,11 @@ struct HistoryPane: View {
                                 }.buttonStyle(.plain)
                                 .accessibilityLabel("\(commit.message), \(commit.author), \(commit.shortOID)\(location.accessibilitySuffix(for: commit.oid))")
                                 .contextMenu {
+                                    Button("Restaurar estado del repositorio a este commit", systemImage: "arrow.uturn.backward.circle") {
+                                        model.beginRestoreRepositoryState(commit)
+                                    }
+                                    .disabled(!model.canRestoreRepositoryState)
+                                    .help(model.restoreRepositoryStateUnavailableReason ?? "Crea un commit nuevo encima del HEAD actual con el árbol de este commit, conserva el historial y publica la nueva punta en el remoto.")
                                     Button("Copiar SHA completo", systemImage: "doc.on.doc") {
                                         NSPasteboard.general.clearContents(); NSPasteboard.general.setString(commit.oid, forType: .string)
                                     }
@@ -95,6 +100,9 @@ struct HistoryPane: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .sheet(item: $model.restoreStateTarget) { commit in
+            RestoreRepositoryStateSheet(commit: commit, model: model)
+        }
         .alert("¿Limpiar la comparación anterior?", isPresented: $model.showReplaceComparison) {
             Button("Cancelar", role: .cancel) { model.resolveComparisonReplacement(accept: false) }
             Button("Limpiar y seleccionar") { model.resolveComparisonReplacement(accept: true) }

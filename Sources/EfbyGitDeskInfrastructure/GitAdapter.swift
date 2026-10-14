@@ -429,6 +429,28 @@ public actor GitAdapter: GitRepositoryPort {
                 _ = try await run(["config", "branch." + branch + ".merge", "refs/heads/" + branch], directory: repository.path, trusted: true)
             }
             return result.text
+        case .restoreRepositoryState(let oid, let message, let remote, let branch):
+            guard ComparisonPair.validOID(oid) else { throw DeskError("SHA del commit no válido.") }
+            let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { throw DeskError("Ingresa un identificador o mensaje antes de restaurar.") }
+            guard !state.upstream.isEmpty else { throw DeskError("Configura un upstream antes de restaurar y publicar.") }
+            if let ahead = state.ahead, ahead > 0 {
+                throw DeskError("Hay commits locales sin publicar. Publica o integra antes de restaurar el estado de un commit anterior.")
+            }
+            guard state.branch == branch else { throw DeskError("Solo se restaura sobre la rama activa.") }
+            try await validateBranch(branch, repository: repository)
+            let parentBefore = state.head
+            guard ComparisonPair.validOID(parentBefore) else { throw DeskError("HEAD actual no válido antes de restaurar.") }
+            _ = try await run(["restore", "--source", oid, "--staged", "--worktree", "."], directory: repository.path, trusted: true)
+            _ = try await run(["commit", "--file=-"], directory: repository.path, trusted: true, input: Data(trimmed.utf8))
+            let head = try await run(["rev-parse", "HEAD"], directory: repository.path, trusted: true).text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard ComparisonPair.validOID(head) else { throw DeskError("HEAD no válido tras el commit de restauración.") }
+            let newParent = try await run(["rev-parse", head + "^"], directory: repository.path, trusted: true).text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard newParent == parentBefore else {
+                throw DeskError("El commit de restauración no quedó encima del HEAD anterior. No se publicará.")
+            }
+            let url = try await destination(repository, remote: remote, push: true)
+            return try await network(["push", "--porcelain", "--", url, head + ":refs/heads/" + branch], repository: repository, profile: profile).text
         }
     }
     private func fetch(_ repository: Repository, remote: String, profile: ConnectionProfile?) async throws -> ProcessResult {

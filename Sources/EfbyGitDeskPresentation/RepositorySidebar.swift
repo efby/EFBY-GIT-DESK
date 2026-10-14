@@ -89,15 +89,6 @@ struct RepositorySidebar: View {
                 }
                 .disabled(model.busy || untrusted.isEmpty)
                 .help("Revisa los repositorios pendientes antes de conceder confianza a todos.")
-                Button {
-                    model.removeFromRegistry(ids: Array(model.explorerSelectedIDs))
-                } label: {
-                    Label("Quitar selección del registro (\(model.explorerSelectedIDs.count))",
-                          systemImage: "minus.circle")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .disabled(model.busy || model.explorerSelectedIDs.isEmpty)
-                .help("Quita las referencias seleccionadas de la aplicación sin borrar carpetas en disco. Usa Cmd+clic para elegir varios proyectos.")
             }
             .buttonStyle(.bordered)
             .padding(.horizontal, 12)

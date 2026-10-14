@@ -92,6 +92,8 @@ private struct ReviewedSymbols {
     public var showAmend = false
     public var amendText = ""
     public var publishAmend = false
+    public var restoreStateTarget: Commit?
+    public var restoreStateTicket = ""
     @ObservationIgnored private var loadedContext: DiffContext?
     @ObservationIgnored private var tips: [String] = []
     @ObservationIgnored private var generation = 0
@@ -113,6 +115,17 @@ private struct ReviewedSymbols {
     }
     public var repository: Repository? { repositories.first { $0.id == selectedID } }
     public var mutable: Bool { repository?.trusted == true && repository?.linkedWorktree == false && repository?.inspectionReason == nil && !busy }
+    public var canRestoreRepositoryState: Bool {
+        guard mutable, remoteSupported, !snapshot.upstream.isEmpty, !snapshot.branch.isEmpty else { return false }
+        return (snapshot.ahead ?? 0) == 0
+    }
+    public var restoreRepositoryStateUnavailableReason: String? {
+        if !mutable { return "Confía en el repositorio y asegúrate de que admite edición." }
+        if snapshot.upstream.isEmpty { return "Configura un upstream antes de restaurar y publicar." }
+        if (snapshot.ahead ?? 0) > 0 { return "Hay commits locales sin publicar." }
+        if !remoteSupported { return "Selecciona un remoto válido en la barra de herramientas." }
+        return nil
+    }
     public var profile: ConnectionProfile? { profiles.first { $0.id == profileID } }
     public var workspaceSection: WorkspaceSection {
         get { workingView ? (stagedView ? .staged : .pending) : .history }
@@ -774,6 +787,34 @@ private struct ReviewedSymbols {
         perform("Ejecutando operación Git…") {
             let result = try await self.service.mutate(action, repository: repository, profile: profile)
             self.status = result.isEmpty ? "Operación completada." : String(result.prefix(700))
+        }
+    }
+    public func beginRestoreRepositoryState(_ commit: Commit) {
+        guard canRestoreRepositoryState else {
+            error = restoreRepositoryStateUnavailableReason
+            return
+        }
+        restoreStateTicket = ""
+        restoreStateTarget = commit
+    }
+    public func confirmRestoreRepositoryState() {
+        guard let commit = restoreStateTarget else { return }
+        let trimmed = restoreStateTicket.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let message = RestoreRepositoryStateMessage.compose(userInput: trimmed, shortOID: commit.shortOID)
+        let oid = commit.oid
+        let remote = remote
+        let branch = snapshot.branch
+        restoreStateTarget = nil
+        restoreStateTicket = ""
+        perform("Restaurando estado y publicando…") {
+            guard let repository = self.repository else { return }
+            let result = try await self.service.mutate(
+                .restoreRepositoryState(oid: oid, message: message, remote: remote, branch: branch),
+                repository: repository,
+                profile: self.profile
+            )
+            self.status = result.isEmpty ? "Estado restaurado y publicado." : String(result.prefix(700))
         }
     }
     public func perform(_ label: String, refreshAfter: Bool = true, action: @escaping @MainActor () async throws -> Void) {
