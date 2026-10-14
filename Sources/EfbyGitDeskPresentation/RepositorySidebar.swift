@@ -32,7 +32,7 @@ struct RepositorySidebar: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 14)
             TextField("Buscar en todos los proyectos", text: $model.repositorySearch).textFieldStyle(.roundedBorder).padding(.horizontal, 12)
-            List(selection: $model.sidebarSelection) {
+            List(selection: $model.explorerSelectedIDs) {
                 if !model.repositorySearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Section("Resultados en todos los proyectos") {
                         ForEach(filtered) { repositoryRow($0) }
@@ -44,7 +44,6 @@ struct RepositorySidebar: View {
                     Section("Proyectos") {
                         if folderStateLoaded {
                             RepositoryTreeRows(nodes: tree, collapsed: collapsedFolders, onToggle: setFolder,
-                                               onSelect: { model.sidebarSelection = $0 },
                                                onDiscardFolder: { model.discardFolderRoot($0) },
                                                onRescanFolder: { model.rescanFolderRoot($0) }) {
                                 repositoryRow($0)
@@ -57,7 +56,13 @@ struct RepositorySidebar: View {
                         Section(name) { ForEach(model.repositories.filter { $0.group == name }) { repositoryRow($0).id("group:" + $0.id) } }
                     }
                 }
-            }.listStyle(.sidebar)
+            }
+            .listStyle(.sidebar)
+            .onChange(of: model.explorerSelectedIDs) { _, selection in
+                if selection.count == 1, let id = selection.first {
+                    model.select(id)
+                }
+            }
             if filtered.isEmpty && !model.repositories.isEmpty { Text("Sin coincidencias").foregroundStyle(.secondary).padding() }
             VStack(spacing: 6) {
                 Button { model.chooseRepository() } label: {
@@ -81,6 +86,15 @@ struct RepositorySidebar: View {
                 }
                 .disabled(model.busy || untrusted.isEmpty)
                 .help("Revisa los repositorios pendientes antes de conceder confianza a todos.")
+                Button {
+                    model.removeFromRegistry(ids: Array(model.explorerSelectedIDs))
+                } label: {
+                    Label("Quitar selección del registro (\(model.explorerSelectedIDs.count))",
+                          systemImage: "minus.circle")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .disabled(model.busy || model.explorerSelectedIDs.isEmpty)
+                .help("Quita las referencias seleccionadas de la aplicación sin borrar carpetas en disco. Usa Cmd+clic para elegir varios proyectos.")
             }
             .buttonStyle(.bordered)
             .padding(.horizontal, 12)
@@ -151,7 +165,7 @@ struct RepositorySidebar: View {
                         .foregroundStyle(.secondary).accessibilityLabel("Confianza pendiente")
                 }
             }
-                .font(.body.weight(repository.id == model.selectedID ? .semibold : .regular))
+                .font(.body.weight(model.explorerSelectedIDs.contains(repository.id) ? .semibold : .regular))
             Text(repository.path).font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
         }.padding(.vertical, 4).tag(repository.id)
         .contextMenu {
@@ -160,7 +174,11 @@ struct RepositorySidebar: View {
             }
             Button("Asignar grupo", systemImage: "folder.badge.gearshape") { group = repository.group; editing = repository }
             Button("Mostrar en Finder", systemImage: "folder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path) }
-            Button("Quitar del registro", systemImage: "minus.circle", role: .destructive) { model.remove(repository) }
+            Button(removeFromRegistryTitle(for: repository), systemImage: "minus.circle", role: .destructive) { model.remove(repository) }
         }
+    }
+    private func removeFromRegistryTitle(for repository: Repository) -> String {
+        let count = model.explorerSelectedIDs.contains(repository.id) ? model.explorerSelectedIDs.count : 1
+        return count > 1 ? "Quitar \(count) del registro" : "Quitar del registro"
     }
 }

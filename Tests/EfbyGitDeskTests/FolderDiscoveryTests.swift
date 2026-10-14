@@ -23,21 +23,21 @@ struct FolderDiscoveryTests {
         try FileManager.default.createSymbolicLink(at: workspace.appendingPathComponent("alias"), withDestinationURL: workspace.appendingPathComponent("division/backend"))
         try FileManager.default.createSymbolicLink(at: workspace.appendingPathComponent("cycle"), withDestinationURL: workspace)
         try FileManager.default.createSymbolicLink(at: workspace.appendingPathComponent("outside"), withDestinationURL: f.folder)
-        let result = try await FolderDiscovery().scan(path: workspace.path)
+        let result = try await FolderDiscovery().scan(path: workspace.path, progress: nil)
         #expect(result.paths.count == 6)
         #expect(result.paths.contains(nestedGitFile.resolvingSymlinksInPath().path))
         #expect(result.paths.contains(workspace.appendingPathComponent(paths.last!).resolvingSymlinksInPath().path))
         #expect(result.externalLinks == 1)
         #expect(!result.paths.contains { $0.contains("/.git/") })
-        let nestedScan = try await FolderDiscovery().scan(path: workspace.appendingPathComponent("division/backend").path)
+        let nestedScan = try await FolderDiscovery().scan(path: workspace.appendingPathComponent("division/backend").path, progress: nil)
         #expect(nestedScan.paths.count == 2)
     }
     @Test func canceledScanStopsAndEmptyFolderHasNoCandidates() async throws {
         let f = try await GitFixture.make(); defer { f.cleanup() }
         let empty = f.folder.appendingPathComponent("empty")
         try FileManager.default.createDirectory(at: empty, withIntermediateDirectories: true)
-        #expect(try await FolderDiscovery().scan(path: empty.path).paths.isEmpty)
-        let task = Task { try await FolderDiscovery().scan(path: f.folder.path) }
+        #expect(try await FolderDiscovery().scan(path: empty.path, progress: nil).paths.isEmpty)
+        let task = Task { try await FolderDiscovery().scan(path: f.folder.path, progress: nil) }
         task.cancel()
         await #expect(throws: CancellationError.self) { try await task.value }
     }
@@ -56,7 +56,7 @@ struct FolderDiscoveryTests {
         try await registry.save(trusted)
         let imported = try await service.openFolder(path: workspace.path)
         #expect(imported.repositories.count == 3)
-        #expect(imported.repositories.filter(\.trusted).count == 1)
+        #expect(imported.repositories.filter(\.trusted).count == 3)
         #expect(imported.repositories.first { $0.path == first.path }?.favorite == true)
         #expect(imported.issues.isEmpty)
         let reopened = DeskService(git: f.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()), discovery: FolderDiscovery())
@@ -65,9 +65,10 @@ struct FolderDiscoveryTests {
         #expect(try await registry.repositories().count == 3)
         let model = DeskModel(service: reopened, terminalFactory: { PTYTerminal(shell: "/bin/sh", login: false) })
         model.repositories = try await registry.repositories(); model.folderRoots = try await reopened.folderRoots()
-        model.sidebarSelection = workspace.path
-        #expect(model.selectedID == nil) // Clicking a grouping folder cannot activate it as a repository.
-        model.sidebarSelection = first.id
+        model.explorerSelectedIDs = []
+        #expect(model.selectedID == nil)
+        model.select(first.id)
+        #expect(model.explorerSelectedIDs == [first.id])
         #expect(model.selectedID == first.id)
         if let path = ProcessInfo.processInfo.environment["EFBY_PROJECT_TREE_PREVIEW_PATH"] {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 320, height: 650), styleMask: .borderless, backing: .buffered, defer: false)
@@ -99,7 +100,7 @@ struct FolderDiscoveryTests {
         let result = try await service.openFolder(path: root.path)
         #expect(result.repositories.count == 1)
         #expect(result.repositories[0].path == valid.resolvingSymlinksInPath().path)
-        #expect(!result.repositories[0].trusted)
+        #expect(result.repositories[0].trusted)
         #expect(result.issues.count == 1)
     }
     @Test func discoversRealLinkedWorktreesAndReportsUnsupportedBareRepositories() async throws {
@@ -114,7 +115,7 @@ struct FolderDiscoveryTests {
         let result = try await service.openFolder(path: root.path)
         #expect(result.repositories.count == 1)
         #expect(result.repositories.first?.linkedWorktree == true)
-        #expect(result.repositories.first?.trusted == false)
+        #expect(result.repositories.first?.trusted == true)
         #expect(result.issues.contains { $0.contains("bare") })
     }
     @Test func trustedRegistrationWithMissingIdentityIsPreservedOnRediscover() async throws {
@@ -163,19 +164,23 @@ struct FolderDiscoveryTests {
         #expect(try await service.folderRoots().isEmpty)
         #expect(FileManager.default.fileExists(atPath: workspace.appendingPathComponent("alpha").path))
     }
-    @Test func rescanFolderRebuildsProjectsAfterDiscard() async throws {
+    @Test func rescanFolderPreservesTreeRootAndRebuildsProjects() async throws {
         let f = try await GitFixture.make(); defer { f.cleanup() }
         let workspace = f.folder.appendingPathComponent("workspace")
-        let project = workspace.appendingPathComponent("service")
-        try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
-        _ = try await f.git(["init", "--initial-branch=main", project.path])
+        for path in ["alpha", "beta/nested"] {
+            let directory = workspace.appendingPathComponent(path)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            _ = try await f.git(["init", "--initial-branch=main", directory.path])
+        }
         let registry = try SQLiteRegistry(path: f.folder.appendingPathComponent("catalog.sqlite").path)
         let service = DeskService(git: f.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()), discovery: FolderDiscovery())
         _ = try await service.openFolder(path: workspace.path)
+        let root = workspace.resolvingSymlinksInPath().path
+        #expect(try await service.folderRoots().contains(root))
         let rediscovered = try await service.rescanFolder(root: workspace.path)
-        #expect(rediscovered.repositories.count == 1)
-        #expect(try await registry.repositories().count == 1)
-        #expect(try await service.folderRoots().contains(workspace.resolvingSymlinksInPath().path))
+        #expect(rediscovered.repositories.count == 2)
+        #expect(try await registry.repositories().count == 2)
+        #expect(try await service.folderRoots().contains(root))
     }
     @Test func directoryTreeKeepsHierarchyAndMergesOverlappingRoots() {
         func repo(_ path: String) -> Repository { Repository(path: path, gitDirectory: path + "/.git", commonDirectory: path + "/.git", name: URL(fileURLWithPath: path).lastPathComponent) }

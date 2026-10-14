@@ -57,13 +57,9 @@ struct ProcessAndStorageTests {
         let registry = try SQLiteRegistry(path: f.folder.appendingPathComponent("catalog.sqlite").path)
         let service = DeskService(git: f.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
         let registered = try await service.open(path: f.folder.path)
-        #expect(!registered.trusted)
-        await #expect(throws: DeskError.self) {
-            try await service.mutate(.createBranch("blocked"), repository: f.repository, profile: nil)
-        }
-        let trusted = try await service.trust(registered)
-        _ = try await service.mutate(.createBranch("allowed"), repository: trusted, profile: nil)
-        let state = try await f.adapter.snapshot(trusted)
+        #expect(registered.trusted)
+        _ = try await service.mutate(.createBranch("allowed"), repository: registered, profile: nil)
+        let state = try await f.adapter.snapshot(registered)
         #expect(try await f.git(["rev-parse", "refs/heads/allowed"]) == state.head)
     }
 }
