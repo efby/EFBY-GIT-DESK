@@ -212,7 +212,7 @@ Capturas sintéticas revisadas, no sesiones de repositorios personales:
 
 ![Visor sin cabeceras duplicadas y barra Modificaciones conservada](evidencia/compare-sin-cabeceras.png)
 
-El icono conserva el logotipo y estilo de EFBY_POSTMAN, con etiqueta **#GitDesk**.
+El icono usa la marca EFBY con etiqueta inferior **#GitDesk** (franja violeta en el generador vigente).
 Fuentes y generación: `Resources/Brand/EfbyLogo.ai` y `scripts/generate-icon.sh`.
 
 ## Carpetas persistentes y enlaces de código — PR #14 a #21

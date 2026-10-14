@@ -20,8 +20,8 @@ La aplicación instalada no requiere Xcode ni aceptar su licencia. Si no encuent
 
 ## Uso inicial
 
-1. Abre una carpeta Git. Comienza en inspección segura: historial y objetos, sin terminal, red ni cambios en archivos.
-2. Revisa la carpeta y concede confianza para habilitar operaciones locales. Las credenciales y la confianza son independientes.
+1. Abre una carpeta Git. Los proyectos locales nuevos en el catálogo quedan operativos de inmediato; los clones con `--no-checkout` siguen pidiendo confianza antes de materializar archivos. Las credenciales y la confianza son independientes.
+2. Si un repositorio ya registrado pierde confianza (por ejemplo, cambió `.git` en disco), vuelve a confirmarla para habilitar terminal, red y cambios en archivos.
 3. Selecciona **Pendientes** para preparar archivos y **Preparados** para revisar el índice y crear el commit. Las ramas ofrecen acciones en su menú contextual.
 4. Selecciona un commit para revisar sus diferencias; selecciona dos para comparar sus árboles. Un tercer clic sobre otro commit pregunta si deseas reemplazar el par: cancelar conserva ambos y aceptar deja seleccionado el último commit pulsado para elegir el segundo. La dirección es siempre del commit inferior al superior en el historial, independientemente del orden de selección. La búsqueda del historial conserva los commits seleccionados incluso al borrarla. Puedes copiar el SHA completo.
 5. Para Bitbucket, usa SSH/credenciales heredadas o agrega un API token en **Conexiones**. El catálogo necesita lectura de workspace y repositorios; publicar requiere permiso de escritura. El token se guarda en Keychain.
@@ -29,7 +29,11 @@ La aplicación instalada no requiere Xcode ni aceptar su licencia. Si no encuent
 7. **Editar mensaje de HEAD** presenta un plan que caduca a los 60 segundos. Publicarlo exige que HEAD coincida con la punta remota y utiliza un lease exacto. La referencia de recuperación se conserva incluso si el envío falla.
 8. **Terminal** abre el panel; **Nueva sesión** inicia una shell. Ocultarlo conserva la sesión. Cerrar una sesión activa presenta confirmación. Los cambios se consultan al volver al foco y cada cuatro segundos.
 
-**Abrir carpeta** admite un repositorio individual o una carpeta superior. Busca proyectos Git en todas las subcarpetas, conserva la estructura en un árbol expandible y recuerda las carpetas agregadas. **Buscar en todos los proyectos** encuentra repositorios por nombre, ruta o grupo incluso con el árbol contraído. No se ejecutan hooks ni se confía automáticamente en los proyectos encontrados. La búsqueda se puede cancelar; si hay carpetas inaccesibles, enlaces externos o repositorios no compatibles, la app informa el resultado parcial.
+**Abrir carpeta** admite un repositorio individual o una carpeta superior. Busca proyectos Git en todas las subcarpetas, conserva la estructura en un árbol expandible y recuerda las carpetas agregadas. Muestra progreso durante el escaneo y permite cancelar. **Buscar en todos los proyectos** encuentra repositorios por nombre, ruta o grupo incluso con el árbol contraído. Puedes seleccionar varios proyectos (Cmd+clic) y **quitar del registro** sin borrar carpetas en disco. La búsqueda se puede cancelar; si hay carpetas inaccesibles, enlaces externos o repositorios no compatibles, la app informa el resultado parcial.
+
+**Abrir en editor** (menú contextual en proyectos, pestañas o carpetas del árbol) lista solo las aplicaciones instaladas en el Mac (por ejemplo Cursor, Visual Studio Code, Zed o Xcode) y abre la carpeta del repositorio o de la carpeta elegida.
+
+**Cursor** (si está instalado): con **dos commits** seleccionados en **Historial** para comparar A→B, usa **Explicar en Cursor** en el historial o en el visor de un archivo. La app abre el repositorio completo en Cursor, copia un prompt breve con los SHAs, mensajes y la lista de archivos modificados (sin pegar el diff) y intenta precargarlo en el chat de Cursor mediante el enlace oficial; debes revisar y confirmar el envío. Si el chat no se rellena solo, pega con ⌘V desde el portapapeles.
 
 El lateral se titula **Explorador** y muestra **Agregar carpeta**, **Fetch de todos** y **Confiar en todos** como acciones alineadas bajo el árbol. La marca EFBY Git Desk queda en la barra superior; Bitbucket Cloud se ofrece como conexión, no como subtítulo de la aplicación. Fetch de todos abre de inmediato un panel de progreso: muestra qué repositorio y remoto procesa, incorpora cada resultado al terminar y permite cancelar. Recorre secuencialmente los remotos de cada repositorio confiable e informa completados, omitidos y errores. No concede confianza automáticamente. Confiar en todos muestra primero la lista de repositorios pendientes y advierte sobre hooks, filtros, auxiliares, terminal y posibles checkouts de clones; después de confirmar, esa misma hoja muestra el progreso por repositorio, permite cancelar y conserva los resultados individuales. Los repositorios de solo inspección se omiten.
 
@@ -72,7 +76,7 @@ La conexión contra una cuenta real de Bitbucket, el acceso del helper a Keychai
 
 Repositorio de desarrollo: [efby/EFBY-GIT-DESK](https://github.com/efby/EFBY-GIT-DESK). Las claves de autenticación permanecen fuera del repositorio y nunca se versionan.
 
-El icono reutiliza el logotipo y el diseño de EFBY_POSTMAN, con la etiqueta inferior **#GitDesk**. El vector está en `Resources/Brand/EfbyLogo.ai`; `scripts/generate-icon.sh` regenera el PNG y el icono macOS `.icns`, que el empaquetado incorpora al bundle.
+El icono de la app lleva la marca EFBY y la etiqueta inferior **#GitDesk** en una franja violeta para reconocerla en el Dock. El vector está en `Resources/Brand/EfbyLogo.ai`; `scripts/generate-icon.sh` regenera el PNG y el icono macOS `.icns`, que el empaquetado incorpora al bundle.
 
 El selector **Formato de código** detecta Python, JavaScript/JSX, TypeScript/TSX, Dart, Swift, Java/Kotlin, C/C++, C#, Go, Rust, Ruby, Shell, SQL, JSON, YAML/TOML, HTML/XML, CSS y Markdown. Permite elegir manualmente el lenguaje o texto plano. El resaltado léxico distingue cadenas, comentarios, palabras clave, números y llamadas; los fondos y signos de diff se conservan. Es una ayuda de lectura básica, sin ejecutar código ni ofrecer análisis de compilador.
 
