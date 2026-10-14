@@ -224,20 +224,23 @@ struct IconGenerator {
         NSGraphicsContext.restoreGraphicsState()
 
         let badgePath = NSBezierPath(roundedRect: badgeRect, xRadius: 56, yRadius: 56)
+        // Violeta intenso: lejos del naranja Postman y del fondo oscuro del icono.
         let badgeGradient = NSGradient(colors: [
-            NSColor(calibratedRed: 1.00, green: 0.49, blue: 0.34, alpha: 0.98),
-            NSColor(calibratedRed: 0.93, green: 0.29, blue: 0.36, alpha: 0.98)
+            NSColor(calibratedRed: 0.78, green: 0.36, blue: 1.00, alpha: 1),
+            NSColor(calibratedRed: 0.46, green: 0.14, blue: 0.86, alpha: 1),
         ])
-        badgeGradient?.draw(in: badgePath, angle: 0)
-
         let badgeShadow = NSShadow()
-        badgeShadow.shadowColor = NSColor.black.withAlphaComponent(0.28)
-        badgeShadow.shadowBlurRadius = 18
-        badgeShadow.shadowOffset = NSSize(width: 0, height: -8)
+        badgeShadow.shadowColor = NSColor.black.withAlphaComponent(0.35)
+        badgeShadow.shadowBlurRadius = 20
+        badgeShadow.shadowOffset = NSSize(width: 0, height: -10)
         NSGraphicsContext.saveGraphicsState()
         badgeShadow.set()
-        badgePath.fill()
+        badgeGradient?.draw(in: badgePath, angle: 90)
         NSGraphicsContext.restoreGraphicsState()
+
+        NSColor.white.withAlphaComponent(0.55).setStroke()
+        badgePath.lineWidth = 6
+        badgePath.stroke()
 
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .center
@@ -248,11 +251,12 @@ struct IconGenerator {
             .paragraphStyle: paragraph,
         ]
         let badgeText = NSAttributedString(string: "#GitDesk", attributes: attributes)
+        let textSize = badgeText.size()
         let textRect = NSRect(
             x: badgeRect.minX,
-            y: badgeRect.minY + 24,
+            y: badgeRect.midY - (textSize.height / 2),
             width: badgeRect.width,
-            height: badgeRect.height
+            height: textSize.height
         )
         badgeText.draw(in: textRect)
 
