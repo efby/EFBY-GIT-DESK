@@ -51,6 +51,11 @@ El menú contextual de cada pestaña permite **Cerrar pestaña**, **Cerrar otras
 visible. Si las pestañas afectadas tienen terminales activos, se solicita una sola
 confirmación antes de cerrarlos. El menú también ofrece **Abrir en Terminal** para
 repositorios confiables y **Mostrar en Finder** para localizar su carpeta.
+Si una pestaña abierta conserva una identidad Git antigua o incompleta, la app vuelve
+a descubrir ese repositorio al detectar el error. Actualiza el registro, retira la
+confianza anterior cuando corresponde y recarga el historial en modo de inspección;
+el usuario debe revisar el repositorio antes de volver a confiar. Esto evita dejar
+la vista vacía con una alerta repetida después de cambiar de pestaña.
 
 La marca EFBY Git Desk está en la barra superior junto a un símbolo de ramas
 cian del tamaño del anterior logotipo. El lateral se titula **Explorador**, con
