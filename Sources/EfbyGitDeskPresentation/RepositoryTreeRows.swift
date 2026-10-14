@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import EfbyGitDeskDomain
 
 struct RepositoryTreeRows<RowContent: View>: View {
@@ -7,6 +8,7 @@ struct RepositoryTreeRows<RowContent: View>: View {
     let onToggle: (String, Bool) -> Void
     var onDiscardFolder: ((String) -> Void)?
     var onRescanFolder: ((String) -> Void)?
+    var onOpenInEditor: ((String, ExternalEditor) -> Void)?
     let row: (Repository) -> RowContent
 
     var body: some View {
@@ -17,7 +19,8 @@ struct RepositoryTreeRows<RowContent: View>: View {
                     set: { onToggle(node.id, $0) }
                 )) {
                     RepositoryTreeRows(nodes: children, collapsed: collapsed, onToggle: onToggle,
-                                       onDiscardFolder: onDiscardFolder, onRescanFolder: onRescanFolder, row: row)
+                                       onDiscardFolder: onDiscardFolder, onRescanFolder: onRescanFolder,
+                                       onOpenInEditor: onOpenInEditor, row: row)
                 } label: {
                     if let repository = node.repository { row(repository) }
                     else {
@@ -34,6 +37,12 @@ struct RepositoryTreeRows<RowContent: View>: View {
 
     @ViewBuilder
     private func folderMenu(for path: String) -> some View {
+        Button("Mostrar en Finder", systemImage: "folder") {
+            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
+        }
+        if let onOpenInEditor {
+            ExternalEditorMenuItems(path: path) { editor in onOpenInEditor(path, editor) }
+        }
         if let onRescanFolder {
             Button("Volver a escanear carpeta", systemImage: "arrow.clockwise") { onRescanFolder(path) }
         }

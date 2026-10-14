@@ -31,6 +31,9 @@ struct RepositoryTabs: View {
                                     Button("Abrir en Terminal", systemImage: "terminal") { model.openExternalTerminal(for: id) }
                                         .disabled(model.busy || !repository.trusted || repository.inspectionReason != nil || repository.linkedWorktree)
                                     Button("Mostrar en Finder", systemImage: "folder") { model.showInFinder(id) }
+                                    ExternalEditorMenuItems(path: repository.path) { editor in
+                                        model.openInExternalEditor(id, editor: editor)
+                                    }
                                 }
                         }
                     }

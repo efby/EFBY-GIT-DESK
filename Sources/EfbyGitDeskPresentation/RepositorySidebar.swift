@@ -45,7 +45,10 @@ struct RepositorySidebar: View {
                         if folderStateLoaded {
                             RepositoryTreeRows(nodes: tree, collapsed: collapsedFolders, onToggle: setFolder,
                                                onDiscardFolder: { model.discardFolderRoot($0) },
-                                               onRescanFolder: { model.rescanFolderRoot($0) }) {
+                                               onRescanFolder: { model.rescanFolderRoot($0) },
+                                               onOpenInEditor: { path, editor in
+                                                   model.openFolderInExternalEditor(path, editor: editor)
+                                               }) {
                                 repositoryRow($0)
                             }
                         } else {
@@ -173,7 +176,10 @@ struct RepositorySidebar: View {
                 var value = repository; value.favorite.toggle(); model.update(value)
             }
             Button("Asignar grupo", systemImage: "folder.badge.gearshape") { group = repository.group; editing = repository }
-            Button("Mostrar en Finder", systemImage: "folder") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path) }
+            Button("Mostrar en Finder", systemImage: "folder") { model.showInFinder(repository.id) }
+            ExternalEditorMenuItems(path: repository.path) { editor in
+                model.openInExternalEditor(repository.id, editor: editor)
+            }
             Button(removeFromRegistryTitle(for: repository), systemImage: "minus.circle", role: .destructive) { model.remove(repository) }
         }
     }
