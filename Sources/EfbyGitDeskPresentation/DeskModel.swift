@@ -891,6 +891,45 @@ private struct ReviewedSymbols {
             return
         }
     }
+    public func openInExternalEditor(_ id: String, editor: ExternalEditor) {
+        guard let repository = repositories.first(where: { $0.id == id }) else { return }
+        openFolderInExternalEditor(repository.path, name: repository.name, editor: editor)
+    }
+    public func openFolderInExternalEditor(_ path: String, name: String? = nil, editor: ExternalEditor) {
+        let label = name ?? URL(fileURLWithPath: path).lastPathComponent
+        perform("Abriendo \(label) en \(editor.displayName)…", refreshAfter: false) {
+            try await ExternalEditorCatalog.open(path: path, with: editor)
+            self.status = "\(label) abierto en \(editor.displayName)."
+        }
+    }
+    public var canExplainComparisonInCursor: Bool {
+        guard CursorPromptLink.isInstalled, case .commits = context else { return false }
+        return true
+    }
+    public func explainComparisonInCursor() {
+        guard let repository else { return }
+        guard case .commits(let pair) = context else {
+            error = "Selecciona dos commits en Historial para comparar antes de pedir una explicación."
+            return
+        }
+        let baseMessage = commits.first { $0.oid == pair.base }?.message ?? "(mensaje no cargado)"
+        let targetMessage = commits.first { $0.oid == pair.target }?.message ?? "(mensaje no cargado)"
+        perform("Abriendo \(repository.name) en Cursor…", refreshAfter: false) {
+            var changedPaths = self.files.map(\.name)
+            if changedPaths.isEmpty {
+                changedPaths = try await self.service.git.changes(repository, context: .commits(pair)).map(\.name)
+            }
+            let prompt = CursorComparisonPrompt.make(pair: pair,
+                                                     baseMessage: baseMessage,
+                                                     targetMessage: targetMessage,
+                                                     repositoryName: repository.name,
+                                                     changedFilePaths: changedPaths)
+            let deeplink = try await CursorPromptLink.openRepositoryAndPrompt(repositoryPath: repository.path, prompt: prompt)
+            self.status = deeplink
+                ? "Proyecto abierto en Cursor. Revisa el chat con el prompt precargado y confírmalo antes de enviarlo."
+                : "Proyecto abierto en Cursor. El prompt está en el portapapeles; pégalo en el chat con ⌘V."
+        }
+    }
     static func panelWidth(_ saved: String?, default fallback: Double, minimum: Double, maximum: Double = .greatestFiniteMagnitude) -> Double {
         guard let saved, let value = Double(saved), value.isFinite else { return fallback }
         return min(maximum, max(minimum, value))

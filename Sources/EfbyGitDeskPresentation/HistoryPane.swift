@@ -15,6 +15,13 @@ struct HistoryPane: View {
                     TextField("Buscar por SHA o mensaje", text: $model.search).textFieldStyle(.roundedBorder)
                         .onChange(of: model.search) { _, _ in model.searchHistory() }
                     Text("\(model.commits.count) cargados").font(.caption).foregroundStyle(.secondary)
+                    if model.canExplainComparisonInCursor {
+                        Button("Explicar en Cursor", systemImage: "sparkles") {
+                            model.explainComparisonInCursor()
+                        }
+                        .buttonStyle(.bordered)
+                        .help("Abre el repositorio completo en Cursor con un prompt sobre la comparación A → B.")
+                    }
                 }.padding(12)
                 if !model.hiddenSelectedCommits.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {

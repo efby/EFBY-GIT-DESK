@@ -34,6 +34,15 @@ struct FileDiffView: View {
                     ForEach(CodeLanguage.allCases) { language in Text(language.rawValue).tag(language) }
                 }.labelsHidden().frame(width: 180).help("Detectar el lenguaje por extensión o elegirlo manualmente")
                 Text(model.detectedLanguageLabel).font(.caption).foregroundStyle(.secondary)
+                if model.canExplainComparisonInCursor {
+                    Button("Explicar en Cursor", systemImage: "sparkles") {
+                        model.explainComparisonInCursor()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .fixedSize()
+                    .help("Abre el repositorio en Cursor con un prompt breve A → B y la lista de archivos modificados (sin pegar el diff). Confirma el envío en el chat.")
+                }
                 Text("Esc cierra el visor").font(.caption).foregroundStyle(.secondary).fixedSize()
             }.padding(12)
             Divider()
