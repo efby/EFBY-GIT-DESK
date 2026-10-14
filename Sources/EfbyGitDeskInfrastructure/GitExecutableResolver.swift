@@ -1,7 +1,7 @@
 import Foundation
 import EfbyGitDeskDomain
 
-/// Finds an existing user installation without invoking Apple's developer-tool launchers.
+/// Finds a Git executable by validating `git --version` (≥ 2.40). User installs are tried before Apple-provided paths.
 public struct GitExecutableResolver: Sendable {
     private let runner = ProcessRunner()
     public init() {}
@@ -12,36 +12,41 @@ public struct GitExecutableResolver: Sendable {
                home + "/homebrew/bin", home + "/miniforge3/bin", "/opt/homebrew/bin", "/usr/local/bin", "/usr/local/git/bin", "/opt/local/bin"]
         var seen = Set<String>()
         return directories.filter { $0.hasPrefix("/") }.map { URL(fileURLWithPath: $0).appendingPathComponent("git").path }
-            .filter { seen.insert($0).inserted && !isDeveloperTool($0) }
+            .filter { seen.insert($0).inserted }
     }
 
-    public static func isDeveloperTool(_ path: String) -> Bool {
+    /// Apple/Xcode/CLT locations are used only after other candidates fail `git --version`.
+    public static func isAppleProvidedGit(_ path: String) -> Bool {
         let canonical = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
-        return canonical == "/usr/bin/git" || canonical.hasPrefix("/Library/Developer/")
+        return canonical == "/usr/bin/git" || canonical.contains("/Library/Developer/")
             || canonical.contains(".app/Contents/Developer/")
+    }
+
+    private static func orderedCandidates(path: String, home: String) -> [String] {
+        let all = candidates(path: path, home: home)
+        return all.filter { !isAppleProvidedGit($0) } + all.filter { isAppleProvidedGit($0) }
     }
 
     public func resolve(preferred: String? = nil,
                         path: String = ProcessInfo.processInfo.environment["PATH"] ?? "",
                         home: String = FileManager.default.homeDirectoryForCurrentUser.path) async throws -> String {
         if let preferred, !preferred.isEmpty {
-            guard preferred.hasPrefix("/"), !Self.isDeveloperTool(preferred),
-                  FileManager.default.isExecutableFile(atPath: preferred) else {
-                throw DeskError("Selecciona un Git independiente y accesible para tu cuenta. El Git de Xcode o de las herramientas de Apple no se utiliza.")
+            guard preferred.hasPrefix("/"), FileManager.default.isExecutableFile(atPath: preferred) else {
+                throw DeskError("Selecciona un ejecutable Git con ruta absoluta y permisos de ejecución para tu cuenta.")
             }
             _ = try await version(at: preferred)
             return URL(fileURLWithPath: preferred).standardizedFileURL.path
         }
-        for candidate in Self.candidates(path: path, home: home) {
+        for candidate in Self.orderedCandidates(path: path, home: home) {
             try Task.checkCancellation()
-            guard FileManager.default.isExecutableFile(atPath: candidate), !Self.isDeveloperTool(candidate) else { continue }
+            guard FileManager.default.isExecutableFile(atPath: candidate) else { continue }
             do {
                 _ = try await version(at: candidate)
                 return candidate
             } catch is CancellationError { throw CancellationError() }
             catch { continue }
         }
-        throw DeskError("No encontré un Git independiente compatible en tu cuenta. En Ajustes → Git selecciona el ejecutable que usas en Terminal (command -v git). No necesitas aceptar la licencia de Xcode ni permisos de administrador. Se requiere Git 2.40 o posterior; no se instala ni modifica Git automáticamente.")
+        throw DeskError("No encontré un Git compatible en tu cuenta. En Ajustes → Git selecciona el ejecutable que usas en Terminal (command -v git). Se requiere Git 2.40 o posterior; no se instala ni modifica Git automáticamente.")
     }
 
     public func version(at path: String) async throws -> String {

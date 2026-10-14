@@ -6,7 +6,7 @@ Incluye repositorios en pestañas, favoritos/grupos, confianza persistida, ramas
 
 ## Compilar y abrir
 
-Para desarrollar y compilar: Xcode con Swift 6.2 o posterior y Git 2.40 o posterior. Para usar el DMG instalado no se requiere Xcode: se utiliza una instalación independiente de Git accesible para la cuenta del usuario, detectable por PATH/rutas habituales o seleccionable en Ajustes → Git. No se invoca el Git de Apple ni se acepta su licencia. El entorno verificado utiliza Swift 6.4, Git 2.51 y macOS 26.6.2 en arm64. El mínimo de compilación es macOS 14; su ejecución e Intel están pendientes de validar.
+Para desarrollar y compilar: Xcode con Swift 6.2 o posterior y Git 2.40 o posterior. Para usar el DMG instalado no se requiere Xcode: se utiliza el Git accesible para la cuenta del usuario (PATH, rutas habituales o selección en Ajustes → Git), validado con `git --version`; se priorizan instalaciones de usuario y, si no hay otra compatible, también CLT o `/usr/bin/git` cuando respondan correctamente. El entorno verificado utiliza Swift 6.4, Git 2.51 y macOS 26.6.2 en arm64. El mínimo de compilación es macOS 14; su ejecución e Intel están pendientes de validar.
 
 ```sh
 bash scripts/test.sh
@@ -16,7 +16,7 @@ open "dist/EFBY Git Desk.app"
 
 Para un paquete optimizado: `bash scripts/build-app.sh release`. El paquete incluye el helper de credenciales y lleva firma ad hoc de desarrollo. No es un release con Developer ID ni notarización. Abrir `Package.swift` en Xcode permite desarrollar los targets.
 
-La aplicación instalada no requiere Xcode ni aceptar su licencia. Si no encuentra una instalación independiente y válida de Git, conserva el acceso al catálogo y los ajustes, pero no puede leer los repositorios. No instala ni reemplaza Git automáticamente.
+La aplicación instalada no requiere Xcode para operar Git. Si no encuentra ningún ejecutable que responda como Git ≥ 2.40, conserva el acceso al catálogo y los ajustes, pero no puede leer los repositorios. No instala ni reemplaza Git automáticamente.
 
 ## Uso inicial
 
