@@ -95,7 +95,7 @@ e instalación del artefacto descargado en otro Mac siguen pendientes. No tratar
 
 ## Identidad visual
 
-Los iconos deben reutilizar el logotipo y diseño de EFBY_POSTMAN, con la etiqueta inferior **#GitDesk**. Mantener el vector de marca en `Resources/Brand/` y el generador reproducible `scripts/generate-icon.sh`; incorporar `AppIcon.icns` al bundle macOS.
+Los iconos usan la marca EFBY con la etiqueta inferior **#GitDesk** (franja violeta en el generador actual). Mantener el vector en `Resources/Brand/` y el generador reproducible `scripts/generate-icon.sh`; incorporar `AppIcon.icns` al bundle macOS.
 
 ## Carpetas y proyectos
 

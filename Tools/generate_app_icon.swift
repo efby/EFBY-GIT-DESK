@@ -1,4 +1,4 @@
-// Adaptado del generador de EFBY_POSTMAN; etiqueta de EfbyGitDesk.
+// Generador del icono de EFBY Git Desk (#GitDesk).
 import AppKit
 import CoreGraphics
 import Foundation
@@ -224,7 +224,7 @@ struct IconGenerator {
         NSGraphicsContext.restoreGraphicsState()
 
         let badgePath = NSBezierPath(roundedRect: badgeRect, xRadius: 56, yRadius: 56)
-        // Violeta intenso: lejos del naranja Postman y del fondo oscuro del icono.
+        // Franja violeta legible sobre el fondo oscuro del icono.
         let badgeGradient = NSGradient(colors: [
             NSColor(calibratedRed: 0.78, green: 0.36, blue: 1.00, alpha: 1),
             NSColor(calibratedRed: 0.46, green: 0.14, blue: 0.86, alpha: 1),
