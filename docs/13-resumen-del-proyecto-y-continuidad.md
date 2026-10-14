@@ -131,8 +131,9 @@ y sus límites están en [11](11-estado-mvp.md); implementación no equivale a Q
 
 El Git de ejecución se detecta entre instalaciones existentes del usuario (PATH,
 `~/.local/bin`, `~/bin`, `~/miniforge3/bin`, perfiles Nix/Homebrew y rutas habituales Homebrew,
-MacPorts y `/usr/local/git/bin`). No se ejecutan `/usr/bin/git`, sus enlaces ni
-rutas de herramientas de Apple durante la detección/configuración. Ajustes → Git
+MacPorts y `/usr/local/git/bin`). Tras validar con `git --version`, también se
+acepta CLT o `/usr/bin/git` si no hay otra instalación compatible; las rutas de
+usuario se prueban antes. Ajustes → Git
 permite elegir o escribir una ruta absoluta y conservarla para siguientes sesiones;
 se aplica antes de reabrir repositorios guardados. No exige Xcode, su licencia ni
 permisos de administrador para usar la app distribuida. Git ≥2.40 es necesario
