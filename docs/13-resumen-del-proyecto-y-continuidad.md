@@ -53,9 +53,14 @@ confirmación antes de cerrarlos. El menú también ofrece **Abrir en Terminal**
 repositorios confiables y **Mostrar en Finder** para localizar su carpeta.
 Si una pestaña abierta conserva una identidad Git antigua o incompleta, la app vuelve
 a descubrir ese repositorio al detectar el error. Actualiza el registro, retira la
-confianza anterior cuando corresponde y recarga el historial en modo de inspección;
-el usuario debe revisar el repositorio antes de volver a confiar. Esto evita dejar
-la vista vacía con una alerta repetida después de cambiar de pestaña.
+confianza solo si cambió el directorio Git en disco y recarga el historial en modo
+de inspección cuando corresponde; un catálogo sin identidad completa pero con el
+mismo `.git` conserva la confianza ya concedida. Esto evita dejar la vista vacía con
+una alerta repetida después de cambiar de pestaña.
+Las carpetas raíz del explorador admiten **Quitar carpeta del registro** y **Volver
+a escanear carpeta** para descartar o reimportar todos los proyectos bajo esa ruta sin
+borrar archivos. Las acciones globales de confianza y fetch reconcilian el catálogo
+antes de actuar.
 
 La marca EFBY Git Desk está en la barra superior junto a un símbolo de ramas
 cian del tamaño del anterior logotipo. El lateral se titula **Explorador**, con

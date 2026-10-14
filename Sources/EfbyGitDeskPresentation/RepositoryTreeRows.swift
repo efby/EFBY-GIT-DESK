@@ -6,6 +6,8 @@ struct RepositoryTreeRows<RowContent: View>: View {
     let collapsed: Set<String>
     let onToggle: (String, Bool) -> Void
     let onSelect: (String) -> Void
+    var onDiscardFolder: ((String) -> Void)?
+    var onRescanFolder: ((String) -> Void)?
     let row: (Repository) -> RowContent
 
     var body: some View {
@@ -15,12 +17,14 @@ struct RepositoryTreeRows<RowContent: View>: View {
                     get: { !collapsed.contains(node.id) },
                     set: { onToggle(node.id, $0) }
                 )) {
-                    RepositoryTreeRows(nodes: children, collapsed: collapsed, onToggle: onToggle, onSelect: onSelect, row: row)
+                    RepositoryTreeRows(nodes: children, collapsed: collapsed, onToggle: onToggle, onSelect: onSelect,
+                                       onDiscardFolder: onDiscardFolder, onRescanFolder: onRescanFolder, row: row)
                 } label: {
                     if let repository = node.repository { repositoryButton(repository) }
                     else {
                         Label(node.name, systemImage: "folder").font(.body.weight(.medium))
                             .help(node.id).accessibilityLabel("Carpeta " + node.name)
+                            .contextMenu { folderMenu(for: node.id) }
                     }
                 }
             } else if let repository = node.repository {
@@ -31,5 +35,15 @@ struct RepositoryTreeRows<RowContent: View>: View {
 
     private func repositoryButton(_ repository: Repository) -> some View {
         Button { onSelect(repository.id) } label: { row(repository) }.buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func folderMenu(for path: String) -> some View {
+        if let onRescanFolder {
+            Button("Volver a escanear carpeta", systemImage: "arrow.clockwise") { onRescanFolder(path) }
+        }
+        if let onDiscardFolder {
+            Button("Quitar carpeta del registro", systemImage: "folder.badge.minus", role: .destructive) { onDiscardFolder(path) }
+        }
     }
 }

@@ -14,11 +14,36 @@ public actor DeskService {
     public func open(path: String) async throws -> Repository {
         var result = try await git.discover(path: path)
         if let saved = try await registry.repositories().first(where: { $0.path == result.path }) {
-            result.trusted = saved.trusted && saved.gitDirectory == result.gitDirectory && saved.commonDirectory == result.commonDirectory && saved.identity != nil && saved.identity == result.identity; result.favorite = saved.favorite; result.group = saved.group
-            result.pendingCheckout = saved.pendingCheckout
+            result = Self.mergeRegistration(saved: saved, discovered: result)
         }
         result.lastOpened = .now
         try await registry.save(result)
+        return result
+    }
+
+    /// Conserva confianza solo si el directorio Git no cambió. Un catálogo sin identidad
+    /// completa se completa sin revocar confianza ya concedida; un `.git` distinto sí la retira.
+    static func mergeRegistration(saved: Repository, discovered: Repository) -> Repository {
+        var result = discovered
+        result.favorite = saved.favorite
+        result.group = saved.group
+        result.pendingCheckout = saved.pendingCheckout
+        let directoriesMatch = saved.gitDirectory == discovered.gitDirectory
+            && saved.commonDirectory == discovered.commonDirectory
+        guard directoriesMatch else {
+            result.trusted = false
+            return result
+        }
+        switch (saved.identity, discovered.identity) {
+        case let (savedID?, discoveredID?) where savedID == discoveredID:
+            result.trusted = saved.trusted
+        case (nil, .some) where saved.trusted:
+            result.trusted = true
+        case (nil, .some):
+            result.trusted = false
+        default:
+            result.trusted = false
+        }
         return result
     }
     public func openFolder(path: String) async throws -> FolderOpenResult {
@@ -55,6 +80,23 @@ public actor DeskService {
     public func folderRoots() async throws -> [String] {
         guard let value = try await registry.preference("repository.folderRoots"), let data = value.data(using: .utf8) else { return [] }
         return (try? JSONDecoder().decode([String].self, from: data)) ?? []
+    }
+    /// Quita una carpeta raíz del explorador y todas las referencias a repositorios bajo ella. No borra archivos.
+    public func discardFolder(root: String) async throws -> [String] {
+        let normalized = URL(fileURLWithPath: root).standardizedFileURL.path
+        let repositories = try await registry.repositories()
+        let removed = repositories.filter { RepositoryFolderScope.contains(normalized, path: $0.path) }
+        for repository in removed { try await registry.remove(id: repository.id) }
+        var roots = try await folderRoots()
+        roots.removeAll { RepositoryFolderScope.contains(normalized, path: $0) }
+        let encoded = try JSONEncoder().encode(roots)
+        try await registry.setPreference("repository.folderRoots", value: String(decoding: encoded, as: UTF8.self))
+        return removed.map(\.id)
+    }
+    /// Descarta la carpeta raíz y vuelve a buscar repositorios Git en ella y sus subcarpetas.
+    public func rescanFolder(root: String) async throws -> FolderOpenResult {
+        _ = try await discardFolder(root: root)
+        return try await openFolder(path: root)
     }
     public func trust(_ repository: Repository) async throws -> Repository {
         let actual = try await git.discover(path: repository.path)
@@ -146,7 +188,15 @@ public actor DeskService {
             entry = .init(repository: repository, result: .skipped, detail: "Solo admite inspección en este MVP.")
         } else {
             do {
-                _ = try await trust(repository)
+                let refreshed = try await open(path: repository.path)
+                guard refreshed.gitDirectory == repository.gitDirectory,
+                      refreshed.commonDirectory == repository.commonDirectory else {
+                    throw DeskError("El registro cambió en disco. Abre el proyecto y confía de nuevo antes de usar acciones globales.")
+                }
+                if let savedIdentity = repository.identity, savedIdentity != refreshed.identity {
+                    throw DeskError("El registro cambió en disco. Abre el proyecto y confía de nuevo antes de usar acciones globales.")
+                }
+                _ = try await trust(refreshed)
                 entry = .init(repository: repository, result: .completed, detail: "Identidad verificada y confianza guardada.")
             } catch is CancellationError {
                 entry = .init(repository: repository, result: .failed, detail: "Interrumpido; comprueba su estado antes de repetir.")
@@ -177,14 +227,25 @@ public actor DeskService {
         }
         do {
             let actual = try await git.discover(path: repository.path)
-            guard actual.gitDirectory == repository.gitDirectory,
-                  actual.commonDirectory == repository.commonDirectory,
-                  actual.identity == repository.identity else {
-                let entry = BulkRepositoryReport.Entry(repository: repository, result: .failed, detail: "La identidad cambió. Vuelve a abrirlo antes de hacer fetch.")
+            var working = repository
+            if actual.gitDirectory != repository.gitDirectory
+                || actual.commonDirectory != repository.commonDirectory
+                || actual.identity != repository.identity {
+                working = try await open(path: repository.path)
+            }
+            guard working.trusted else {
+                let entry = BulkRepositoryReport.Entry(repository: repository, result: .skipped, detail: "Confianza pendiente tras actualizar el registro.")
                 await finish(entry)
                 return [entry]
             }
-            let remotes = try await git.remotes(repository)
+            guard working.gitDirectory == actual.gitDirectory,
+                  working.commonDirectory == actual.commonDirectory,
+                  working.identity == actual.identity else {
+                let entry = BulkRepositoryReport.Entry(repository: repository, result: .failed, detail: "La identidad cambió. Revisa el repositorio antes de hacer fetch.")
+                await finish(entry)
+                return [entry]
+            }
+            let remotes = try await git.remotes(working)
             if remotes.isEmpty {
                 let entry = BulkRepositoryReport.Entry(repository: repository, result: .skipped, detail: "No tiene remotos configurados.")
                 await finish(entry)
@@ -195,7 +256,7 @@ public actor DeskService {
                 if let progress { await progress(.started(repository: repository, remote: remote)) }
                 let entry: BulkRepositoryReport.Entry
                 do {
-                    _ = try await mutate(.fetch(remote), repository: repository, profile: profile)
+                    _ = try await mutate(.fetch(remote), repository: working, profile: profile)
                     entry = .init(repository: repository, remote: remote, result: .completed, detail: "Referencias remotas actualizadas.")
                 } catch is CancellationError {
                     entry = .init(repository: repository, remote: remote, result: .failed, detail: "Fetch interrumpido; consulta las referencias antes de repetir.")
@@ -287,5 +348,11 @@ public actor DeskService {
         }
         guard repository.inspectionReason == nil else { throw DeskError(repository.inspectionReason!) }
         guard !repository.linkedWorktree else { throw DeskError("Este MVP permite inspeccionar worktrees vinculados, pero no modificarlos.") }
+    }
+}
+
+private enum RepositoryFolderScope {
+    static func contains(_ root: String, path: String) -> Bool {
+        path == root || path.hasPrefix(root == "/" ? "/" : root + "/")
     }
 }

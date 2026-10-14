@@ -44,7 +44,9 @@ struct RepositorySidebar: View {
                     Section("Proyectos") {
                         if folderStateLoaded {
                             RepositoryTreeRows(nodes: tree, collapsed: collapsedFolders, onToggle: setFolder,
-                                               onSelect: { model.sidebarSelection = $0 }) {
+                                               onSelect: { model.sidebarSelection = $0 },
+                                               onDiscardFolder: { model.discardFolderRoot($0) },
+                                               onRescanFolder: { model.rescanFolderRoot($0) }) {
                                 repositoryRow($0)
                             }
                         } else {

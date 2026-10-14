@@ -6,7 +6,7 @@ import EfbyGitDeskInfrastructure
 import EfbyGitDeskPresentation
 
 @Suite(.serialized) struct CompatibilityTests {
-    @MainActor @Test func staleOpenTabRecoversHistoryWithoutReusingTrust() async throws {
+    @MainActor @Test func staleOpenTabBackfillsIdentityWithoutRevokingTrust() async throws {
         let f = try await GitFixture.make(); defer { f.cleanup() }
         let registry = try SQLiteRegistry(path: f.folder.appendingPathComponent("catalog.sqlite").path)
         let stale = Repository(path: f.repository.path, gitDirectory: f.repository.gitDirectory,
@@ -22,10 +22,9 @@ import EfbyGitDeskPresentation
             try await Task.sleep(for: .milliseconds(20))
         }
         #expect(model.commits.count == 1)
-        #expect(model.repository?.trusted == false)
+        #expect(model.repository?.trusted == true)
         #expect(model.repository?.identity == f.repository.identity)
-        #expect(model.error?.contains("Se retiró la confianza") == true)
-        #expect(try await registry.repositories().first?.trusted == false)
+        #expect(try await registry.repositories().first?.trusted == true)
     }
 
     @MainActor @Test func replacedGitDirectoryReloadsOnlySafeHistory() async throws {
