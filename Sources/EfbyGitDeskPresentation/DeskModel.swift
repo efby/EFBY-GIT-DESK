@@ -379,7 +379,23 @@ private struct ReviewedSymbols {
                 }
                 if let plan, plan.oldHead != newState.head || newState.files.contains(where: \.staged) { cancelPlan() }
                 loadFiles()
-            } catch is CancellationError {} catch {
+            } catch is CancellationError {} catch is RepositoryIdentityChangedError {
+                guard version == generation, repository.id == selectedID else { return }
+                do {
+                    let reopened = try await service.open(path: repository.path)
+                    guard version == generation, repository.id == selectedID else { return }
+                    repositories = try await service.registry.repositories()
+                    select(reopened.id)
+                    if !reopened.trusted {
+                        error = "El directorio Git de \(reopened.name) cambió o su identidad guardada estaba incompleta. Se retiró la confianza anterior y se recargó el historial en modo de inspección. Revisa el repositorio antes de volver a confiar."
+                    } else {
+                        status = "Se actualizó el registro de \(reopened.name)."
+                    }
+                } catch {
+                    guard version == generation else { return }
+                    self.error = "No se pudo volver a abrir el repositorio: \(error.localizedDescription)"
+                }
+            } catch {
                 guard version == generation else { return }
                 self.error = error.localizedDescription
             }

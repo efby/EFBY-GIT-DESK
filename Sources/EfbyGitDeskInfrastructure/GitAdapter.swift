@@ -89,7 +89,7 @@ public actor GitAdapter: GitRepositoryPort {
                                       branch: branch.text.trimmingCharacters(in: .whitespacesAndNewlines))
         }
         guard repository.identity != nil, try directoryIdentity(repository.commonDirectory) == repository.identity else {
-            throw DeskError("El directorio Git cambió. Vuelve a abrir y revisar la confianza del repositorio.")
+            throw RepositoryIdentityChangedError()
         }
         let result = try await run(["status", "--porcelain=v2", "-z", "--branch"], directory: repository.path, trusted: true)
         return GitParsers.status(try complete(result))

@@ -3,8 +3,54 @@ import Testing
 import EfbyGitDeskDomain
 import EfbyGitDeskApplication
 import EfbyGitDeskInfrastructure
+import EfbyGitDeskPresentation
 
 @Suite(.serialized) struct CompatibilityTests {
+    @MainActor @Test func staleOpenTabRecoversHistoryWithoutReusingTrust() async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        let registry = try SQLiteRegistry(path: f.folder.appendingPathComponent("catalog.sqlite").path)
+        let stale = Repository(path: f.repository.path, gitDirectory: f.repository.gitDirectory,
+                               commonDirectory: f.repository.commonDirectory, name: f.repository.name,
+                               trusted: true, identity: nil)
+        try await registry.save(stale)
+        let service = DeskService(git: f.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
+        let model = DeskModel(service: service, terminalFactory: { PTYTerminal(shell: "/bin/sh", login: false) })
+        model.repositories = [stale]
+        model.select(stale.id)
+        for _ in 0..<250 {
+            if model.commits.count == 1 && model.repository?.identity == f.repository.identity { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(model.commits.count == 1)
+        #expect(model.repository?.trusted == false)
+        #expect(model.repository?.identity == f.repository.identity)
+        #expect(model.error?.contains("Se retiró la confianza") == true)
+        #expect(try await registry.repositories().first?.trusted == false)
+    }
+
+    @MainActor @Test func replacedGitDirectoryReloadsOnlySafeHistory() async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        let registry = try SQLiteRegistry(path: f.folder.appendingPathComponent("catalog.sqlite").path)
+        try await registry.save(f.repository)
+        let service = DeskService(git: f.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
+        try FileManager.default.moveItem(at: f.folder.appendingPathComponent(".git"),
+                                         to: f.folder.appendingPathComponent("old.git"))
+        _ = try await f.git(["init", "-b", "main"])
+        _ = try await f.git(["add", "--", "README.md"])
+        _ = try await f.git(["commit", "-m", "Replacement history"])
+        let model = DeskModel(service: service, terminalFactory: { PTYTerminal(shell: "/bin/sh", login: false) })
+        model.repositories = [f.repository]
+        model.select(f.repository.id)
+        for _ in 0..<250 {
+            if model.commits.first?.message == "Replacement history" { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(model.commits.first?.message == "Replacement history")
+        #expect(model.repository?.trusted == false)
+        #expect(model.repository?.identity != f.repository.identity)
+        #expect(model.snapshot.files.isEmpty)
+    }
+
     @Test func sshDoesNotRequireManagedAPICredentialOrAskpassHelper() async throws {
         let f = try await GitFixture.make(); defer { f.cleanup() }
         let executable = f.folder.appendingPathComponent("fixture-transport")
@@ -29,7 +75,7 @@ import EfbyGitDeskInfrastructure
         let trusted = try await service.trust(opened)
         try FileManager.default.moveItem(at: f.folder.appendingPathComponent(".git"), to: f.folder.appendingPathComponent("old.git"))
         _ = try await f.git(["init", "-b", "main"])
-        await #expect(throws: DeskError.self) { try await f.adapter.snapshot(trusted) }
+        await #expect(throws: RepositoryIdentityChangedError.self) { try await f.adapter.snapshot(trusted) }
         let reopened = try await service.open(path: f.folder.path)
         #expect(!reopened.trusted)
         #expect(reopened.identity != trusted.identity)
