@@ -6,6 +6,8 @@ struct HistoryPane: View {
     @Bindable var model: DeskModel
     @State private var graph: [String: GraphRow] = [:]
     @State private var commitMessage = ""
+    @State private var discardTarget: [FileChange] = []
+    @State private var showDiscardConfirmation = false
     var body: some View {
         let location = HistoryLocation(snapshot: model.snapshot, branches: model.branches)
         return VStack(spacing: 0) {
@@ -109,6 +111,15 @@ struct HistoryPane: View {
         } message: {
             Text("Se quitarán los dos commits anteriores y quedará seleccionado \(model.pendingComparisonCommit?.shortOID ?? ""). Después podrás elegir otro commit para comparar.")
         }
+        .alert("¿Descartar cambios pendientes?", isPresented: $showDiscardConfirmation) {
+            Button("Cancelar", role: .cancel) { discardTarget = [] }
+            Button("Descartar", role: .destructive) {
+                model.mutate(.discardPending(discardTarget))
+                discardTarget = []
+            }
+        } message: {
+            Text("Se restaurará el contenido del índice en \(discardTarget.count) archivo(s). Los archivos nuevos seleccionados se eliminarán. Los cambios preparados se conservarán. Esta acción no se puede deshacer.")
+        }
         .task(id: model.commits) {
             let commits = model.commits
             let layout = await Task.detached { GraphLayout.make(commits) }.value
@@ -121,6 +132,14 @@ struct HistoryPane: View {
                 Text(model.stagedView ? "Cambios preparados" : "Cambios pendientes").font(.title2.bold())
                 Spacer()
                 Text("\(model.files.count) archivos").foregroundStyle(.secondary)
+                if !model.stagedView {
+                    Button("Descartar todo", systemImage: "trash", role: .destructive) {
+                        discardTarget = model.files
+                        showDiscardConfirmation = true
+                    }
+                    .disabled(!model.mutable || model.files.isEmpty || model.files.contains(where: \.conflict))
+                    .help("Descarta todos los cambios pendientes. Conserva los cambios preparados; no admite archivos en conflicto.")
+                }
             }
             Text(model.stagedView ? "El commit incluye solo el contenido del índice." : "Selecciona archivos para revisar y preparar sus cambios.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -133,6 +152,14 @@ struct HistoryPane: View {
                         let paths = [file.path] + (file.oldPath.map { [$0] } ?? [])
                         model.mutate(model.stagedView ? .unstage(paths) : .stage(paths))
                     }.disabled(!model.mutable)
+                    if !model.stagedView {
+                        Button("Descartar", systemImage: "trash", role: .destructive) {
+                            discardTarget = [file]
+                            showDiscardConfirmation = true
+                        }
+                        .disabled(!model.mutable || file.conflict)
+                        .help(file.conflict ? "Resuelve el conflicto antes de descartar." : "Descarta los cambios pendientes de este archivo.")
+                    }
                 }.padding(.vertical, 3)
             }.listStyle(.inset)
             if model.stagedView {
