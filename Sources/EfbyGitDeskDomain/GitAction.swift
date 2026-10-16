@@ -3,6 +3,7 @@ import Foundation
 public enum GitAction: Sendable {
     case stage([Data])
     case unstage([Data])
+    case discardPending([FileChange])
     case commit(String)
     case createBranch(String)
     case checkout(String)

@@ -391,6 +391,33 @@ public actor GitAdapter: GitRepositoryPort {
             let args = state.head.isEmpty ? ["rm", "--cached", "--pathspec-from-file=-", "--pathspec-file-nul"] :
                 ["restore", "--staged", "--pathspec-from-file=-", "--pathspec-file-nul"]
             return try await run(args, directory: repository.path, trusted: true, input: pathInput(paths)).text
+        case .discardPending(let changes):
+            guard !changes.isEmpty, changes.allSatisfy({ $0.unstaged && !$0.conflict }) else {
+                throw DeskError("Selecciona cambios pendientes sin conflictos.")
+            }
+            let current = Dictionary(uniqueKeysWithValues: state.files.map { ($0.path, $0) })
+            guard changes.allSatisfy({ current[$0.path] == $0 }) else {
+                throw DeskError("Los cambios pendientes variaron. Actualiza la vista antes de descartarlos.")
+            }
+            let tracked = changes.filter { $0.status != "?" }.map(\.path)
+            let untracked = changes.filter { $0.status == "?" }
+            // Git clean accepts string pathspecs only; reject names whose raw bytes cannot be represented safely.
+            let untrackedPaths = try untracked.map { change -> String in
+                guard let path = change.utf8Path, !path.isEmpty, !path.hasPrefix("/"),
+                      !path.split(separator: "/").contains("..") else {
+                    throw DeskError("No se puede descartar una ruta nueva que no sea UTF-8 válida.")
+                }
+                return path
+            }
+            if !tracked.isEmpty {
+                _ = try await run(["restore", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"],
+                                  directory: repository.path, trusted: true, input: pathInput(tracked))
+            }
+            for path in untrackedPaths {
+                try Task.checkCancellation()
+                _ = try await run(["clean", "-f", "-d", "--", path], directory: repository.path, trusted: true)
+            }
+            return "Cambios pendientes descartados. Los cambios preparados se conservaron."
         case .commit(let message):
             guard !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, state.files.contains(where: \.staged) else {
                 throw DeskError("Prepara archivos e ingresa un mensaje antes de crear el commit.")

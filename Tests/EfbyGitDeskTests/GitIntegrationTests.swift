@@ -5,6 +5,44 @@ import EfbyGitDeskApplication
 import EfbyGitDeskInfrastructure
 
 @Suite(.serialized) struct GitIntegrationTests {
+    @Test func discardPendingRestoresIndexAndRemovesOnlySelectedNewFiles() async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        try f.write("README.md", "prepared\n")
+        _ = try await f.git(["add", "--", "README.md"])
+        try f.write("README.md", "pending\n")
+        try f.write("new [1].txt", "remove me\n")
+        try f.write("new 1.txt", "keep me\n")
+        let pending = try await f.adapter.snapshot(f.repository).files
+        let selected = pending.filter { $0.name == "README.md" || $0.name == "new [1].txt" }
+        #expect(selected.count == 2)
+        _ = try await f.adapter.execute(.discardPending(selected), repository: f.repository, profile: nil)
+        #expect(try String(contentsOf: f.folder.appendingPathComponent("README.md"), encoding: .utf8) == "prepared\n")
+        #expect(try await f.git(["show", ":README.md"]) == "prepared")
+        #expect(!FileManager.default.fileExists(atPath: f.folder.appendingPathComponent("new [1].txt").path))
+        #expect(FileManager.default.fileExists(atPath: f.folder.appendingPathComponent("new 1.txt").path))
+        #expect(try await f.adapter.snapshot(f.repository).files.contains { $0.name == "README.md" && $0.staged && !$0.unstaged })
+    }
+    @Test func discardAllPendingPreservesIgnoredFilesAndRejectsStaleSelection() async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        try f.write(".gitignore", "*.secret\n")
+        _ = try await f.git(["add", "--", ".gitignore"])
+        _ = try await f.git(["commit", "-m", "Ignore secrets"])
+        let folder = f.folder.appendingPathComponent("new-folder")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data("remove".utf8).write(to: folder.appendingPathComponent("new.txt"))
+        try Data("retain".utf8).write(to: folder.appendingPathComponent("keep.secret"))
+        try f.write("README.md", "changed\n")
+        let oldSelection = try await f.adapter.snapshot(f.repository).files.filter(\.unstaged)
+        try f.write("another.txt", "later\n")
+        _ = try await f.adapter.execute(.discardPending(oldSelection), repository: f.repository, profile: nil)
+        #expect(try String(contentsOf: f.folder.appendingPathComponent("README.md"), encoding: .utf8) == "base\n")
+        #expect(!FileManager.default.fileExists(atPath: folder.appendingPathComponent("new.txt").path))
+        #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("keep.secret").path))
+        #expect(FileManager.default.fileExists(atPath: f.folder.appendingPathComponent("another.txt").path))
+        await #expect(throws: DeskError.self) {
+            try await f.adapter.execute(.discardPending(oldSelection), repository: f.repository, profile: nil)
+        }
+    }
     @Test func commitIncludesOnlyPreparedBytesAndTreatsMessageAsData() async throws {
         let f = try await GitFixture.make(); defer { f.cleanup() }
         try f.write("README.md", "unstaged work\n")

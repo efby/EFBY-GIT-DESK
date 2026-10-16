@@ -88,6 +88,11 @@ ad hoc verificada. No se generó ni comprobó un DMG de distribución.
 El workspace ocupa el área disponible incluso sin seleccionar commits. Las acciones
 se presentan en pestañas **Pendientes**, **Preparados** e **Historial**, con contadores;
 las ramas están en el menú **Ramas**, sin el antiguo lateral de área de trabajo.
+En **Pendientes** se pueden descartar cambios individuales o todos tras una
+confirmación destructiva. Los archivos seguidos se restauran desde el índice,
+los nuevos no ignorados se eliminan y los cambios preparados permanecen. Los
+conflictos no se descartan desde esa acción. La operación comprueba que la
+selección aún corresponda al estado Git antes de escribir y refresca la vista.
 Los paneles son redimensionables y recuerdan ancho. Los valores iniciales registrados
 son 340 puntos para comparación y lateral; el mínimo del lateral es 210. El visor
 reserva espacio para documentos y el navegador de archivos según tamaño disponible.
