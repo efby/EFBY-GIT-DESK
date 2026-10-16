@@ -20,14 +20,19 @@ import EfbyGitDeskInfrastructure
         terminal.resize(columns: 93, rows: 31)
         terminal.write("stty size\r")
         try await waitFor("resize", terminal: terminal) { terminal.output.contains("31 93") }
-        terminal.write("sleep 30\r")
-        try await Task.sleep(for: .milliseconds(150))
+        terminal.write("cat\r")
+        terminal.write("CAT_READY\r")
+        try await waitFor("foreground command", terminal: terminal, seconds: 12) {
+            terminal.output.components(separatedBy: "CAT_READY").count >= 3
+        }
         terminal.inputPaused = true
         terminal.write("\u{3}")
         terminal.write("echo SHOULD_NOT_RUN\r")
         terminal.inputPaused = false
         terminal.write("printf 'AFTER_INTERRUPT\\n'\r")
-        try await waitFor("interrupt", terminal: terminal) { terminal.output.contains("AFTER_INTERRUPT") }
+        try await waitFor("interrupt", terminal: terminal) {
+            terminal.output.components(separatedBy: "AFTER_INTERRUPT").count >= 3
+        }
         #expect(!terminal.output.contains("SHOULD_NOT_RUN"))
         terminal.write("exit\r")
         try await waitFor("exit", terminal: terminal) { !terminal.running }
