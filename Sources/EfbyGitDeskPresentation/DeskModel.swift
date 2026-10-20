@@ -60,6 +60,7 @@ private struct ReviewedSymbols {
     public var syntaxLanguage: CodeLanguage = .automatic
     public var diffSyntax: DiffSyntax? { didSet { noteDocumentChange(diffSyntax != oldValue) } }
     public var diffNotice = ""
+    public var diffLineEndingCount = 0
     public var search = ""
     public var repositorySearch = ""
     public var hasMore = false
@@ -741,7 +742,7 @@ private struct ReviewedSymbols {
     public func closeDiff() {
         diffQuery?.cancel(); highlightQuery?.cancel()
         selectedFile = nil; openDocument = nil; diffText = ""; diffSyntax = nil; symbolJump = nil; pendingSymbol = nil; callLinks = nil; linkTrail = []
-        comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffLoading = false; diffAligned = false; diffNotice = ""
+        comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffLoading = false; diffAligned = false; diffNotice = ""; diffLineEndingCount = 0
     }
     public func loadDiff(id: String, preserveTrail: Bool = false) {
         if !preserveTrail { linkTrail = [] }
@@ -754,7 +755,7 @@ private struct ReviewedSymbols {
         openDocument = file
         if !preserveView {
             diffText = ""; comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffSyntax = nil
-            diffLoading = true; diffAligned = false; diffNotice = ""
+            diffLoading = true; diffAligned = false; diffNotice = ""; diffLineEndingCount = 0
         }
         let version = generation
         diffQuery = Task {
@@ -769,8 +770,12 @@ private struct ReviewedSymbols {
                 case .success(let layout):
                     if diffRows != layout.rows { diffSyntax = nil }
                     diffRows = layout.rows; diffBlocks = layout.blocks; diffMap = layout.map; diffInline = layout.inline; diffAligned = true
+                    diffLineEndingCount = layout.lineEndingCount
+                    if layout.lineEndingCount > 0 {
+                        diffNotice += "\n\(layout.lineEndingCount) líneas cambian solo entre CRLF y LF; se muestran sin resaltar el código idéntico."
+                    }
                     if layout.inline.contains(where: \.limited) { diffNotice += "\nEn líneas extensas o complejas, se destaca el tramo modificado entre el prefijo y sufijo comunes." }
-                case .failure(let error): diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffSyntax = nil; diffAligned = false; diffNotice += "\n" + error.localizedDescription
+                case .failure(let error): diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffSyntax = nil; diffAligned = false; diffLineEndingCount = 0; diffNotice += "\n" + error.localizedDescription
                 }
                 applySymbolJump()
                 diffLoading = false

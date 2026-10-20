@@ -5,13 +5,15 @@ public enum DiffIntraline {
     public static func make(rows: [DiffRow]) -> [DiffInlineRow] {
         var budget = 2_000_000
         return rows.map { row in
-            guard row.before != row.after else { return DiffInlineRow() }
-            guard let before = row.before else {
+            guard row.contentChanged else { return DiffInlineRow() }
+            guard let rawBefore = row.before else {
                 return DiffInlineRow()
             }
-            guard let after = row.after else {
+            let before = DiffRow.comparableContent(rawBefore)
+            guard let rawAfter = row.after else {
                 return DiffInlineRow(before: fullRange(before))
             }
+            let after = DiffRow.comparableContent(rawAfter)
             if before.isEmpty { return DiffInlineRow(after: fullRange(after)) }
             if after.isEmpty { return DiffInlineRow(before: fullRange(before)) }
             let a = Array(before), b = Array(after)

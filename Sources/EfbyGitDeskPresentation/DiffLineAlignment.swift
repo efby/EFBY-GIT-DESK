@@ -4,16 +4,18 @@ import EfbyGitDeskDomain
 /// Exact content anchors preserve order, even when Git chose blank context lines.
 enum DiffLineAlignment {
     static func make(_ left: [String], _ right: [String]) throws -> [DiffRow] {
+        let leftContent = left.map(DiffRow.comparableContent)
+        let rightContent = right.map(DiffRow.comparableContent)
         var matches: [(Int, Int)] = []
         var pending = [(0..<left.count, 0..<right.count)]
         var work = 2_000_000
         while let (originalA, originalB) = pending.popLast() {
             var a = originalA, b = originalB
-            while !a.isEmpty && !b.isEmpty && left[a.lowerBound] == right[b.lowerBound] {
+            while !a.isEmpty && !b.isEmpty && leftContent[a.lowerBound] == rightContent[b.lowerBound] {
                 matches.append((a.lowerBound, b.lowerBound))
                 a = (a.lowerBound + 1)..<a.upperBound; b = (b.lowerBound + 1)..<b.upperBound
             }
-            while !a.isEmpty && !b.isEmpty && left[a.upperBound - 1] == right[b.upperBound - 1] {
+            while !a.isEmpty && !b.isEmpty && leftContent[a.upperBound - 1] == rightContent[b.upperBound - 1] {
                 matches.append((a.upperBound - 1, b.upperBound - 1))
                 a = a.lowerBound..<(a.upperBound - 1); b = b.lowerBound..<(b.upperBound - 1)
             }
@@ -21,15 +23,15 @@ enum DiffLineAlignment {
             work -= a.count + b.count
             guard work >= 0 else { throw limit() }
             var positionsA: [String: [Int]] = [:], positionsB: [String: [Int]] = [:]
-            for i in a where !left[i].trimmingCharacters(in: .whitespaces).isEmpty { positionsA[left[i], default: []].append(i) }
-            for j in b where !right[j].trimmingCharacters(in: .whitespaces).isEmpty { positionsB[right[j], default: []].append(j) }
+            for i in a where !leftContent[i].trimmingCharacters(in: .whitespaces).isEmpty { positionsA[leftContent[i], default: []].append(i) }
+            for j in b where !rightContent[j].trimmingCharacters(in: .whitespaces).isEmpty { positionsB[rightContent[j], default: []].append(j) }
             let candidates = a.compactMap { i -> (Int, Int)? in
-                guard positionsA[left[i]]?.count == 1, let other = positionsB[left[i]], other.count == 1 else { return nil }
+                guard positionsA[leftContent[i]]?.count == 1, let other = positionsB[leftContent[i]], other.count == 1 else { return nil }
                 return (i, other[0])
             }
             let anchors = increasing(candidates)
             if anchors.isEmpty {
-                matches += try exactMatches(left, right, a: a, b: b, work: &work)
+                matches += try exactMatches(leftContent, rightContent, a: a, b: b, work: &work)
             } else {
                 var startA = a.lowerBound, startB = b.lowerBound
                 for (i, j) in anchors {

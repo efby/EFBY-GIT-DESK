@@ -7,6 +7,33 @@ import EfbyGitDeskInfrastructure
 @testable import EfbyGitDeskPresentation
 
 struct ParallelComparisonTests {
+    @Test func crlfToLfDoesNotPaintIdenticalCodeAsReplacement() async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        let base = try await f.commit("ending.py", "import x\r\nsame()\r\nremoved()\r\nend()\r\n", message: "CRLF")
+        let target = try await f.commit("ending.py", "import x\nsame()\nend()\n", message: "LF and removal")
+        let context = DiffContext.commits(try ComparisonPair(base: base, target: target))
+        let file = try #require(try await f.adapter.changes(f.repository, context: context).first)
+        let comparison = try await f.adapter.fileComparison(f.repository, context: context, file: file)
+        let layout = DiffLayout(rows: try DiffAlignment.make(comparison))
+        #expect(layout.rows.compactMap(\.before) == ["import x\r", "same()\r", "removed()\r", "end()\r"])
+        #expect(layout.rows.compactMap(\.after) == ["import x", "same()", "end()"])
+        #expect(layout.lineEndingCount == 3)
+        #expect(layout.rows.filter(\.changed).count == 1)
+        #expect(layout.rows.first(where: \.changed)?.before == "removed()\r")
+        #expect(layout.blocks.count == 1)
+        #expect(zip(layout.rows, layout.inline).filter { !$0.0.changed }
+            .allSatisfy { $0.1.before.isEmpty && $0.1.after.isEmpty })
+    }
+
+    @Test func pureLineEndingConversionKeepsGitPatchButNoCodeMarks() throws {
+        let comparison = FileComparison(before: "same\r\nmore\r\n", after: "same\nmore\n", beforeLabel: "A", afterLabel: "B",
+            patch: "@@ -1,2 +1,2 @@\n-same\r\n-more\r\n+same\n+more\n")
+        let layout = DiffLayout(rows: try DiffAlignment.make(comparison))
+        #expect(layout.lineEndingCount == 2)
+        #expect(layout.rows.allSatisfy { !$0.changed })
+        #expect(layout.blocks.isEmpty && layout.map.allSatisfy { !$0.removed && !$0.added })
+    }
+
     @Test func completeDocumentsAlignSeparatedHunksAndUnequalBlocks() async throws {
         let f = try await GitFixture.make(); defer { f.cleanup() }
         let before = (1...35).map { "line \($0)" }.joined(separator: "\n") + "\n"

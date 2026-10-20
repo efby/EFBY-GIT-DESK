@@ -97,16 +97,20 @@ import AppKit
             let marker = row.changed ? (number == nil ? "·" : (before ? "−" : "+")) : " "
             let line = (number.map { String(format: "%5d", $0) } ?? "     ") + " " + marker + " │ " + content
             let isNewLine = row.before == nil && row.after != nil
-            let hasChange = row.before != row.after && number != nil && !isNewLine
-            let color: NSColor = hasChange ? (before ? .systemRed : .systemGreen) : NSColor(calibratedWhite: 0.86, alpha: 1)
+            let hasChange = row.contentChanged && number != nil && !isNewLine
+            let changeColor: NSColor = before ? .systemRed : .systemGreen
+            let color = NSColor(calibratedWhite: 0.86, alpha: 1)
             let background: NSColor = isNewLine && !before
                 ? NSColor.systemGreen.withAlphaComponent(0.13)
-                : (hasChange ? color.withAlphaComponent(0.13) : .clear)
+                : (hasChange ? changeColor.withAlphaComponent(0.13) : .clear)
             let offset = value.length
             value.append(NSAttributedString(string: line + "\n", attributes: [
                 .font: font, .foregroundColor: color, .paragraphStyle: paragraph,
                 .backgroundColor: background
             ]))
+            if row.changed && number != nil {
+                value.addAttribute(.foregroundColor, value: changeColor, range: NSRange(location: offset + 6, length: 1))
+            }
             let prefixLength = line.utf16.count - content.utf16.count
             if !isNewLine && inline.indices.contains(index) {
                 let changes = before ? inline[index].before : inline[index].after
@@ -261,9 +265,8 @@ import AppKit
         return text.utf16.count + text.utf16.reduce(0) { $0 + ($1 == 9 ? 3 : 0) }
     }
     private func displayContent(_ text: String?) -> String {
-        var content = text ?? ""
+        let content = DiffRow.comparableContent(text ?? "")
         // DiffAlignment keeps CRLF intact; only omit the line terminator in the editor.
-        if content.hasSuffix("\r") { content.removeLast() }
         return content
             .replacingOccurrences(of: "\r", with: "␍")
             .replacingOccurrences(of: "\u{2028}", with: "↵")

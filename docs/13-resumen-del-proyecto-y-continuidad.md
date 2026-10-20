@@ -187,7 +187,10 @@ Se retiraron las cabeceras duplicadas Documento 1/Documento 2, SHA y ruta sobre 
 código, porque las tarjetas y la barra del archivo ya identifican el contexto.
 El aviso de falta de salto de línea final sigue visible solo cuando corresponde.
 Los archivos CRLF se dibujan sin símbolos de retorno de carro al final de cada
-línea; sus bytes originales siguen disponibles para la comparación.
+línea; sus bytes originales siguen disponibles para la comparación. Cuando una
+revisión cambia CRLF por LF, el visor alinea por contenido visible y deja sin
+resaltar las líneas cuyo código es idéntico. Un aviso indica cuántas líneas
+cambiaron solo de final de línea; las modificaciones reales siguen marcadas.
 
 Ambos documentos sincronizan scroll horizontal y vertical, con números originales
 y huecos cuando no hay correspondencia. La barra **Modificaciones**, navegación al
