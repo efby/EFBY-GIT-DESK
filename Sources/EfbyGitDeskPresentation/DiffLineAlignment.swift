@@ -1,11 +1,11 @@
 import Foundation
 import EfbyGitDeskDomain
 
-/// Exact content anchors preserve order, even when Git chose blank context lines.
+/// Content anchors preserve order when code shifts or gains nesting.
 enum DiffLineAlignment {
     static func make(_ left: [String], _ right: [String]) throws -> [DiffRow] {
-        let leftContent = left.map(DiffRow.comparableContent)
-        let rightContent = right.map(DiffRow.comparableContent)
+        let leftContent = left.map(alignmentKey)
+        let rightContent = right.map(alignmentKey)
         var matches: [(Int, Int)] = []
         var pending = [(0..<left.count, 0..<right.count)]
         var work = 2_000_000
@@ -58,6 +58,11 @@ enum DiffLineAlignment {
         }
         gap(to: left.count, right.count)
         return rows
+    }
+    private static func alignmentKey(_ line: String) -> String {
+        let visible = DiffRow.comparableContent(line)
+        let code = visible.drop(while: { $0 == " " || $0 == "\t" })
+        return code.isEmpty ? visible : String(code)
     }
     private static func increasing(_ pairs: [(Int, Int)]) -> [(Int, Int)] {
         guard !pairs.isEmpty else { return [] }

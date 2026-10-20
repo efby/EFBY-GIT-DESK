@@ -55,6 +55,49 @@ struct ShiftedLineAlignmentTests {
         #expect(rows.compactMap(\.before) == left)
         #expect(rows.compactMap(\.after) == right)
     }
+    @Test func nestedTryBlockKeepsExistingCallsPairedWithChangedIndentation() throws {
+        let original = [
+            "if (call.method.equals(\"notifyReady\")) {",
+            "    Intent notice = new Intent(\"ready\");",
+            "    notice.setPackage(\"com.example.client\");",
+            "    notice.putExtra(\"status\", \"ready\");",
+            "    sendBroadcast(notice);",
+            "    Map<String, Object> output = new HashMap<String, Object>();",
+            "    output.put(\"status\", \"OK\");",
+            "    result.success(output);",
+            "}"
+        ]
+        let revised = [
+            "if (call.method.equals(\"notifyReady\")) {",
+            "    Map<String, Object> output = new HashMap<String, Object>();",
+            "    try {",
+            "        Intent notice = new Intent(\"ready\");",
+            "        notice.setPackage(\"com.example.client\");",
+            "        notice.putExtra(\"status\", \"ready\");",
+            "        sendBroadcast(notice);",
+            "        output.put(\"status\", \"OK\");",
+            "    } catch (Exception e) {",
+            "        output.put(\"status\", \"NOK\");",
+            "    }",
+            "    result.success(output);",
+            "}"
+        ]
+        let rows = try DiffLineAlignment.make(original, revised)
+        #expect(rows.compactMap(\.before) == original)
+        #expect(rows.compactMap(\.after) == revised)
+        for fragment in ["Intent notice", "notice.setPackage", "notice.putExtra", "sendBroadcast", "\"OK\""] {
+            let row = try #require(rows.first { $0.before?.contains(fragment) == true })
+            #expect(row.after?.contains(fragment) == true)
+            #expect(row.beforeNumber != nil && row.afterNumber != nil)
+        }
+        let intent = try #require(rows.first { $0.before?.contains("Intent notice") == true })
+        let indentation = DiffIntraline.make(rows: [intent])[0]
+        #expect(indentation.before.isEmpty)
+        #expect(indentation.after == [NSRange(location: 4, length: 4)])
+        #expect(rows.filter { $0.after?.contains("try {") == true || $0.after?.contains("catch (Exception") == true }
+            .allSatisfy { $0.before == nil })
+        #expect(rows.first { $0.after?.contains("\"NOK\"") == true }?.before == nil)
+    }
     @Test func crossingBlocksNeverReorderEitherDocument() throws {
         let left = ["start", "if one:", "    first()", "if two:", "    second()", "end"]
         let right = ["start", "if two:", "    second()", "if one:", "    first()", "end"]
