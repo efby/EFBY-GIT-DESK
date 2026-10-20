@@ -63,6 +63,8 @@ Los árboles de proyectos y comparación recuerdan las carpetas contraídas. En 
 
 Ambos documentos sincronizan el desplazamiento horizontal y vertical. El texto modificado dentro de cada línea tiene un fondo más intenso: rojo en lo eliminado y verde en lo agregado. Las líneas idénticas no se marcan; el resaltado conserva el formato de código y tu selección manual. **Modificaciones** indica cuántas líneas faltan, desde el borde inferior visible, para llegar al próximo cambio al bajar. El mapa vertical está detrás del indicador de scroll de cada columna: rojo indica líneas eliminadas y verde, agregadas. Arrastra el indicador o usa anterior/siguiente para navegar.
 
+Si solo cambia el final de línea de CRLF a LF o viceversa, el visor no pinta todo el código como reemplazado: muestra un aviso con el número de líneas afectadas y sigue destacando los cambios de contenido reales. Git conserva y compara los bytes originales.
+
 Las preferencias guardan distribución de paneles, terminal, registro y pestañas; al reiniciar no se restauran procesos vivos. Quitar un registro conserva los archivos del repositorio. Los remotos de otros proveedores mantienen disponibles las funciones locales; la integración de red del MVP se limita a Bitbucket Cloud.
 
 ## Validación y límites

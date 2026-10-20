@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DiffChangesSection: View {
     let blocks: [DiffChangeBlock]
+    let lineEndingCount: Int
     let viewport: DiffViewportStatus?
     @Binding var jump: DiffJumpTarget?
     var body: some View {
@@ -9,7 +10,7 @@ struct DiffChangesSection: View {
             Label("Modificaciones", systemImage: "map").font(.caption.bold())
             Label("Eliminado", systemImage: "minus").foregroundStyle(.red)
             Label("Agregado", systemImage: "plus").foregroundStyle(.green)
-            Text(blocks.isEmpty ? "No hay cambios de líneas." : viewport?.message ?? "Calculando posición…")
+            Text(blocks.isEmpty ? (lineEndingCount > 0 ? "Solo cambian finales de línea." : "No hay cambios de líneas.") : viewport?.message ?? "Calculando posición…")
                 .foregroundStyle(.secondary).lineLimit(2)
             Spacer(minLength: 0)
             Button("Cambio anterior", systemImage: "chevron.up") {

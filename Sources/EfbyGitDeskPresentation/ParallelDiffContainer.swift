@@ -97,7 +97,7 @@ import AppKit
             let marker = row.changed ? (number == nil ? "·" : (before ? "−" : "+")) : " "
             let line = (number.map { String(format: "%5d", $0) } ?? "     ") + " " + marker + " │ " + content
             let isNewLine = row.before == nil && row.after != nil
-            let hasChange = row.before != row.after && number != nil && !isNewLine
+            let hasChange = row.contentChanged && number != nil && !isNewLine
             let color: NSColor = hasChange ? (before ? .systemRed : .systemGreen) : NSColor(calibratedWhite: 0.86, alpha: 1)
             let background: NSColor = isNewLine && !before
                 ? NSColor.systemGreen.withAlphaComponent(0.13)
@@ -261,9 +261,8 @@ import AppKit
         return text.utf16.count + text.utf16.reduce(0) { $0 + ($1 == 9 ? 3 : 0) }
     }
     private func displayContent(_ text: String?) -> String {
-        var content = text ?? ""
+        let content = DiffRow.comparableContent(text ?? "")
         // DiffAlignment keeps CRLF intact; only omit the line terminator in the editor.
-        if content.hasSuffix("\r") { content.removeLast() }
         return content
             .replacingOccurrences(of: "\r", with: "␍")
             .replacingOccurrences(of: "\u{2028}", with: "↵")
