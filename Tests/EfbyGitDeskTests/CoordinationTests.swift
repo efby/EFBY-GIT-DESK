@@ -35,6 +35,14 @@ struct CoordinationTests {
         #expect(start.duration(to: .now) < .seconds(2))
         #expect(result.truncated)
     }
+    @Test func inheritedPipePreservesBufferedOutputBeforeDrainDeadline() async throws {
+        let result = try await ProcessRunner().run(executable: "/bin/sh", arguments: [
+            "-c", "printf 'git output'; sleep 2 & exit 0"
+        ], directory: NSTemporaryDirectory(), timeout: 5)
+        #expect(result.status == 0)
+        #expect(result.output == Data("git output".utf8))
+        #expect(result.truncated)
+    }
 }
 
 private actor Activity {

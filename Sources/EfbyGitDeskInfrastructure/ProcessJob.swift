@@ -48,12 +48,19 @@ final class ProcessJob: @unchecked Sendable {
                 _ = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
                 var bytes = [UInt8](repeating: 0, count: 32_768)
                 while true {
-                    lock.lock(); let deadline = drainDeadline; lock.unlock()
-                    if let deadline, Date.now >= deadline { lock.lock(); truncated = true; lock.unlock(); break }
                     var descriptor = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
                     let ready = poll(&descriptor, 1, 100)
                     if ready < 0 && errno != EINTR { break }
-                    guard ready > 0 else { continue }
+                    if ready <= 0 {
+                        lock.lock()
+                        let expired = drainDeadline.map { Date.now >= $0 } ?? false
+                        if expired { truncated = true }
+                        lock.unlock()
+                        if expired { break }
+                        continue
+                    }
+                    // Drain bytes already in the pipe even if the post-exit grace
+                    // period expired while this reader waited for CPU time.
                     let count = Darwin.read(fd, &bytes, bytes.count)
                     if count == 0 { break }
                     if count < 0 { if errno == EAGAIN || errno == EINTR { continue }; break }
