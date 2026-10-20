@@ -98,15 +98,19 @@ import AppKit
             let line = (number.map { String(format: "%5d", $0) } ?? "     ") + " " + marker + " │ " + content
             let isNewLine = row.before == nil && row.after != nil
             let hasChange = row.contentChanged && number != nil && !isNewLine
-            let color: NSColor = hasChange ? (before ? .systemRed : .systemGreen) : NSColor(calibratedWhite: 0.86, alpha: 1)
+            let changeColor: NSColor = before ? .systemRed : .systemGreen
+            let color = NSColor(calibratedWhite: 0.86, alpha: 1)
             let background: NSColor = isNewLine && !before
                 ? NSColor.systemGreen.withAlphaComponent(0.13)
-                : (hasChange ? color.withAlphaComponent(0.13) : .clear)
+                : (hasChange ? changeColor.withAlphaComponent(0.13) : .clear)
             let offset = value.length
             value.append(NSAttributedString(string: line + "\n", attributes: [
                 .font: font, .foregroundColor: color, .paragraphStyle: paragraph,
                 .backgroundColor: background
             ]))
+            if row.changed && number != nil {
+                value.addAttribute(.foregroundColor, value: changeColor, range: NSRange(location: offset + 6, length: 1))
+            }
             let prefixLength = line.utf16.count - content.utf16.count
             if !isNewLine && inline.indices.contains(index) {
                 let changes = before ? inline[index].before : inline[index].after

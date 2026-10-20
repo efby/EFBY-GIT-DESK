@@ -78,4 +78,31 @@ struct DiffIntralineTests {
         #expect(addedStorage.attribute(.backgroundColor, at: addedPrefix, effectiveRange: nil) as? NSColor == NSColor.systemGreen.withAlphaComponent(0.13))
         #expect(views[0].selectedRange() == NSRange(location: 12, length: 5))
     }
+    @MainActor @Test func addedCommaDoesNotColorExistingPolicyAsNewCode() throws {
+        let rows = try DiffLineAlignment.make(
+            ["policy_statement", ")", "return role"],
+            ["policy_statement,", "new_policy_statement,", ")", "return role"])
+        #expect(rows[0].before == "policy_statement")
+        #expect(rows[0].after == "policy_statement,")
+        #expect(rows[1].before == nil && rows[1].after == "new_policy_statement,")
+        let marks = DiffIntraline.make(rows: rows)
+        #expect(marks[0].before.isEmpty)
+        #expect(segments("policy_statement,", marks[0].after) == [","])
+
+        let container = ParallelDiffContainer()
+        container.frame = NSRect(x: 0, y: 0, width: 1100, height: 600)
+        container.update(rows, inline: marks)
+        container.layoutSubtreeIfNeeded()
+        let scrolls = container.subviews.compactMap { $0 as? NSScrollView }
+        let right = try #require(scrolls[1].documentView as? NSTextView)
+        let storage = try #require(right.textStorage)
+        let previous = (storage.string as NSString).range(of: "policy_statement,")
+        let new = (storage.string as NSString).range(of: "new_policy_statement,")
+        #expect(previous.location != NSNotFound && new.location != NSNotFound)
+        let textColor = NSColor(calibratedWhite: 0.86, alpha: 1)
+        #expect(storage.attribute(.foregroundColor, at: previous.location, effectiveRange: nil) as? NSColor == textColor)
+        #expect(storage.attribute(.backgroundColor, at: previous.location, effectiveRange: nil) as? NSColor == NSColor.systemGreen.withAlphaComponent(0.13))
+        #expect(storage.attribute(.backgroundColor, at: NSMaxRange(previous) - 1, effectiveRange: nil) as? NSColor == NSColor.systemGreen.withAlphaComponent(0.48))
+        #expect(storage.attribute(.backgroundColor, at: new.location, effectiveRange: nil) as? NSColor == NSColor.systemGreen.withAlphaComponent(0.13))
+    }
 }
