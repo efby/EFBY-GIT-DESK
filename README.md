@@ -65,6 +65,8 @@ Ambos documentos sincronizan el desplazamiento horizontal y vertical. El texto m
 
 Si solo cambia el final de línea de CRLF a LF o viceversa, el visor no pinta todo el código como reemplazado: muestra un aviso con el número de líneas afectadas y sigue destacando los cambios de contenido reales. Git conserva y compara los bytes originales.
 
+Si un bloque de código baja o sube al quedar dentro de otra estructura, el visor busca la misma línea aun cuando cambie su indentación. Conserva el texto original en cada lado y muestra la indentación modificada y las líneas realmente nuevas o eliminadas.
+
 Las preferencias guardan distribución de paneles, terminal, registro y pestañas; al reiniciar no se restauran procesos vivos. Quitar un registro conserva los archivos del repositorio. Los remotos de otros proveedores mantienen disponibles las funciones locales; la integración de red del MVP se limita a Bitbucket Cloud.
 
 ## Validación y límites
