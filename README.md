@@ -43,7 +43,11 @@ Para un paquete optimizado: `bash scripts/build-app.sh release`. El paquete incl
 7. **Editar mensaje de HEAD** presenta un plan que caduca a los 60 segundos. Publicarlo exige que HEAD coincida con la punta remota y utiliza un lease exacto. La referencia de recuperación se conserva incluso si el envío falla.
 8. **Terminal** abre el panel; **Nueva sesión** inicia una shell. Ocultarlo conserva la sesión. Cerrar una sesión activa presenta confirmación. Los cambios se consultan al volver al foco y cada cuatro segundos.
 
+**Restaurar estado de un commit** exige una rama con upstream y sin commits locales por publicar. Antes de escribir, la app vuelve a comprobar la rama y bloquea la operación si hay cambios preparados, pendientes, conflictos o archivos locales que colisionarían con el commit elegido. Conserva primero esos archivos en un commit o muévelos fuera del repositorio y vuelve a revisar.
+
 **Abrir carpeta** admite un repositorio individual o una carpeta superior. Busca proyectos Git en todas las subcarpetas, conserva la estructura en un árbol expandible y recuerda las carpetas agregadas. Muestra progreso durante el escaneo y permite cancelar. **Buscar en todos los proyectos** encuentra repositorios por nombre, ruta o grupo incluso con el árbol contraído. Puedes seleccionar varios proyectos (Cmd+clic) y **quitar del registro** sin borrar carpetas en disco. La búsqueda se puede cancelar; si hay carpetas inaccesibles, enlaces externos o repositorios no compatibles, la app informa el resultado parcial.
+
+Al volver a escanear una carpeta, las decisiones de confianza de los repositorios registrados se conservan. Un recorrido cancelado o parcial no elimina entradas del catálogo. Si el catálogo local está ocupado o no se puede abrir al iniciar, la app muestra un error y permite reintentar sin borrar los repositorios.
 
 **Abrir en editor** (menú contextual en proyectos, pestañas o carpetas del árbol) lista solo las aplicaciones instaladas en el Mac (por ejemplo Cursor, Visual Studio Code, Zed o Xcode) y abre la carpeta del repositorio o de la carpeta elegida.
 

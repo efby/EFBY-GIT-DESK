@@ -5,6 +5,9 @@ public protocol RegistryPort: Sendable {
     func repositories() async throws -> [Repository]
     func save(_ repository: Repository) async throws
     func remove(id: String) async throws
+    func removeRepositories(ids: [String]) async throws
+    func toggleFavorite(id: String) async throws -> Repository
+    func setGroup(id: String, group: String) async throws -> Repository
     func profiles() async throws -> [ConnectionProfile]
     func saveProfile(_ profile: ConnectionProfile) async throws
     func removeProfile(id: String) async throws

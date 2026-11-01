@@ -4,6 +4,23 @@ import EfbyGitDeskDomain
 import EfbyGitDeskInfrastructure
 
 @Suite(.serialized) @MainActor struct TerminalTests {
+    @Test func extremeCursorParametersDoNotOverflowOrExpandTheScreenUnboundedly() {
+        var vertical = TerminalScreen()
+        vertical.consume(Data("first\n\u{1b}[9223372036854775807Bend".utf8))
+        #expect(vertical.output.hasSuffix("end"))
+        #expect(vertical.output.components(separatedBy: "\n").count <= 5_000)
+
+        var horizontal = TerminalScreen()
+        horizontal.columns = 80
+        horizontal.consume(Data("x\u{1b}[9223372036854775807Cz".utf8))
+        #expect(horizontal.output.first == "x")
+        #expect(horizontal.output.last == "z")
+        #expect(horizontal.output.count == 80)
+
+        horizontal.columns = .max
+        #expect(horizontal.columns == 1_000)
+    }
+
     @Test func realPTYSupportsDirectoryUnicodeResizeInterruptionAndExit() async throws {
         let f = try await GitFixture.make(); defer { f.cleanup() }
         let terminal = PTYTerminal(shell: "/bin/sh", login: false)

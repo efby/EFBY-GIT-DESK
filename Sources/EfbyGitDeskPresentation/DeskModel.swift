@@ -110,6 +110,7 @@ private struct ReviewedSymbols {
     @ObservationIgnored private var pendingSymbol: (fileID: String, symbol: CodeSymbol)?
     @ObservationIgnored private var layoutSave: Task<Void, Never>?
     @ObservationIgnored private var searchQuery: Task<Void, Never>?
+    @ObservationIgnored private var metadataSave: Task<Void, Never>?
 
     public init(service: DeskService, terminalFactory: @escaping @MainActor () -> any TerminalPort) {
         self.service = service; self.terminalFactory = terminalFactory
@@ -118,12 +119,14 @@ private struct ReviewedSymbols {
     public var mutable: Bool { repository?.trusted == true && repository?.linkedWorktree == false && repository?.inspectionReason == nil && !busy }
     public var canRestoreRepositoryState: Bool {
         guard mutable, remoteSupported, !snapshot.upstream.isEmpty, !snapshot.branch.isEmpty else { return false }
-        return (snapshot.ahead ?? 0) == 0
+        return snapshot.ahead == 0 && !snapshot.files.contains { $0.status != "?" }
     }
     public var restoreRepositoryStateUnavailableReason: String? {
         if !mutable { return "Confía en el repositorio y asegúrate de que admite edición." }
         if snapshot.upstream.isEmpty { return "Configura un upstream antes de restaurar y publicar." }
-        if (snapshot.ahead ?? 0) > 0 { return "Hay commits locales sin publicar." }
+        guard let ahead = snapshot.ahead else { return "No se pudo verificar si hay commits locales sin publicar. Actualiza el repositorio." }
+        if ahead > 0 { return "Hay commits locales sin publicar." }
+        if snapshot.files.contains(where: { $0.status != "?" }) { return "Hay cambios locales preparados o pendientes. Guárdalos antes de restaurar." }
         if !remoteSupported { return "Selecciona un remoto válido en la barra de herramientas." }
         return nil
     }
@@ -313,10 +316,24 @@ private struct ReviewedSymbols {
             } catch { progress.fail(error); throw error }
         }
     }
-    public func update(_ repository: Repository) {
-        Task {
-            do { try await service.registry.save(repository); repositories = try await service.registry.repositories() }
-            catch { self.error = error.localizedDescription }
+    public func toggleFavorite(_ id: String) {
+        let previous = metadataSave
+        metadataSave = Task {
+            await previous?.value
+            do {
+                _ = try await service.registry.toggleFavorite(id: id)
+                repositories = try await service.registry.repositories()
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+    public func setGroup(_ group: String, for id: String) {
+        let previous = metadataSave
+        metadataSave = Task {
+            await previous?.value
+            do {
+                _ = try await service.registry.setGroup(id: id, group: group)
+                repositories = try await service.registry.repositories()
+            } catch { self.error = error.localizedDescription }
         }
     }
     public func discardFolderRoot(_ root: String) {
@@ -576,15 +593,23 @@ private struct ReviewedSymbols {
                 guard !Task.isCancelled, version == generation, self.context == context else { return }
                 files = newFiles
                 if showAllFiles {
-                    let all = try await service.git.allFiles(repository, context: context)
-                    guard !Task.isCancelled, version == generation, self.context == context, showAllFiles else { return }
-                    let changed = Set(newFiles.map(\.path))
-                    visibleFiles = (newFiles + all.filter { !changed.contains($0.path) })
-                        .sorted { $0.path.lexicographicallyPrecedes($1.path) }
+                    do {
+                        let all = try await service.git.allFiles(repository, context: context)
+                        guard !Task.isCancelled, version == generation, self.context == context, showAllFiles else { return }
+                        let changed = Set(newFiles.map(\.path))
+                        visibleFiles = (newFiles + all.filter { !changed.contains($0.path) })
+                            .sorted { $0.path.lexicographicallyPrecedes($1.path) }
+                    } catch is CancellationError { return }
+                    catch {
+                        guard !Task.isCancelled, version == generation, self.context == context else { return }
+                        showAllFiles = false
+                        visibleFiles = newFiles
+                        self.error = "No se pudo cargar «Todos los archivos»: \(error.localizedDescription). Se muestran los archivos modificados."
+                    }
                 } else { visibleFiles = newFiles }
                 fileInventoryRevision += 1
                 if let selectedFile, visibleFiles.contains(where: { $0.id == selectedFile }) {
-                    if comparison == nil || openDocument?.id != selectedFile { loadDiff(id: selectedFile) }
+                    if comparison == nil || openDocument?.id != selectedFile || context == .working || context == .staged { loadDiff(id: selectedFile) }
                     else { scheduleCallResolution() }
                 } else if openDocument?.id == selectedFile, comparison != nil {
                     scheduleCallResolution()
@@ -755,8 +780,9 @@ private struct ReviewedSymbols {
         openDocument = file
         if !preserveView {
             diffText = ""; comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffSyntax = nil
-            diffLoading = true; diffAligned = false; diffNotice = ""; diffLineEndingCount = 0
+            diffAligned = false; diffNotice = ""; diffLineEndingCount = 0
         }
+        diffLoading = true
         let version = generation
         diffQuery = Task {
             do {
@@ -783,7 +809,14 @@ private struct ReviewedSymbols {
                 diffText = result.patch.isEmpty
                     ? (file.status == "=" ? "Sin cambios; se muestran ambos documentos completos." : "Cambio de metadatos o modo; los documentos se muestran completos.")
                     : result.patch
-            } catch is CancellationError {} catch { if !Task.isCancelled, version == generation, selectedFile == id, self.context == context { self.error = error.localizedDescription; diffLoading = false } }
+            } catch is CancellationError {} catch {
+                if !Task.isCancelled, version == generation, selectedFile == id, self.context == context {
+                    comparison = nil; diffText = ""; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []
+                    diffSyntax = nil; callLinks = nil; diffAligned = false; diffNotice = ""; diffLineEndingCount = 0
+                    self.error = "No se pudo actualizar la comparación: \(error.localizedDescription)"
+                    diffLoading = false
+                }
+            }
         }
     }
     public func mutate(_ action: GitAction) {
@@ -804,6 +837,10 @@ private struct ReviewedSymbols {
     }
     public func confirmRestoreRepositoryState() {
         guard let commit = restoreStateTarget else { return }
+        guard canRestoreRepositoryState else {
+            error = restoreRepositoryStateUnavailableReason
+            return
+        }
         let trimmed = restoreStateTicket.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         let message = RestoreRepositoryStateMessage.compose(userInput: trimmed, shortOID: commit.shortOID)
