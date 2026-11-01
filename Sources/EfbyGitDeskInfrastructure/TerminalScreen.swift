@@ -8,7 +8,12 @@ public struct TerminalScreen: Sendable {
     private var control = ""
     private var pendingUTF8 = Data()
     private var utf8Count = 0
-    public var columns = 100
+    public var columns = 100 {
+        didSet {
+            columns = min(max(columns, 20), 1_000)
+            column = min(column, columns - 1)
+        }
+    }
     public var output: String { lines.map { String($0) }.joined(separator: "\n") }
     public init() {}
     public mutating func consume(_ bytes: Data) {
@@ -66,10 +71,11 @@ public struct TerminalScreen: Sendable {
     }
     private mutating func csi(_ final: Character) {
         let values = control.split(separator: ";", omittingEmptySubsequences: false).map { Int($0) ?? 0 }
-        let amount = max(1, values.first ?? 1)
+        // CSI parameters come from terminal output, so cap them before arithmetic.
+        let amount = min(5_000, max(1, values.first ?? 1))
         switch final {
         case "A": row = max(0, row - amount)
-        case "B": row += amount; ensureRow()
+        case "B": row = min(5_000, row + amount); ensureRow()
         case "C": column = min(columns - 1, column + amount)
         case "D": column = max(0, column - amount)
         case "G": column = min(columns - 1, amount - 1)

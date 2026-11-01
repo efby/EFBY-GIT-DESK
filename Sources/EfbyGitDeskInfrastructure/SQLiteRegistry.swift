@@ -15,6 +15,7 @@ public actor SQLiteRegistry: RegistryPort {
             sqlite3_close(connection); throw DeskError("No se pudo abrir el catálogo local.")
         }
         handle = SQLiteHandle(connection)
+        sqlite3_busy_timeout(connection, 3_000)
         var versionQuery: OpaquePointer?
         guard sqlite3_prepare_v2(connection, "PRAGMA user_version", -1, &versionQuery, nil) == SQLITE_OK else {
             throw DeskError("No se pudo leer la versión del catálogo.")
@@ -44,6 +45,44 @@ public actor SQLiteRegistry: RegistryPort {
         try write("INSERT OR REPLACE INTO repositories VALUES(?,?)", values: [Data(repository.id.utf8), try JSONEncoder().encode(repository)])
     }
     public func remove(id: String) throws { try write("DELETE FROM repositories WHERE id=?", values: [Data(id.utf8)]) }
+    public func removeRepositories(ids: [String]) throws {
+        guard !ids.isEmpty else { return }
+        try transaction {
+            for id in ids { try remove(id: id) }
+        }
+    }
+    public func toggleFavorite(id: String) throws -> Repository {
+        try updateRepository(id: id) { $0.favorite.toggle() }
+    }
+    public func setGroup(id: String, group: String) throws -> Repository {
+        try updateRepository(id: id) { $0.group = group }
+    }
+    private func updateRepository(id: String, change: (inout Repository) -> Void) throws -> Repository {
+        try transaction {
+            guard let data = try rows("SELECT value FROM repositories WHERE id=?", values: [Data(id.utf8)]).first else {
+                throw DeskError("El repositorio ya no está registrado.")
+            }
+            var repository = try JSONDecoder().decode(Repository.self, from: data)
+            change(&repository)
+            try save(repository)
+            return repository
+        }
+    }
+    private func transaction<T>(_ action: () throws -> T) throws -> T {
+        guard sqlite3_exec(database, "BEGIN IMMEDIATE", nil, nil, nil) == SQLITE_OK else {
+            throw DeskError("El catálogo local está ocupado. Inténtalo de nuevo.")
+        }
+        do {
+            let result = try action()
+            guard sqlite3_exec(database, "COMMIT", nil, nil, nil) == SQLITE_OK else {
+                throw DeskError("No se pudo guardar el catálogo local.")
+            }
+            return result
+        } catch {
+            _ = sqlite3_exec(database, "ROLLBACK", nil, nil, nil)
+            throw error
+        }
+    }
     public func profiles() throws -> [ConnectionProfile] {
         try rows("SELECT value FROM profiles").map { try JSONDecoder().decode(ConnectionProfile.self, from: $0) }
     }

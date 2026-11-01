@@ -117,8 +117,7 @@ struct RepositorySidebar: View {
                     Button("Cancelar") { editing = nil }
                     Spacer()
                     Button("Guardar") {
-                        var value = repository; value.group = group
-                        model.update(value); editing = nil
+                        model.setGroup(group, for: repository.id); editing = nil
                     }.buttonStyle(.borderedProminent)
                 }
             }.padding(24).frame(width: 400)
@@ -164,7 +163,7 @@ struct RepositorySidebar: View {
         }.padding(.vertical, 4).tag(repository.id)
         .contextMenu {
             Button(repository.favorite ? "Quitar favorito" : "Marcar favorito", systemImage: "star") {
-                var value = repository; value.favorite.toggle(); model.update(value)
+                model.toggleFavorite(repository.id)
             }
             Button("Asignar grupo", systemImage: "folder.badge.gearshape") { group = repository.group; editing = repository }
             Button("Mostrar en Finder", systemImage: "folder") { model.showInFinder(repository.id) }

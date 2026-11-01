@@ -48,6 +48,15 @@ struct ProcessAndStorageTests {
         try await registry.setPreference("terminal.height", value: "270")
         let reopened = try SQLiteRegistry(path: path)
         #expect(try await reopened.preference("terminal.height") == "270")
+        // Sidebar metadata must update the latest registration, not a stale row
+        // that could restore trust after an identity change.
+        var revoked = repository; revoked.trusted = false
+        try await registry.save(revoked)
+        let favorite = try await registry.toggleFavorite(id: repository.id)
+        #expect(!favorite.trusted && !favorite.favorite)
+        let grouped = try await registry.setGroup(id: repository.id, group: "New group")
+        #expect(!grouped.trusted && grouped.group == "New group")
+        #expect(try await reopened.repositories().first?.trusted == false)
         try await registry.remove(id: repository.id)
         #expect(try await registry.repositories().isEmpty)
         #expect(FileManager.default.fileExists(atPath: f.folder.appendingPathComponent("README.md").path))

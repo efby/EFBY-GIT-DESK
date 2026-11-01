@@ -31,7 +31,7 @@ struct RestoreRepositoryStateSheet: View {
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Label("Solo disponible sin commits locales pendientes de publicar.", systemImage: "info.circle")
+            Label("Solo disponible sin commits locales pendientes ni cambios preparados o pendientes en archivos seguidos.", systemImage: "info.circle")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             HStack {
@@ -41,7 +41,7 @@ struct RestoreRepositoryStateSheet: View {
                     showFinalConfirmation = true
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(model.busy || model.restoreStateTicket.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(!model.canRestoreRepositoryState || model.restoreStateTicket.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
         .padding(26)

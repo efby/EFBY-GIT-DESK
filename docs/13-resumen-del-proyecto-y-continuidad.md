@@ -368,6 +368,41 @@ sustituirlos. El digest ZIP de Actions es distinto del digest del DMG de una Rel
 
 ## Pendientes y criterios de continuidad
 
+### Auditoría de estabilidad y confianza (1 de noviembre de 2026)
+
+La revisión de v0.1.28 detectó caminos en los que un nuevo escaneo podía reponer
+una confianza revocada, una restauración podía sobrescribir trabajo local, una
+secuencia ANSI extrema podía cerrar el terminal y un error del catálogo al iniciar
+podía terminar la app. También se encontraron actualizaciones de metadatos capaces
+de sobrescribir una decisión de confianza, pérdida del inventario de archivos
+modificados si fallaba «Todos los archivos» y una comparación local que no se
+refrescaba después de cambios externos.
+
+- El escaneo conserva los registros y su confianza, y solo elimina repositorios
+  desaparecidos tras completar correctamente el recorrido. Una cancelación o fallo
+  parcial conserva el catálogo anterior.
+- La restauración vuelve a comprobar el estado Git antes de ejecutarse y se bloquea
+  si hay cambios rastreados o conflictos. También detecta colisiones con archivos
+  locales, incluidos los ignorados y los nombres que el volumen considera iguales
+  aunque cambie su capitalización, en rutas que el commit de destino agregaría.
+- El parser de terminal limita parámetros ANSI extremos. Los cambios de favorito o
+  grupo se guardan como operaciones atómicas sobre el registro más reciente, sin
+  reescribir la confianza desde una copia antigua de la interfaz.
+- Si el catálogo no abre al iniciar, la app muestra una pantalla de error con
+  «Reintentar» y «Salir». Se da un tiempo de espera a SQLite ante bloqueos
+  transitorios; ninguna de estas rutas borra el catálogo.
+- Si falla la carga de «Todos los archivos», los modificados siguen visibles. Al
+  actualizar un repositorio se vuelve a cargar el diff local del archivo abierto;
+  si esa recarga falla, el visor deja de mostrar el diff anterior como actual.
+
+Evidencia local: **141 pruebas aprobadas en 29 suites**, incluidas regresiones para
+escaneo completo/parcial, confianza revocada, restauración, colisiones, terminal,
+metadatos y visor. `scripts/build-app.sh` terminó correctamente, la firma ad hoc
+se verificó y la app compilada se abrió en macOS para revisar visualmente el
+explorador y el historial. No se modificaron los repositorios del usuario durante
+las pruebas. La ejecución en otros equipos, la instalación de un DMG descargado y
+la reproducción de un informe de cierre real siguen pendientes.
+
 ### Acciones masivas y marca de repositorios (10 de octubre de 2026)
 
 «Fetch de todos» y «Confiar en todos» procesan hasta cuatro directorios Git

@@ -60,9 +60,17 @@ public actor DeskService {
     public func openFolder(path: String,
                            preservingFolderRoots: [String] = [],
                            progress: (@Sendable (FolderScanProgressEvent) async -> Void)? = nil) async throws -> FolderOpenResult {
+        try await scanAndOpenFolder(path: path, preservingFolderRoots: preservingFolderRoots, progress: progress).result
+    }
+
+    /// A partial scan must never be used to remove existing catalog entries.
+    private func scanAndOpenFolder(path: String,
+                                   preservingFolderRoots: [String],
+                                   progress: (@Sendable (FolderScanProgressEvent) async -> Void)?) async throws -> (result: FolderOpenResult, complete: Bool) {
         guard let discovery else {
             let repository = try await open(path: path)
-            return FolderOpenResult(root: repository.path, repositories: [repository], issues: [])
+            // Opening one repository does not prove that a whole folder was scanned.
+            return (FolderOpenResult(root: repository.path, repositories: [repository], issues: []), false)
         }
         let scanProgress: (@Sendable (String, Int, Int) -> Void)?
         if let progress {
@@ -74,6 +82,7 @@ public actor DeskService {
         }
         let scan = try await discovery.scan(path: path, progress: scanProgress)
         var opened: [Repository] = [], issues: [String] = []
+        var complete = scan.unreadableDirectories == 0 && scan.externalLinks == 0
         if scan.unreadableDirectories > 0 { issues.append("No se pudieron leer \(scan.unreadableDirectories) carpetas.") }
         if scan.externalLinks > 0 { issues.append("Se omitieron \(scan.externalLinks) enlaces a carpetas fuera de la ubicación elegida.") }
         let candidates = scan.paths
@@ -83,7 +92,7 @@ public actor DeskService {
             await progress?(.importing(path: candidate, name: name, index: index + 1, total: max(candidates.count, 1)))
             do { opened.append(try await open(path: candidate)) }
             catch is CancellationError { throw CancellationError() }
-            catch { issues.append(name + ": " + error.localizedDescription) }
+            catch { complete = false; issues.append(name + ": " + error.localizedDescription) }
         }
         if candidates.isEmpty {
             // Preserve opening a subfolder within an existing repository.
@@ -95,7 +104,7 @@ public actor DeskService {
             try await persistFolderRoots(scanRoot: scan.root, opened: opened, candidateCount: candidates.count,
                                        ensuring: preservingFolderRoots)
         }
-        return FolderOpenResult(root: scan.root, repositories: opened, issues: issues)
+        return (FolderOpenResult(root: scan.root, repositories: opened, issues: issues), complete)
     }
     public func folderRoots() async throws -> [String] {
         guard let value = try await registry.preference("repository.folderRoots"), let data = value.data(using: .utf8) else { return [] }
@@ -128,8 +137,17 @@ public actor DeskService {
                 || RepositoryFolderPaths.contains(normalized, path: $0)
                 || RepositoryFolderPaths.contains($0, path: normalized)
         }
-        _ = try await removeRepositories(under: normalized)
-        return try await openFolder(path: normalized, preservingFolderRoots: preserved + [normalized], progress: progress)
+        let scan = try await scanAndOpenFolder(path: normalized, preservingFolderRoots: preserved + [normalized], progress: progress)
+        try Task.checkCancellation()
+        if scan.complete {
+            let discovered = Set(scan.result.repositories.map(\.id))
+            let obsolete = try await registry.repositories().filter {
+                RepositoryFolderPaths.contains(normalized, path: $0.path) && !discovered.contains($0.id)
+            }
+            try Task.checkCancellation()
+            try await registry.removeRepositories(ids: obsolete.map(\.id))
+        }
+        return scan.result
     }
 
     private func persistFolderRoots(scanRoot: String, opened: [Repository], candidateCount: Int,

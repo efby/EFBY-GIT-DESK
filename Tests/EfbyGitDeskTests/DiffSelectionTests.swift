@@ -134,9 +134,10 @@ import EfbyGitDeskInfrastructure
         #expect(model.selectedFile == file.id)
         model.loadDiff(id: file.id)
         #expect(model.comparison != nil)
-        #expect(!model.diffLoading) // Refresh must keep the native columns mounted.
+        #expect(model.diffLoading) // Existing columns remain mounted during refresh.
+        try await waitUntil { !model.diffLoading }
         model.refresh()
-        try await waitUntil { !model.loading && !model.filesLoading && model.diffText.contains("+changed") }
+        try await waitUntil { !model.loading && !model.filesLoading && !model.diffLoading && model.diffText.contains("+changed") }
         #expect(model.selectedFile == file.id)
 
         model.closeDiff()
@@ -295,6 +296,11 @@ import EfbyGitDeskInfrastructure
         try fixture.write("target.py", "# extra\n\ndef target_func():\n    pass\n")
         model.loadFiles()
         try await waitUntil { self.callLink(model.callLinks, name: "target_func")?.line == 3 }
+
+        try fixture.write("caller.py", "def run():\n    target_func()\n    print('updated')\n")
+        model.loadFiles()
+        try await waitUntil { model.comparison?.after == "def run():\n    target_func()\n    print('updated')\n" }
+        #expect(model.selectedFile == caller.id)
     }
 
     private func callLink(_ links: CodeCallLinks?, name: String, path: String? = nil) -> CodeCallLink? {

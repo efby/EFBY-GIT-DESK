@@ -46,9 +46,15 @@ struct FileDiffView: View {
                 Text("Esc cierra el visor").font(.caption).foregroundStyle(.secondary).fixedSize()
             }.padding(12)
             Divider()
-            if model.diffLoading {
+            if model.diffLoading && model.comparison == nil {
                 ProgressView("Comparando documentos…").frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let comparison = model.comparison {
+                if model.diffLoading {
+                    ProgressView("Actualizando comparación…")
+                        .font(.caption)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                }
                 if !model.diffNotice.isEmpty {
                     Text(model.diffNotice).font(.caption).foregroundStyle(.orange)
                         .frame(maxWidth: .infinity, alignment: .leading).padding(8)

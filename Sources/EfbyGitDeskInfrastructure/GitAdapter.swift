@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import EfbyGitDeskApplication
 import EfbyGitDeskDomain
 
@@ -461,13 +462,24 @@ public actor GitAdapter: GitRepositoryPort {
             let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { throw DeskError("Ingresa un identificador o mensaje antes de restaurar.") }
             guard !state.upstream.isEmpty else { throw DeskError("Configura un upstream antes de restaurar y publicar.") }
-            if let ahead = state.ahead, ahead > 0 {
+            guard state.ahead == 0 else {
                 throw DeskError("Hay commits locales sin publicar. Publica o integra antes de restaurar el estado de un commit anterior.")
             }
             guard state.branch == branch else { throw DeskError("Solo se restaura sobre la rama activa.") }
             try await validateBranch(branch, repository: repository)
             let parentBefore = state.head
             guard ComparisonPair.validOID(parentBefore) else { throw DeskError("HEAD actual no válido antes de restaurar.") }
+            // DeskService holds the commonGitDir permit throughout this action. Re-read
+            // after validation so edits made while the confirmation was open cannot be lost.
+            let current = try await snapshot(repository)
+            guard current.head == parentBefore, current.branch == branch,
+                  current.upstream == state.upstream, current.ahead == 0 else {
+                throw DeskError("La rama cambió antes de restaurar. Actualiza y vuelve a revisar.")
+            }
+            guard !current.files.contains(where: { $0.status != "?" }) else {
+                throw DeskError("Hay cambios preparados o pendientes. Consérvalos en un commit o descártalos explícitamente antes de restaurar.")
+            }
+            try await rejectRestoreCollisions(repository: repository, currentHead: parentBefore, target: oid)
             _ = try await run(["restore", "--source", oid, "--staged", "--worktree", "."], directory: repository.path, trusted: true)
             _ = try await run(["commit", "--file=-"], directory: repository.path, trusted: true, input: Data(trimmed.utf8))
             let head = try await run(["rev-parse", "HEAD"], directory: repository.path, trusted: true).text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -479,6 +491,45 @@ public actor GitAdapter: GitRepositoryPort {
             let url = try await destination(repository, remote: remote, push: true)
             return try await network(["push", "--porcelain", "--", url, head + ":refs/heads/" + branch], repository: repository, profile: profile).text
         }
+    }
+    /// `git restore --worktree` overwrites an untracked (including ignored) file
+    /// when the source tree adds the same path. Preserve those files explicitly.
+    private func rejectRestoreCollisions(repository: Repository, currentHead: String, target: String) async throws {
+        let additions = try complete(try await run(
+            ["diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--name-only", "--diff-filter=A", "-z", currentHead, target, "--"],
+            directory: repository.path, trusted: true))
+        guard !additions.isEmpty else { return }
+        let untracked = try complete(try await run(["ls-files", "--others", "--directory", "-z"],
+                                                   directory: repository.path, trusted: true))
+        let paths: [Data] = untracked.split(separator: UInt8(0)).map { Data($0) }
+        for record in additions.split(separator: UInt8(0)) {
+            let added = Data(record)
+            if existingRestorePath(added, in: repository.path)
+                || paths.contains(where: { restorePathConflicts(added: added, with: $0) }) {
+                throw DeskError("Un archivo local sin seguimiento o ignorado coincide con el commit elegido. Muévelo o guárdalo antes de restaurar.")
+            }
+        }
+    }
+    /// Ask the filesystem as well as Git: a case-insensitive or Unicode-normalizing
+    /// volume can resolve differently spelled Git paths to the same local file.
+    private func existingRestorePath(_ path: Data, in repositoryPath: String) -> Bool {
+        var bytes = Data(repositoryPath.utf8)
+        bytes.append(47)
+        bytes.append(path)
+        bytes.append(0)
+        var info = stat()
+        return bytes.withUnsafeBytes { raw in
+            guard let base = raw.baseAddress?.assumingMemoryBound(to: CChar.self) else { return true }
+            if lstat(base, &info) == 0 { return true }
+            return errno != ENOENT
+        }
+    }
+    private func restorePathConflicts(added: Data, with other: Data) -> Bool {
+        if added == other { return true }
+        if added.starts(with: other) {
+            return other.last == 47 || added.dropFirst(other.count).first == 47
+        }
+        return other.starts(with: added) && other.dropFirst(added.count).first == 47
     }
     private func fetch(_ repository: Repository, remote: String, profile: ConnectionProfile?) async throws -> ProcessResult {
         let url = try await destination(repository, remote: remote, push: false)
