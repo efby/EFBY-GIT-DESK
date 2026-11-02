@@ -989,7 +989,15 @@ private struct ReviewedSymbols {
         guard CursorPromptLink.isInstalled, case .commits = context else { return false }
         return true
     }
-    public func explainComparisonInCursor() {
+    public var canExplainComparisonInClaude: Bool {
+        guard ClaudeComparisonLauncher.isInstalled, case .commits = context else { return false }
+        return true
+    }
+    public func explainComparisonInCursor() { explainComparison(using: .cursor) }
+    public func explainComparisonInClaude() { explainComparison(using: .claude) }
+
+    private enum ExplanationApp: Sendable { case cursor, claude }
+    private func explainComparison(using app: ExplanationApp) {
         guard let repository else { return }
         guard case .commits(let pair) = context else {
             error = "Selecciona dos commits en Historial para comparar antes de pedir una explicación."
@@ -997,7 +1005,8 @@ private struct ReviewedSymbols {
         }
         let baseMessage = commits.first { $0.oid == pair.base }?.message ?? "(mensaje no cargado)"
         let targetMessage = commits.first { $0.oid == pair.target }?.message ?? "(mensaje no cargado)"
-        perform("Abriendo \(repository.name) en Cursor…", refreshAfter: false) {
+        let appName = app == .cursor ? "Cursor" : "Claude"
+        perform("Abriendo \(repository.name) en \(appName)…", refreshAfter: false) {
             var changedPaths = self.files.map(\.name)
             if changedPaths.isEmpty {
                 changedPaths = try await self.service.git.changes(repository, context: .commits(pair)).map(\.name)
@@ -1007,10 +1016,18 @@ private struct ReviewedSymbols {
                                                      targetMessage: targetMessage,
                                                      repositoryName: repository.name,
                                                      changedFilePaths: changedPaths)
-            let deeplink = try await CursorPromptLink.openRepositoryAndPrompt(repositoryPath: repository.path, prompt: prompt)
-            self.status = deeplink
-                ? "Proyecto abierto en Cursor. Revisa el chat con el prompt precargado y confírmalo antes de enviarlo."
-                : "Proyecto abierto en Cursor. El prompt está en el portapapeles; pégalo en el chat con ⌘V."
+            switch app {
+            case .cursor:
+                let deeplink = try await CursorPromptLink.openRepositoryAndPrompt(repositoryPath: repository.path, prompt: prompt)
+                self.status = deeplink
+                    ? "Proyecto abierto en Cursor. Revisa el chat con el prompt precargado y confírmalo antes de enviarlo."
+                    : "Proyecto abierto en Cursor. El prompt está en el portapapeles; pégalo en el chat con ⌘V."
+            case .claude:
+                let deeplink = try await ClaudeComparisonLauncher.openRepositoryAndPrompt(repositoryPath: repository.path, prompt: prompt)
+                self.status = deeplink
+                    ? "Claude Code abierto. Confirma el acceso a la carpeta, revisa el mensaje precargado y envíalo cuando quieras."
+                    : "Claude abierto. El prompt está en el portapapeles; pégalo con ⌘V y confirma el envío."
+            }
         }
     }
     static func panelWidth(_ saved: String?, default fallback: Double, minimum: Double, maximum: Double = .greatestFiniteMagnitude) -> Double {

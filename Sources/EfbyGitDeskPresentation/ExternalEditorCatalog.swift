@@ -14,6 +14,7 @@ enum ExternalEditorCatalog {
     private static let knownEditors: [(fallbackName: String, bundleIdentifier: String)] = [
         ("Cursor", "com.todesktop.230313mzl4w4u92"),
         ("Cursor", "com.cursor.Cursor"),
+        ("Claude", "com.anthropic.claudefordesktop"),
         ("Visual Studio Code", "com.microsoft.VSCode"),
         ("Visual Studio Code - Insiders", "com.microsoft.VSCodeInsiders"),
         ("Zed", "dev.zed.Zed"),
@@ -39,6 +40,15 @@ enum ExternalEditorCatalog {
         return nil
     }
 
+    static func installedClaude() -> ExternalEditor? {
+        let bundleIdentifier = "com.anthropic.claudefordesktop"
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else { return nil }
+        let localized = FileManager.default.displayName(atPath: url.path)
+        return ExternalEditor(bundleIdentifier: bundleIdentifier,
+                              displayName: localized.isEmpty ? "Claude" : localized,
+                              applicationURL: url)
+    }
+
     static func installedEditors() -> [ExternalEditor] {
         var seen = Set<String>()
         var editors: [ExternalEditor] = []
@@ -58,11 +68,34 @@ enum ExternalEditorCatalog {
         guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else {
             throw DeskError("La carpeta del proyecto ya no está disponible en disco.")
         }
+        if editor.bundleIdentifier == "com.anthropic.claudefordesktop" {
+            guard let link = ClaudeComparisonLauncher.folderURL(repositoryPath: path) else {
+                throw DeskError("Claude no pudo abrir una sesión de código con esta carpeta.")
+            }
+            try await openClaudeLink(link, with: editor)
+            return
+        }
         let folder = URL(fileURLWithPath: path, isDirectory: true)
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let configuration = NSWorkspace.OpenConfiguration()
             configuration.activates = true
             NSWorkspace.shared.open([folder], withApplicationAt: editor.applicationURL, configuration: configuration) { _, error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume() }
+            }
+        }
+    }
+
+    /// Deliver a claude:// URL to the selected app, regardless of the Mac's
+    /// default URL handler. The link can contain a local path and prompt text.
+    static func openClaudeLink(_ link: URL, with editor: ExternalEditor) async throws {
+        guard link.scheme == "claude", editor.bundleIdentifier == "com.anthropic.claudefordesktop" else {
+            throw DeskError("El destino de Claude no es válido.")
+        }
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = true
+            NSWorkspace.shared.open([link], withApplicationAt: editor.applicationURL, configuration: configuration) { _, error in
                 if let error { continuation.resume(throwing: error) }
                 else { continuation.resume() }
             }

@@ -10,4 +10,10 @@ import Testing
             #expect(FileManager.default.fileExists(atPath: editor.applicationURL.path))
         }
     }
+
+    @Test func installedClaudeAppearsInOpenInEditorMenu() {
+        guard let claude = ExternalEditorCatalog.installedClaude() else { return }
+        #expect(claude.bundleIdentifier == "com.anthropic.claudefordesktop")
+        #expect(ExternalEditorCatalog.installedEditors().contains(claude))
+    }
 }
