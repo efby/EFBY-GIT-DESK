@@ -420,6 +420,31 @@ de desarrollo compiló, verificó su firma ad hoc y se abrió en macOS para revi
 visualmente la nueva marca dentro del árbol. No se ejecutó un fetch real sobre
 los repositorios del usuario ni se midió el tiempo contra sus remotos.
 
+### Apertura y explicación en Claude (2 de noviembre de 2026)
+
+**Abrir en editor** incluye Claude cuando Claude Desktop está instalado. La opción
+abre una sesión de Claude Code con la carpeta elegida mediante un enlace `claude://`
+dirigido a la aplicación instalada. Con dos commits seleccionados, **Explicar
+cambios** permite elegir Cursor o Claude desde Historial y desde el visor. Ambos
+destinos reciben el mismo resumen A→B: SHAs, mensajes y rutas modificadas, sin
+adjuntar automáticamente contenido de archivos ni el diff. El usuario revisa y
+envía el mensaje en la aplicación elegida; Claude solicita confirmar la carpeta.
+Si el enlace con el mensaje no se puede usar, se abre la carpeta y se copia el
+mensaje completo al portapapeles para pegarlo manualmente.
+
+El enlace de Claude y su comportamiento se documentan en la
+[ayuda oficial de Claude Desktop](https://support.claude.com/es/articles/14729294-abrir-claude-desktop-con-un-enlace).
+La implementación verifica instalación, carpeta y longitud del enlace; no usa
+credenciales de Claude ni transmite el mensaje por una API propia. Se ejecutaron
+pruebas de codificación del enlace, fallback y detección de instalación. La app
+local mostró ambas opciones en el selector y Claude en el menú contextual del
+repositorio. La entrega del enlace a Claude.app se confirmó mediante NSWorkspace;
+el compositor precargado no pudo comprobarse visualmente sin interrumpir una tarea
+que el usuario mantenía abierta en Claude.
+La suite completa local pasó **146 pruebas en 30 suites**; el bundle de desarrollo
+compiló y `codesign --verify --deep --strict` validó su firma ad hoc. No se generó
+un DMG ni se verificó una ejecución de CI para este cambio en esa comprobación.
+
 Distribuir instaladores firmados no completa por sí solo H6. Permanecen abiertos:
 cuenta real Bitbucket y ramas protegidas; helper Keychain en distribución; VoiceOver,
 foco/teclado y restauración visual completos; instalación del artefacto descargado
