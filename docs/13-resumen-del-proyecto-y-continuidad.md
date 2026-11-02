@@ -445,6 +445,16 @@ La suite completa local pasó **146 pruebas en 30 suites**; el bundle de desarro
 compiló y `codesign --verify --deep --strict` validó su firma ad hoc. No se generó
 un DMG ni se verificó una ejecución de CI para este cambio en esa comprobación.
 
+El merge del PR #42 inició la ejecución de distribución
+[41517517373](https://github.com/efby/EFBY-GIT-DESK/actions/runs/41517517373),
+que se detuvo en dos pruebas de `AuditPresentationTests` antes de firmar o publicar.
+El error Cocoa 256 provenía de un plazo artificial de cinco segundos dentro de
+las pruebas, no de archivos ausentes. La corrección asigna treinta segundos a la
+carga del inventario y otros treinta a la recarga del diff, y muestra el estado
+del modelo si la espera vence. La suite completa local volvió a pasar con
+**146 pruebas en 30 suites**; el bundle compiló y se abrió en macOS. La ejecución
+de CI de esta corrección y la publicación de `v0.1.30` se verifican por separado.
+
 Distribuir instaladores firmados no completa por sí solo H6. Permanecen abiertos:
 cuenta real Bitbucket y ramas protegidas; helper Keychain en distribución; VoiceOver,
 foco/teclado y restauración visual completos; instalación del artefacto descargado

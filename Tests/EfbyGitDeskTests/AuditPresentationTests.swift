@@ -21,10 +21,8 @@ import EfbyGitDeskInfrastructure
         model.selectedID = repository.id
         model.workingView = true
         model.setShowAllFiles(true)
-        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
-        while model.filesLoading || model.visibleFiles.isEmpty {
-            guard ContinuousClock.now < deadline else { throw CocoaError(.fileReadUnknown) }
-            try await Task.sleep(for: .milliseconds(20))
+        try await waitForModel("inventario tras fallo de Todos los archivos", model: model) {
+            !model.filesLoading && !model.visibleFiles.isEmpty
         }
         #expect(model.files == [changed])
         #expect(model.visibleFiles == [changed])
@@ -69,21 +67,30 @@ import EfbyGitDeskInfrastructure
         let model = DeskModel(service: service, terminalFactory: { PTYTerminal(shell: "/bin/sh", login: false) })
         model.repositories = [repository]; model.selectedID = repository.id; model.workingView = true
         model.setShowAllFiles(true)
-        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
-        while model.filesLoading || model.visibleFiles.isEmpty {
-            guard ContinuousClock.now < deadline else { throw CocoaError(.fileReadUnknown) }
-            try await Task.sleep(for: .milliseconds(20))
+        try await waitForModel("inventario antes del diff", model: model) {
+            !model.filesLoading && !model.visibleFiles.isEmpty
         }
         model.selectedFile = changed.id; model.openDocument = changed
         model.comparison = FileComparison(before: "old", after: "stale", beforeLabel: "A", afterLabel: "B", patch: "old")
         model.loadDiff(id: changed.id)
         #expect(model.diffLoading)
-        while model.diffLoading {
-            guard ContinuousClock.now < deadline else { throw CocoaError(.fileReadUnknown) }
-            try await Task.sleep(for: .milliseconds(20))
+        try await waitForModel("recarga del diff", model: model) {
+            !model.diffLoading
         }
         #expect(model.comparison == nil)
         #expect(model.error?.contains("No se pudo actualizar la comparación") == true)
+    }
+
+    private func waitForModel(_ phase: String, model: DeskModel, until complete: () -> Bool) async throws {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(30))
+        while !complete() {
+            guard ContinuousClock.now < deadline else {
+                throw DeskError("Tiempo agotado al esperar \(phase): archivos=\(model.visibleFiles.count), " +
+                                "cargandoArchivos=\(model.filesLoading), cargandoDiff=\(model.diffLoading), " +
+                                "todos=\(model.showAllFiles), error=\(model.error ?? "ninguno")")
+            }
+            try await Task.sleep(for: .milliseconds(20))
+        }
     }
 }
 
