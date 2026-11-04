@@ -26,6 +26,14 @@ struct FileDiffView: View {
                     .keyboardShortcut(.escape, modifiers: [])
                     .accessibilityIdentifier("closeComparison")
                     .help("Cerrar solo el visor y volver al repositorio (Esc)")
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(width: 16, height: 16)
+                    .opacity(model.diffLoading && model.comparison != nil ? 1 : 0)
+                    .accessibilityHidden(!(model.diffLoading && model.comparison != nil))
+                    .accessibilityLabel("Actualizando comparación…")
+                    .allowsHitTesting(model.diffLoading && model.comparison != nil)
+                    .help("Actualizando comparación…")
                 Label(fileBreadcrumb, systemImage: "doc.text")
                     .font(.caption.monospaced()).lineLimit(1).truncationMode(.middle)
                     .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
@@ -42,12 +50,6 @@ struct FileDiffView: View {
             if model.diffLoading && model.comparison == nil {
                 ProgressView("Comparando documentos…").frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let comparison = model.comparison {
-                if model.diffLoading {
-                    ProgressView("Actualizando comparación…")
-                        .font(.caption)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 8).padding(.vertical, 4)
-                }
                 if !model.diffNotice.isEmpty {
                     Text(model.diffNotice).font(.caption).foregroundStyle(.orange)
                         .frame(maxWidth: .infinity, alignment: .leading).padding(8)

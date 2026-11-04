@@ -455,6 +455,34 @@ del modelo si la espera vence. La suite completa local volvió a pasar con
 **146 pruebas en 30 suites**; el bundle compiló y se abrió en macOS. La ejecución
 de CI de esta corrección y la publicación de `v0.1.30` se verifican por separado.
 
+### Estabilidad visual del visor de código (4 de noviembre de 2026)
+
+Al volver a cargar la comparación de un archivo ya abierto, el indicador
+«Actualizando comparación…» se insertaba como una fila entre la cabecera y el
+documento. Esa fila cambiaba temporalmente la altura disponible y desplazaba el
+código, tal como se observó en una captura de usuario. El progreso se muestra
+ahora en un espacio fijo de la cabecera. La barra de modificaciones conserva una
+sola línea de altura durante el desplazamiento vertical. La carga de un archivo
+nuevo sigue mostrando el progreso central hasta que estén disponibles sus dos
+documentos.
+
+Una recarga del repositorio también podía invalidar por generación una comparación
+en curso y dejar el indicador activo. Cada solicitud de diff tiene ahora una
+identidad propia: solo la solicitud vigente publica el resultado, mientras que
+los refrescos del historial del mismo repositorio no descartan el documento en
+carga. Para documentos del árbol de trabajo o del índice, un refresco sí
+invalida el resultado anterior y limpia el indicador para no presentar un diff
+obsoleto. Al cerrar el visor o elegir otro archivo se invalida esa identidad;
+un identificador de archivo inválido tampoco cancela la comparación abierta.
+
+Evidencia local: **149 pruebas en 30 suites** aprobadas, incluida una regresión
+que compara la posición e identidad del editor antes, durante y después de la
+recarga, otra que refresca el repositorio con un diff pendiente y casos de
+archivo inválido y refresco de cambios locales. El bundle de
+desarrollo compiló y se abrió sobre `lib/src/proceso/funciones.dart` en
+`sckuba_autoservicio_pinpad` para revisar el visor. La observación manual no mide
+el desplazamiento durante cada frame; la prueba de layout cubre ese estado.
+
 Distribuir instaladores firmados no completa por sí solo H6. Permanecen abiertos:
 cuenta real Bitbucket y ramas protegidas; helper Keychain en distribución; VoiceOver,
 foco/teclado y restauración visual completos; instalación del artefacto descargado
