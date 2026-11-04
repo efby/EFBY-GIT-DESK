@@ -135,10 +135,11 @@ import EfbyGitDeskInfrastructure
         model.loadDiff(id: file.id)
         #expect(model.comparison != nil)
         #expect(model.diffLoading) // Existing columns remain mounted during refresh.
-        try await waitUntil { !model.diffLoading }
+        // Refresh before the pending comparison task runs; it must still finish.
         model.refresh()
         try await waitUntil { !model.loading && !model.filesLoading && !model.diffLoading && model.diffText.contains("+changed") }
         #expect(model.selectedFile == file.id)
+        #expect(model.comparison != nil)
 
         model.closeDiff()
         model.refresh()
@@ -159,6 +160,121 @@ import EfbyGitDeskInfrastructure
         #expect(model.selectedFile == nil)
         #expect(model.files.isEmpty)
         #expect(!model.filesLoading)
+    }
+
+    @Test func updatingAnOpenComparisonKeepsEditorFrameStable() async throws {
+        let fixture = try await GitFixture.make(); defer { fixture.cleanup() }
+        let code = (1...100).map { "print(\($0))" }.joined(separator: "\n") + "\n"
+        _ = try await fixture.commit("README.md", code, message: "Long document")
+        let registry = try SQLiteRegistry(path: fixture.folder.appendingPathComponent("catalog.sqlite").path)
+        let service = DeskService(git: fixture.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
+        let repository = try await service.open(path: fixture.folder.path)
+        let model = DeskModel(service: service, terminalFactory: { PTYTerminal(shell: "/bin/sh", login: false) })
+        model.repositories = [repository]; model.select(repository.id)
+        try await waitUntil { !model.loading && model.commits.count == 2 }
+        model.chooseCommit(model.commits[0])
+        try await waitUntil { !model.filesLoading && model.files.count == 1 }
+        let file = try #require(model.files.first)
+        model.loadDiff(id: file.id)
+        try await waitUntil { !model.diffLoading && model.diffAligned && model.comparison != nil }
+
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1100, height: 700),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false; defer { window.close() }
+        let hosting = NSHostingView(rootView: FileDiffView(model: model, file: file))
+        hosting.sizingOptions = []; window.contentView = hosting
+        func editor(in view: NSView) -> ParallelDiffContainer? {
+            if let editor = view as? ParallelDiffContainer { return editor }
+            return view.subviews.lazy.compactMap { editor(in: $0) }.first
+        }
+        try await waitUntil {
+            hosting.layoutSubtreeIfNeeded()
+            return (editor(in: hosting)?.frame.height ?? 0) > 200
+        }
+        let originalEditor = try #require(editor(in: hosting))
+        let originalFrame = originalEditor.convert(originalEditor.bounds, to: hosting)
+
+        model.diffLoading = true
+        hosting.rootView = FileDiffView(model: model, file: file)
+        hosting.layoutSubtreeIfNeeded()
+        let loadingEditor = try #require(editor(in: hosting))
+        let loadingFrame = loadingEditor.convert(loadingEditor.bounds, to: hosting)
+        #expect(loadingEditor === originalEditor)
+        #expect(abs(loadingFrame.minY - originalFrame.minY) < 1)
+        #expect(abs(loadingFrame.maxY - originalFrame.maxY) < 1)
+
+        model.diffLoading = false
+        hosting.rootView = FileDiffView(model: model, file: file)
+        hosting.layoutSubtreeIfNeeded()
+        let restoredEditor = try #require(editor(in: hosting))
+        let restoredFrame = restoredEditor.convert(restoredEditor.bounds, to: hosting)
+        #expect(restoredEditor === originalEditor)
+        #expect(abs(restoredFrame.minY - originalFrame.minY) < 1)
+        #expect(abs(restoredFrame.maxY - originalFrame.maxY) < 1)
+    }
+
+    @Test func invalidFileSelectionDoesNotCancelOpenComparison() async throws {
+        let fixture = try await GitFixture.make(); defer { fixture.cleanup() }
+        _ = try await fixture.commit("README.md", "updated\n", message: "Update file")
+        let registry = try SQLiteRegistry(path: fixture.folder.appendingPathComponent("catalog.sqlite").path)
+        let service = DeskService(git: fixture.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
+        let repository = try await service.open(path: fixture.folder.path)
+        let model = DeskModel(service: service, terminalFactory: { PTYTerminal(shell: "/bin/sh", login: false) })
+        model.repositories = [repository]; model.select(repository.id)
+        try await waitUntil { !model.loading && model.commits.count == 2 }
+        model.chooseCommit(model.commits[0])
+        try await waitUntil { !model.filesLoading && model.files.count == 1 }
+        let file = try #require(model.files.first)
+        model.loadDiff(id: file.id)
+        try await waitUntil { !model.diffLoading && model.comparison?.after == "updated\n" }
+
+        model.loadDiff(id: file.id)
+        #expect(model.diffLoading)
+        model.loadDiff(id: "missing-file-id")
+        try await waitUntil { !model.diffLoading }
+        #expect(model.selectedFile == file.id)
+        #expect(model.comparison?.after == "updated\n")
+    }
+
+    @Test(arguments: [false, true])
+    func refreshingLocalDiffDuringLoadKeepsLatestBytes(staged: Bool) async throws {
+        let fixture = try await GitFixture.make(); defer { fixture.cleanup() }
+        try fixture.write("README.md", "first\n")
+        if staged { _ = try await fixture.git(["add", "--", "README.md"]) }
+        let registry = try SQLiteRegistry(path: fixture.folder.appendingPathComponent("catalog.sqlite").path)
+        let service = DeskService(git: fixture.adapter, registry: registry, cloud: BitbucketClient(vault: KeychainVault()))
+        let repository = try await service.open(path: fixture.folder.path)
+        let model = DeskModel(service: service, terminalFactory: { PTYTerminal(shell: "/bin/sh", login: false) })
+        model.repositories = [repository]; model.select(repository.id)
+        try await waitUntil { !model.loading }
+        model.showWorking(staged: staged)
+        try await waitUntil { !model.filesLoading && model.files.contains { $0.name == "README.md" } }
+        let file = try #require(model.files.first { $0.name == "README.md" })
+        model.loadDiff(id: file.id)
+        try await waitUntil { !model.diffLoading && model.comparison?.after == "first\n" }
+
+        try fixture.write("README.md", "second\n")
+        if staged { _ = try await fixture.git(["add", "--", "README.md"]) }
+        model.loadDiff(id: file.id)
+        #expect(model.diffLoading)
+        model.refresh()
+        do {
+            try await waitUntil {
+                !model.loading && !model.filesLoading && !model.diffLoading &&
+                    model.comparison?.after == "second\n"
+            }
+        } catch {
+            Issue.record("""
+                Refresh de diff local detenido: staged=\(staged), loading=\(model.loading), \
+                filesLoading=\(model.filesLoading), diffLoading=\(model.diffLoading), \
+                selectedFile=\(String(describing: model.selectedFile)), \
+                after=\(String(describing: model.comparison?.after)), \
+                error=\(String(describing: model.error))
+                """)
+            return
+        }
+        #expect(model.selectedFile == file.id)
+        #expect(model.context == (staged ? .staged : .working))
     }
 
     @Test func overlayKeepsFileNavigatorWhileSwitchingComparedFiles() async throws {

@@ -103,6 +103,7 @@ private struct ReviewedSymbols {
     @ObservationIgnored private var fileQuery: Task<Void, Never>?
     @ObservationIgnored private var highlightQuery: Task<Void, Never>?
     @ObservationIgnored private var diffQuery: Task<Void, Never>?
+    @ObservationIgnored private var diffRequestID: UUID?
     @ObservationIgnored private var declarationQuery: Task<Void, Never>?
     @ObservationIgnored private var pendingReview: UUID?
     @ObservationIgnored private var reviewed: [String: ReviewedSymbols] = [:]
@@ -765,14 +766,14 @@ private struct ReviewedSymbols {
         return candidate.id == id ? candidate : nil
     }
     public func closeDiff() {
-        diffQuery?.cancel(); highlightQuery?.cancel()
+        diffQuery?.cancel(); diffRequestID = nil; highlightQuery?.cancel()
         selectedFile = nil; openDocument = nil; diffText = ""; diffSyntax = nil; symbolJump = nil; pendingSymbol = nil; callLinks = nil; linkTrail = []
         comparison = nil; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffLoading = false; diffAligned = false; diffNotice = ""; diffLineEndingCount = 0
     }
     public func loadDiff(id: String, preserveTrail: Bool = false) {
+        guard let repository, let context, let file = file(id: id) else { return }
         if !preserveTrail { linkTrail = [] }
         diffQuery?.cancel()
-        guard let repository, let context, let file = file(id: id) else { return }
         knownFiles[file.id] = file
         let preserveView = selectedFile == id && comparison != nil
         if selectedFile != id { symbolJump = nil; callLinks = nil }
@@ -783,14 +784,22 @@ private struct ReviewedSymbols {
             diffAligned = false; diffNotice = ""; diffLineEndingCount = 0
         }
         diffLoading = true
+        let requestID = UUID()
+        diffRequestID = requestID
         let version = generation
+        let mutableContext = context == .working || context == .staged
         diffQuery = Task {
             do {
                 let result = try await service.git.fileComparison(repository, context: context, file: file)
                 let alignment = await Task.detached { () -> Result<DiffLayout, Error> in
                     Result { DiffLayout(rows: try DiffAlignment.make(result)) }
                 }.value
-                guard !Task.isCancelled, version == generation, selectedFile == id, self.context == context else { return }
+                guard !Task.isCancelled, diffRequestID == requestID,
+                      selectedID == repository.id, selectedFile == id, self.context == context else { return }
+                if mutableContext && version != generation {
+                    diffLoading = false; diffRequestID = nil
+                    return
+                }
                 comparison = result; diffNotice = result.notice
                 switch alignment {
                 case .success(let layout):
@@ -804,17 +813,22 @@ private struct ReviewedSymbols {
                 case .failure(let error): diffRows = []; diffBlocks = []; diffMap = []; diffInline = []; diffSyntax = nil; diffAligned = false; diffLineEndingCount = 0; diffNotice += "\n" + error.localizedDescription
                 }
                 applySymbolJump()
-                diffLoading = false
+                diffLoading = false; diffRequestID = nil
                 refreshHighlighting()
                 diffText = result.patch.isEmpty
                     ? (file.status == "=" ? "Sin cambios; se muestran ambos documentos completos." : "Cambio de metadatos o modo; los documentos se muestran completos.")
                     : result.patch
             } catch is CancellationError {} catch {
-                if !Task.isCancelled, version == generation, selectedFile == id, self.context == context {
+                if !Task.isCancelled, diffRequestID == requestID,
+                   selectedID == repository.id, selectedFile == id, self.context == context {
+                    if mutableContext && version != generation {
+                        diffLoading = false; diffRequestID = nil
+                        return
+                    }
                     comparison = nil; diffText = ""; diffRows = []; diffBlocks = []; diffMap = []; diffInline = []
                     diffSyntax = nil; callLinks = nil; diffAligned = false; diffNotice = ""; diffLineEndingCount = 0
                     self.error = "No se pudo actualizar la comparación: \(error.localizedDescription)"
-                    diffLoading = false
+                    diffLoading = false; diffRequestID = nil
                 }
             }
         }
