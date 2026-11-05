@@ -318,6 +318,86 @@ public actor GitAdapter: GitRepositoryPort {
         let result = try await run(["remote"], directory: repository.path)
         return result.text.split(separator: "\n").map(String.init)
     }
+    public func legacyBitbucketSSHHostNeedsUpdate(_ repository: Repository, remote: String) async throws -> Bool {
+        try requireTrust(repository)
+        guard !remote.hasPrefix("-"), try await remotes(repository).contains(remote) else {
+            throw DeskError("Selecciona un remoto válido.")
+        }
+        let fetchURLs = try await rawRemoteConfigValues("remote.\(remote).url", repository: repository)
+        let pushURLs = try await rawRemoteConfigValues("remote.\(remote).pushurl", repository: repository)
+        guard (fetchURLs + pushURLs).contains(where: { migratedLegacySSHURL($0) != nil }) else { return false }
+        guard fetchURLs.count == 1, pushURLs.count <= 1 else { return true }
+        // A custom Git URL rewrite already determines the effective host.
+        let fetchDestination = try? await destination(repository, remote: remote, push: false)
+        let pushDestination = try? await destination(repository, remote: remote, push: true)
+        return fetchDestination == fetchURLs[0] && pushDestination == (pushURLs.first ?? fetchURLs[0])
+    }
+    public func migrateLegacyBitbucketSSHRemote(_ repository: Repository, remote: String) async throws -> Bool {
+        try await mutable(repository)
+        guard !remote.hasPrefix("-"), try await remotes(repository).contains(remote) else {
+            throw DeskError("Selecciona un remoto válido.")
+        }
+        let fetchKey = "remote.\(remote).url"
+        let pushKey = "remote.\(remote).pushurl"
+        let fetchURLs = try await rawRemoteConfigValues(fetchKey, repository: repository)
+        let pushURLs = try await rawRemoteConfigValues(pushKey, repository: repository)
+        let newFetch = fetchURLs.first.flatMap(migratedLegacySSHURL)
+        let newPush = pushURLs.first.flatMap(migratedLegacySSHURL)
+        guard newFetch != nil || newPush != nil else { return false }
+        guard fetchURLs.count == 1, pushURLs.count <= 1 else {
+            throw DeskError("Hay varios destinos remotos; no se modificó la configuración Git.")
+        }
+        // Validate every destination before changing either one. Never rewrite a different provider.
+        for value in fetchURLs + pushURLs { try validateRemote(value) }
+        // Git expands url.*.insteadOf and pushInsteadOf. Leave custom rewrites intact.
+        let fetchDestination = try? await destination(repository, remote: remote, push: false)
+        let pushDestination = try? await destination(repository, remote: remote, push: true)
+        guard fetchDestination == fetchURLs[0], pushDestination == (pushURLs.first ?? fetchURLs[0]) else {
+            return false
+        }
+        var replacedPush = false
+        do {
+            if let oldPush = pushURLs.first, let newPush {
+                try await replaceRemoteConfigValue(pushKey, old: oldPush, new: newPush, repository: repository)
+                replacedPush = true
+            }
+            if let newFetch {
+                try await replaceRemoteConfigValue(fetchKey, old: fetchURLs[0], new: newFetch, repository: repository)
+            }
+        } catch {
+            if replacedPush, let oldPush = pushURLs.first, let newPush {
+                // Restore the original push destination if the fetch rewrite failed.
+                do {
+                    try await replaceRemoteConfigValue(pushKey, old: newPush, new: oldPush, repository: repository)
+                } catch {
+                    throw DeskError("La actualización del remoto quedó incompleta. Revisa las URLs de lectura y publicación antes de sincronizar.")
+                }
+            }
+            throw error
+        }
+        guard try await rawRemoteConfigValues(fetchKey, repository: repository) == [newFetch ?? fetchURLs[0]],
+              try await rawRemoteConfigValues(pushKey, repository: repository) == [newPush ?? pushURLs.first].compactMap({ $0 }) else {
+            throw DeskError("No se pudo verificar la actualización del remoto Git. Revisa su configuración antes de sincronizar.")
+        }
+        return true
+    }
+    private func rawRemoteConfigValues(_ key: String, repository: Repository) async throws -> [String] {
+        let result = try await run(["config", "--local", "--null", "--get-all", key],
+                                   directory: repository.path, trusted: true, limit: 16_384, allowFailure: true)
+        guard !result.truncated else { throw DeskError("La configuración del remoto supera el límite permitido.") }
+        if result.status == 1 { return [] }
+        guard result.status == 0 else { throw DeskError("No se pudo leer la configuración local del remoto.") }
+        return try result.output.split(separator: 0).map { bytes in
+            guard let value = String(data: Data(bytes), encoding: .utf8) else {
+                throw DeskError("La configuración del remoto no es UTF-8 válida.")
+            }
+            return value
+        }
+    }
+    private func replaceRemoteConfigValue(_ key: String, old: String, new: String, repository: Repository) async throws {
+        _ = try await run(["config", "--local", "--fixed-value", "--replace-all", key, new, old],
+                          directory: repository.path, trusted: true)
+    }
     public func remoteSupported(_ repository: Repository, remote: String) async -> Bool {
         do {
             _ = try await destination(repository, remote: remote, push: false)
@@ -341,12 +421,44 @@ public actor GitAdapter: GitRepositoryPort {
     }
     public func validateRemote(_ value: String) throws {
         if allowLocalRemotes && value.hasPrefix("/") { return }
-        if value.hasPrefix("git@bitbucket.org:"), !value.contains("\n"), !value.contains("\r"),
-           !value.dropFirst(18).contains("@"), value.dropFirst(18).split(separator: "/").count == 2 { return }
-        if let url = URL(string: value), url.scheme == "https", url.host == "bitbucket.org",
+        for host in ["bitbucket.org", "ssh.bitbucket.org"] {
+            let prefix = "git@\(host):"
+            if value.lowercased().hasPrefix(prefix), validBitbucketPath(String(value.dropFirst(prefix.count))) { return }
+        }
+        if let url = URLComponents(string: value), url.scheme?.lowercased() == "ssh",
+           url.user == "git", url.password == nil, url.query == nil, url.fragment == nil,
+           let host = url.host?.lowercased(),
+           ((["bitbucket.org", "ssh.bitbucket.org"].contains(host) && (url.port == nil || url.port == 22))
+            || (host == "altssh.bitbucket.org" && url.port == 443)),
+           url.path.hasPrefix("/"), validBitbucketPath(String(url.path.dropFirst())) { return }
+        if let url = URLComponents(string: value), url.scheme?.lowercased() == "https", url.host?.lowercased() == "bitbucket.org",
            url.port == nil, url.password == nil, url.user == nil || url.user == "x-bitbucket-api-token-auth",
-           url.query == nil, url.fragment == nil, url.path.split(separator: "/").count == 2 { return }
+           url.query == nil, url.fragment == nil, url.path.hasPrefix("/"),
+           validBitbucketPath(String(url.path.dropFirst())) { return }
         throw DeskError("La integración remota de este MVP admite URLs HTTPS/SSH de Bitbucket Cloud. El trabajo local sigue disponible.")
+    }
+    private func migratedLegacySSHURL(_ value: String) -> String? {
+        let prefix = "git@bitbucket.org:"
+        if value.lowercased().hasPrefix(prefix), validBitbucketPath(String(value.dropFirst(prefix.count))) {
+            return "git@ssh.bitbucket.org:" + value.dropFirst(prefix.count)
+        }
+        guard var url = URLComponents(string: value), url.scheme?.lowercased() == "ssh",
+              url.user == "git", url.password == nil, url.host?.lowercased() == "bitbucket.org",
+              url.port == nil || url.port == 22, url.query == nil, url.fragment == nil,
+              url.path.hasPrefix("/"), validBitbucketPath(String(url.path.dropFirst())) else { return nil }
+        url.host = "ssh.bitbucket.org"
+        return url.string
+    }
+    private func validBitbucketPath(_ path: String) -> Bool {
+        let segments = path.split(separator: "/", omittingEmptySubsequences: false)
+        guard segments.count == 2 else { return false }
+        let forbidden = CharacterSet.whitespacesAndNewlines.union(.controlCharacters)
+        return segments.allSatisfy { segment in
+            !segment.isEmpty && segment != "." && segment != ".."
+                && !segment.unicodeScalars.contains(where: { forbidden.contains($0) })
+                && !segment.contains("@") && !segment.contains(":")
+                && !segment.contains("?") && !segment.contains("#") && !segment.contains("\\")
+        }
     }
     private func network(_ args: [String], repository: Repository, profile: ConnectionProfile?, timeout: TimeInterval = 90, environment: [String: String] = [:]) async throws -> ProcessResult {
         var arguments = ["-c", "http.followRedirects=false", "-c", "protocol.allow=never",
@@ -549,7 +661,8 @@ public actor GitAdapter: GitRepositoryPort {
         _ = try await run(["check-ref-format", "--branch", name], directory: repository.path)
     }
     public func clone(source: String, destination: String, profile: ConnectionProfile?) async throws -> Repository {
-        try validateRemote(source)
+        let normalizedSource = migratedLegacySSHURL(source) ?? source
+        try validateRemote(normalizedSource)
         let target = URL(fileURLWithPath: destination).standardizedFileURL.resolvingSymlinksInPath()
         guard !FileManager.default.fileExists(atPath: target.path) else {
             throw DeskError("El destino ya existe. Elige una carpeta nueva; no se sobrescriben archivos.")
@@ -558,7 +671,7 @@ public actor GitAdapter: GitRepositoryPort {
         try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: false)
         defer { try? FileManager.default.removeItem(at: staging) }
         let context = Repository(path: staging.path, gitDirectory: "", commonDirectory: "", name: "clone", trusted: true)
-        _ = try await network(["-c", "core.hooksPath=/dev/null", "clone", "--no-checkout", "--", source, target.path], repository: context, profile: profile,
+        _ = try await network(["-c", "core.hooksPath=/dev/null", "clone", "--no-checkout", "--", normalizedSource, target.path], repository: context, profile: profile,
                               environment: ["GIT_CEILING_DIRECTORIES": staging.deletingLastPathComponent().path])
         var repository = try await discover(path: target.path)
         repository.pendingCheckout = true

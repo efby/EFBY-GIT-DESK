@@ -196,4 +196,104 @@ import EfbyGitDeskInfrastructure
             try await f.adapter.execute(.fetch("origin"), repository: f.repository, profile: nil)
         }
     }
+    @Test(arguments: [
+        "git@bitbucket.org:workspace/repository.git",
+        "git@ssh.bitbucket.org:workspace/repository.git",
+        "ssh://git@ssh.bitbucket.org/workspace/repository.git",
+        "ssh://git@altssh.bitbucket.org:443/workspace/repository.git"
+    ])
+    func bitbucketSSHRemoteIsAvailableWithoutContactingServer(url: String) async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        _ = try await f.git(["remote", "add", "origin", url])
+        #expect(await f.adapter.remoteSupported(f.repository, remote: "origin"))
+    }
+    @Test(arguments: [
+        "git@ssh.bitbucket.org.attacker.invalid:workspace/repository.git",
+        "ssh://git@ssh.bitbucket.org.attacker.invalid/workspace/repository.git",
+        "git@ssh.bitbucket.org:workspace/repository/extra.git",
+        "ssh://other@ssh.bitbucket.org/workspace/repository.git"
+    ])
+    func similarSSHAddressesRemainBlocked(url: String) async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        _ = try await f.git(["remote", "add", "origin", url])
+        #expect(await f.adapter.remoteSupported(f.repository, remote: "origin") == false)
+        await #expect(throws: DeskError.self) {
+            try await f.adapter.validateRemote(url)
+        }
+    }
+    @Test func legacyBitbucketSSHMigrationPreservesFetchAndPushPaths() async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        _ = try await f.git(["remote", "add", "origin", "git@bitbucket.org:workspace/repository.git"])
+        _ = try await f.git(["config", "remote.origin.pushurl", "ssh://git@bitbucket.org/other-workspace/other-repository.git"])
+
+        #expect(try await f.adapter.migrateLegacyBitbucketSSHRemote(f.repository, remote: "origin"))
+        #expect(try await f.git(["config", "--get", "remote.origin.url"]) ==
+                "git@ssh.bitbucket.org:workspace/repository.git")
+        #expect(try await f.git(["config", "--get", "remote.origin.pushurl"]) ==
+                "ssh://git@ssh.bitbucket.org/other-workspace/other-repository.git")
+        #expect(await f.adapter.remoteSupported(f.repository, remote: "origin"))
+        #expect(try await f.adapter.migrateLegacyBitbucketSSHRemote(f.repository, remote: "origin") == false)
+    }
+    @Test func legacyHostUpdateIndicatorFollowsConfiguredRemote() async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        _ = try await f.git(["remote", "add", "origin", "git@bitbucket.org:workspace/repository.git"])
+        #expect(try await f.adapter.legacyBitbucketSSHHostNeedsUpdate(f.repository, remote: "origin"))
+        _ = try await f.git(["remote", "set-url", "origin", "git@ssh.bitbucket.org:workspace/repository.git"])
+        #expect(try await f.adapter.legacyBitbucketSSHHostNeedsUpdate(f.repository, remote: "origin") == false)
+        _ = try await f.git(["remote", "set-url", "origin", "https://bitbucket.org/workspace/repository.git"])
+        #expect(try await f.adapter.legacyBitbucketSSHHostNeedsUpdate(f.repository, remote: "origin") == false)
+    }
+    @Test(arguments: [
+        "https://bitbucket.org/workspace/repository.git",
+        "git@ssh.bitbucket.org:workspace/repository.git",
+        "git@bitbucket.org.attacker.invalid:workspace/repository.git"
+    ])
+    func migrationLeavesUnrelatedRemoteURLUntouched(url: String) async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        _ = try await f.git(["remote", "add", "origin", url])
+        #expect(try await f.adapter.migrateLegacyBitbucketSSHRemote(f.repository, remote: "origin") == false)
+        #expect(try await f.git(["config", "--get", "remote.origin.url"]) == url)
+    }
+    @Test func migrationKeepsSeparateModernPushDestination() async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        let pushURL = "https://bitbucket.org/another-workspace/repository.git"
+        _ = try await f.git(["remote", "add", "origin", "git@bitbucket.org:workspace/repository.git"])
+        _ = try await f.git(["config", "remote.origin.pushurl", pushURL])
+
+        #expect(try await f.adapter.migrateLegacyBitbucketSSHRemote(f.repository, remote: "origin"))
+        #expect(try await f.git(["config", "--get", "remote.origin.url"]) ==
+                "git@ssh.bitbucket.org:workspace/repository.git")
+        #expect(try await f.git(["config", "--get", "remote.origin.pushurl"]) == pushURL)
+    }
+    @Test(arguments: ["insteadOf", "pushInsteadOf"])
+    func rewrittenLegacySSHRemoteIsNotMigrated(rule: String) async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        let rawURL = "git@bitbucket.org:workspace/repository.git"
+        _ = try await f.git(["remote", "add", "origin", rawURL])
+        _ = try await f.git(["config", "--local", "url.git@github.com:archive/.\(rule)",
+                             "git@bitbucket.org:workspace/"])
+        let resolved = try await f.git(["remote", "get-url"] + (rule == "pushInsteadOf" ? ["--push"] : []) + ["origin"])
+        #expect(resolved == "git@github.com:archive/repository.git")
+
+        let migrated: Bool
+        do {
+            migrated = try await f.adapter.migrateLegacyBitbucketSSHRemote(f.repository, remote: "origin")
+        } catch is DeskError {
+            migrated = false
+        }
+        #expect(!migrated)
+        #expect(try await f.git(["config", "--get", "remote.origin.url"]) == rawURL)
+        #expect((try? await f.git(["config", "--get", "remote.origin.pushurl"])) == nil)
+    }
+    @Test func untrustedRepositoryCannotMigrateRemote() async throws {
+        let f = try await GitFixture.make(); defer { f.cleanup() }
+        let legacy = "git@bitbucket.org:workspace/repository.git"
+        _ = try await f.git(["remote", "add", "origin", legacy])
+        var untrusted = f.repository
+        untrusted.trusted = false
+        await #expect(throws: DeskError.self) {
+            try await f.adapter.migrateLegacyBitbucketSSHRemote(untrusted, remote: "origin")
+        }
+        #expect(try await f.git(["config", "--get", "remote.origin.url"]) == legacy)
+    }
 }

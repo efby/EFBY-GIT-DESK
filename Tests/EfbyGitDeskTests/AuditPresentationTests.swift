@@ -116,6 +116,8 @@ private struct AllFilesFailureStub: GitRepositoryPort {
                       profile: ConnectionProfile?) async throws -> AmendPlan { throw DeskError("Sin usar") }
     func executeAmend(_ plan: AmendPlan, profile: ConnectionProfile?) async throws -> String { throw DeskError("Sin usar") }
     func remotes(_ repository: Repository) async throws -> [String] { throw DeskError("Sin usar") }
+    func legacyBitbucketSSHHostNeedsUpdate(_ repository: Repository, remote: String) async throws -> Bool { false }
+    func migrateLegacyBitbucketSSHRemote(_ repository: Repository, remote: String) async throws -> Bool { false }
     func remoteSupported(_ repository: Repository, remote: String) async -> Bool { false }
     func message(_ repository: Repository, oid: String) async throws -> String { throw DeskError("Sin usar") }
 }

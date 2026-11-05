@@ -483,6 +483,31 @@ desarrollo compiló y se abrió sobre `lib/src/proceso/funciones.dart` en
 `sckuba_autoservicio_pinpad` para revisar el visor. La observación manual no mide
 el desplazamiento durante cada frame; la prueba de layout cubre ese estado.
 
+### Host SSH de Bitbucket Cloud (5 de noviembre de 2026)
+
+Un remoto con `git@ssh.bitbucket.org:workspace/repositorio.git` aparecía como si
+no perteneciera a Bitbucket Cloud, deshabilitando Fetch, Pull y Push aunque Git
+local mostraba sus ramas. Atlassian está trasladando Git por SSH desde
+`bitbucket.org` a `ssh.bitbucket.org` ([anuncio](https://community.atlassian.com/forums/discussion/3234032/upcoming-change-to-bitbucket-cloud-ssh-access-move-from-bitbucket-org-to-ssh-bitbucket-org)).
+El adaptador reconoce el host nuevo y la alternativa oficial SSH por el puerto
+443. Al revisar el remoto seleccionado de un repositorio confiable, las URLs SSH
+con el host legado exacto se actualizan localmente al nuevo host, tanto para
+fetch como para un destino de push explícito. La ruta del repositorio se conserva;
+HTTPS, otros dominios y repositorios sin confianza quedan intactos. El usuario
+recibe una indicación del ajuste y no se inicia una conexión automáticamente.
+Las reglas `url.*.insteadOf` y `pushInsteadOf` se respetan: si cambian el destino
+efectivo, la URL local queda intacta. Un remoto que ya usa `ssh.bitbucket.org`
+no necesita migración y conserva el refresco del historial.
+
+Evidencia local: `bash scripts/test.sh` aprobó **157 pruebas en 30 suites**,
+incluidos casos sin red para URLs SSH nuevas, host alternativo, dominios
+parecidos, migración de fetch y push por separado y repositorios sin confianza.
+`bash scripts/build-app.sh` compiló. Se abrió el bundle de desarrollo con
+`sckuba_autoservicio_pinpad`, cuyo `origin` ya utiliza `ssh.bitbucket.org`:
+Fetch, Pull y Push quedaron habilitados y desapareció el aviso erróneo.
+No se ejecutó ninguna operación de red contra Bitbucket ni se modificó ese
+repositorio personal durante la comprobación.
+
 Distribuir instaladores firmados no completa por sí solo H6. Permanecen abiertos:
 cuenta real Bitbucket y ramas protegidas; helper Keychain en distribución; VoiceOver,
 foco/teclado y restauración visual completos; instalación del artefacto descargado

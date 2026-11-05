@@ -13,8 +13,22 @@ Git sigue siendo la fuente de verdad para ramas, objetos, índice y working tree
 | Modalidad | Uso Git | Uso REST | Datos solicitados |
 |---|---|---|---|
 | API token personal con scopes | HTTPS; usuario Bitbucket exacto o `x-bitbucket-api-token-auth`; token por canal de credenciales | Basic: correo Atlassian como usuario y token como contraseña | Correo Atlassian, token; usuario Bitbucket opcional para Git |
-| SSH personal | URL `git@bitbucket.org:workspace/repositorio.git`, agente o clave seleccionada | Requiere credencial REST adicional | Referencia a agente/configuración/archivo de clave |
+| SSH personal | URL `git@ssh.bitbucket.org:workspace/repositorio.git`, agente o clave seleccionada | Requiere credencial REST adicional | Referencia a agente/configuración/archivo de clave |
 | Conexión heredada | Configuración Git y SSH existente, después de confiar en ella | No se infiere un token REST | Ruta del repositorio y remoto seleccionado |
+
+Actualización del 5 de noviembre de 2026: Bitbucket Cloud está migrando Git por
+SSH de `bitbucket.org` a `ssh.bitbucket.org`; HTTPS no cambia. La integración
+admite los formatos SSH con el host nuevo y la alternativa oficial
+`altssh.bitbucket.org:443`. Para un repositorio confiable, al revisar el remoto
+seleccionado se sustituye únicamente el host SSH legado exacto en su URL local
+de fetch o push, conservando las rutas. No se reescriben HTTPS, otros proveedores
+ni nombres de host parecidos; tampoco se inicia fetch por la migración. La
+actualización de configuración se hace mediante Git y se comunica en la
+interfaz. Si `url.*.insteadOf` o `pushInsteadOf` cambia el destino efectivo, la
+URL local se conserva para respetar esa configuración. Un host SSH ya actualizado
+no requiere migración ni impide refrescar el historial. Véanse el
+[aviso de migración](https://community.atlassian.com/forums/discussion/3234032/upcoming-change-to-bitbucket-cloud-ssh-access-move-from-bitbucket-org-to-ssh-bitbucket-org)
+y la [guía de Atlassian](https://support.atlassian.com/bamboo/kb/prepare-bamboo-data-center-repositories-for-bitbucket-cloud-ssh-hostname-change/).
 
 REST y Git usan identificadores distintos en el modo API token. Las contraseñas de cuenta no sustituyen al token. [Autenticación REST](https://developer.atlassian.com/cloud/bitbucket/rest/intro/), [API tokens con Git](https://support.atlassian.com/bitbucket-cloud/docs/using-api-tokens/).
 

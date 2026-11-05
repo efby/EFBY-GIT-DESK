@@ -73,6 +73,17 @@ Si un bloque de código baja o sube al quedar dentro de otra estructura, el viso
 
 Las preferencias guardan distribución de paneles, terminal, registro y pestañas; al reiniciar no se restauran procesos vivos. Quitar un registro conserva los archivos del repositorio. Los remotos de otros proveedores mantienen disponibles las funciones locales; la integración de red del MVP se limita a Bitbucket Cloud.
 
+La app reconoce el host SSH actual de Bitbucket Cloud, `ssh.bitbucket.org`, y la
+alternativa oficial `altssh.bitbucket.org:443`. Si un repositorio confiable
+conserva el host SSH antiguo `bitbucket.org` en el remoto seleccionado, la app
+actualiza solo ese host en la URL local de fetch y, cuando corresponda, en la
+URL de push. Mantiene el workspace, el repositorio y cualquier destino HTTPS u
+otro dominio; informa el cambio sin iniciar una conexión por sí sola. Si Git
+aplica reglas `url.*.insteadOf` o `pushInsteadOf`, la URL local se conserva para
+respetar ese destino efectivo. Un remoto que ya utiliza el host nuevo no requiere
+migración y mantiene disponible el refresco del historial. El cambio de host
+responde al [aviso de Atlassian](https://community.atlassian.com/forums/discussion/3234032/upcoming-change-to-bitbucket-cloud-ssh-access-move-from-bitbucket-org-to-ssh-bitbucket-org).
+
 ## Validación y límites
 
 El [estado del MVP](docs/11-estado-mvp.md) registra pruebas reales, trazabilidad y pendientes. Las pruebas Git usan carpetas temporales, remoto bare y dos clones, sin modificar repositorios personales. La rama de acciones globales pasó localmente **104 pruebas registradas en 23 suites: 102 aprobadas y 2 optativas omitidas**. El bundle de desarrollo compiló y superó la verificación de firma ad hoc. Los resultados de la [corrección anterior de navegación](https://github.com/efby/EFBY-GIT-DESK/pull/23) permanecen en la documentación histórica; ninguna de estas comprobaciones prueba un nuevo DMG distribuido.

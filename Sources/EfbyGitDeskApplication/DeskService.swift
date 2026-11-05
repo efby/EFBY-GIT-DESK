@@ -364,6 +364,20 @@ public actor DeskService {
         }
         return actual.path
     }
+    public func migrateLegacyBitbucketSSHRemote(_ repository: Repository, remote: String) async throws -> Bool {
+        try await requireTrust(repository)
+        guard try await git.legacyBitbucketSSHHostNeedsUpdate(repository, remote: remote) else { return false }
+        await gate.acquire(repository.commonDirectory)
+        do {
+            try Task.checkCancellation()
+            let changed = try await git.migrateLegacyBitbucketSSHRemote(repository, remote: remote)
+            await gate.release(repository.commonDirectory)
+            return changed
+        } catch {
+            await gate.release(repository.commonDirectory)
+            throw error
+        }
+    }
     public func mutate(_ action: GitAction, repository: Repository,
                        profile: ConnectionProfile?) async throws -> String {
         try await requireTrust(repository)
