@@ -39,7 +39,7 @@ public actor BitbucketClient: HostingProviderPort {
                 let fullName = repository["full_name"] as? String ?? name
                 let links = repository["links"] as? [String: Any]
                 let clones = links?["clone"] as? [[String: Any]] ?? []
-                let ssh = clones.first { $0["name"] as? String == "ssh" }?["href"] as? String ?? "git@bitbucket.org:\(fullName).git"
+                let ssh = clones.first { $0["name"] as? String == "ssh" }?["href"] as? String ?? "git@ssh.bitbucket.org:\(fullName).git"
                 let https = "https://bitbucket.org/\(fullName).git"
                 repositories.append(CloudRepository(id: uuid, name: name, fullName: fullName, sshURL: ssh, httpsURL: https))
             }

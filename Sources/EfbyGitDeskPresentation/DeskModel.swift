@@ -483,12 +483,22 @@ private struct ReviewedSymbols {
                 let newTips = Array(Set(newBranches.map(\.oid) + [newState.head])).filter(ComparisonPair.validOID).sorted()
                 let newRemotes = repository.trusted ? try await service.git.remotes(repository) : []
                 let selectedRemote = newRemotes.contains(remote) ? remote : (newRemotes.first ?? "")
+                var migratedRemote = false
+                var migrationError: String?
+                if repository.trusted && !selectedRemote.isEmpty {
+                    do {
+                        migratedRemote = try await service.migrateLegacyBitbucketSSHRemote(repository, remote: selectedRemote)
+                    } catch is CancellationError { throw CancellationError() }
+                    catch { migrationError = error.localizedDescription }
+                }
                 let supported = repository.trusted && !selectedRemote.isEmpty ? await service.git.remoteSupported(repository, remote: selectedRemote) : false
                 let changed = newTips != tips || forceHistory || commits.isEmpty
                 let history = changed ? try await service.git.history(repository, tips: newTips, offset: 0, search: search) : commits
                 guard !Task.isCancelled, version == generation, repository.id == selectedID, search == self.search else { return }
                 snapshot = newState; branches = newBranches; remoteNames = newRemotes
                 remote = selectedRemote; remoteSupported = supported
+                if migratedRemote { status = "Se actualizó el host SSH de \(selectedRemote) a ssh.bitbucket.org." }
+                if let migrationError { error = "No se pudo actualizar el host SSH de \(selectedRemote): \(migrationError)" }
                 if changed {
                     commits = history; hasMore = history.count == 100; tips = newTips; loadedSearch = search
                 }

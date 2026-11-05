@@ -29,7 +29,7 @@ public struct WorkspaceView: View {
                                 Button("Confiar y habilitar operaciones") { trusting = true }.buttonStyle(.borderedProminent)
                             }.padding(12).background(.orange.opacity(0.12))
                         } else if !model.remoteNames.isEmpty && !model.remoteSupported {
-                            Label("Este remoto no es Bitbucket Cloud. Historial y operaciones locales disponibles.", systemImage: "info.circle")
+                            Label("No se pudo habilitar este remoto. Comprueba su URL de Bitbucket Cloud y que tenga un único destino de lectura y publicación. El historial local sigue disponible.", systemImage: "info.circle")
                                 .font(.caption).frame(maxWidth: .infinity, alignment: .leading).padding(10)
                         }
                         if let reason = repository.inspectionReason {

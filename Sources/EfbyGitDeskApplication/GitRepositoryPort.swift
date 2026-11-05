@@ -33,6 +33,8 @@ public protocol GitRepositoryPort: Sendable {
                       profile: ConnectionProfile?) async throws -> AmendPlan
     func executeAmend(_ plan: AmendPlan, profile: ConnectionProfile?) async throws -> String
     func remotes(_ repository: Repository) async throws -> [String]
+    func legacyBitbucketSSHHostNeedsUpdate(_ repository: Repository, remote: String) async throws -> Bool
+    func migrateLegacyBitbucketSSHRemote(_ repository: Repository, remote: String) async throws -> Bool
     func remoteSupported(_ repository: Repository, remote: String) async -> Bool
     func message(_ repository: Repository, oid: String) async throws -> String
 }
